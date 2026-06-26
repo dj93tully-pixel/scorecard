@@ -15,9 +15,12 @@
   --text-muted: #8a90a0;
 }
 
-html,
+/* html is the dark chrome color so the iPhone safe-area (above the header)
+   reads dark, not white. The light page background lives on <main>. */
+html {
+  background: var(--header-bg);
+}
 body {
-  background: var(--page-bg);
   color: var(--text-primary);
   -webkit-tap-highlight-color: transparent;
 }
@@ -78,8 +81,7 @@ button {
   padding-top: env(safe-area-inset-top);
 }
 @media (display-mode: standalone) {
-  html,
-  body {
-    background: var(--page-bg);
+  html {
+    background: var(--header-bg);
   }
 }

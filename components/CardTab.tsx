@@ -5,7 +5,7 @@
 
 "use client";
 
-import { CSSProperties, useState } from "react";
+import { CSSProperties, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Round, RoundComputation, Player } from "@/lib/wolf";
 import { coursePar, formatMoney } from "@/lib/storage";
@@ -96,11 +96,11 @@ function BigNine({
       : holes.reduce((s, h) => s + moneyOf(pid, h), 0);
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-card-border bg-card-bg">
+    <div className="overflow-x-auto rounded-xl border border-card-border bg-surface-2">
       <table className="w-full border-collapse text-center">
         <thead>
-          <tr className="bg-row-tint text-[10px] font-semibold text-text-muted">
-            <th className="sticky left-0 z-10 bg-row-tint px-2 py-1.5 text-left">{title}</th>
+          <tr className="text-[10px] font-semibold text-text-muted">
+            <th className="sticky left-0 z-10 bg-surface-2 px-2 py-1.5 text-left">{title}</th>
             {holes.map((h) => (
               <th key={h} className="px-1.5 py-1.5">
                 {h}
@@ -109,8 +109,8 @@ function BigNine({
             <th className="px-1.5 py-1.5">{totalLabel}</th>
           </tr>
           {mode === "scores" && (
-            <tr className="text-[9px] text-text-faint">
-              <td className="sticky left-0 z-10 bg-card-bg px-2 py-0.5 text-left">Par</td>
+            <tr className="text-[9px] text-text-faint" style={{ background: HAIRLINE }}>
+              <td className="sticky left-0 z-10 bg-surface-2 px-2 py-0.5 text-left">Par</td>
               {holes.map((h) => (
                 <td key={h} className="px-1.5 py-0.5">
                   {parByHole.get(h)}
@@ -124,8 +124,8 @@ function BigNine({
           {round.players.map((p) => {
             const tot = playerTotal(p.id);
             return (
-              <tr key={p.id} className="border-t border-divider">
-                <td className="sticky left-0 z-10 bg-card-bg px-2 py-2 text-left text-xs font-semibold">
+              <tr key={p.id} className="border-t" style={{ borderColor: HAIRLINE }}>
+                <td className="sticky left-0 z-10 bg-surface-2 px-2 py-2 text-left text-xs font-semibold">
                   {(p.name || "?").slice(0, 8)}
                 </td>
                 {holes.map((h) => {
@@ -299,14 +299,16 @@ function LedgerCard({
   round,
   computation,
   player,
-  rank,
+  rankIndex,
 }: {
   round: Round;
   computation: RoundComputation;
   player: Player;
-  rank: number;
+  rankIndex: number; // 0-based; tied players share the same index
 }) {
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<"scores" | "money">("scores");
+  const touch = useRef<{ x: number; y: number } | null>(null);
 
   const money = computation.ledger[player.id] ?? 0;
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
@@ -317,12 +319,26 @@ function LedgerCard({
   }
   const moneyColor = money > 0 ? "text-positive" : money < 0 ? "text-negative" : "text-text-muted";
 
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    const s = touch.current;
+    touch.current = null;
+    if (!s) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - s.x;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(t.clientY - s.y)) return;
+    setView(dx < 0 ? "money" : "scores");
+  }
+
   return (
     <div
-      className={`overflow-hidden rounded-xl border border-l-4 border-card-border bg-card-bg ${RANK_RAIL[Math.min(rank, 3)]}`}
+      className={`overflow-hidden rounded-xl border border-l-4 border-card-border bg-card-bg ${RANK_RAIL[Math.min(rankIndex, 3)]}`}
     >
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-3 px-3 py-3 text-left">
-        <span className="w-4 text-center font-serif text-base font-bold text-text-faint">{rank + 1}</span>
+        <span className="w-4 text-center font-serif text-base font-bold text-text-faint">{rankIndex + 1}</span>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-semibold">{player.name || "Unnamed"}</span>
           <span className="mt-0.5 block text-xs text-text-muted">
@@ -339,25 +355,33 @@ function LedgerCard({
 
       {open && (
         <div
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
           className="animate-fade-in"
-          style={{ background: SURFACE2, borderTop: `1px solid ${STRONG}`, padding: "8px 10px 10px" }}
+          style={{ background: SURFACE2, borderTop: `1px solid ${STRONG}`, padding: "8px 10px 10px", touchAction: "pan-y" }}
         >
-          <div className="mb-1 text-[9px] font-bold uppercase tracking-wide text-text-faint">Scores</div>
-          <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
-            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode="scores" />
-          </div>
-          <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px" }}>
-            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode="scores" />
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {(["scores", "money"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={`text-[10px] font-bold uppercase tracking-wide ${
+                    view === v ? "text-text-primary" : "text-text-faint"
+                  }`}
+                >
+                  {v === "scores" ? "Scores" : "By-hole ledger"}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] text-text-faint">swipe ←→</span>
           </div>
 
-          <div className="mb-1 mt-3 text-[9px] font-bold uppercase tracking-wide text-text-faint">
-            By-hole ledger
-          </div>
           <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
-            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode="money" />
+            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode={view} />
           </div>
           <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px" }}>
-            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode="money" />
+            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode={view} />
           </div>
         </div>
       )}
@@ -404,9 +428,22 @@ export function CardTab({
       {/* Standings → tap a player to drop down their full scorecard */}
       <section className="space-y-2">
         <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">Standings</h3>
-        {standings.map((p, i) => (
-          <LedgerCard key={p.id} round={round} computation={computation} player={p} rank={i} />
-        ))}
+        {standings.map((p) => {
+          const m = computation.ledger[p.id] ?? 0;
+          // Tie-aware rank: 1 + number of players strictly ahead.
+          const rankIndex = standings.filter(
+            (q) => (computation.ledger[q.id] ?? 0) > m
+          ).length;
+          return (
+            <LedgerCard
+              key={p.id}
+              round={round}
+              computation={computation}
+              player={p}
+              rankIndex={rankIndex}
+            />
+          );
+        })}
       </section>
     </div>
   );
