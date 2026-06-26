@@ -1,8 +1,17 @@
 // components/LedgerTab.tsx
-// Prominent live standings: who's up, who's down, by how much.
+// Prominent live standings: who's up, who's down, by how much. Rank rails on the
+// left mark standing; a to-par badge shows each player's round vs par.
 
 import { Round, RoundComputation } from "@/lib/wolf";
 import { formatMoney } from "@/lib/storage";
+import { ScoreBadge } from "./ScoreBadge";
+
+const RANK_RAIL = [
+  "border-l-rank-1",
+  "border-l-rank-2",
+  "border-l-rank-3",
+  "border-l-rank-4",
+];
 
 export function LedgerTab({
   round,
@@ -16,7 +25,20 @@ export function LedgerTab({
     (a, b) => (ledger[b.id] ?? 0) - (ledger[a.id] ?? 0)
   );
   const sum = round.players.reduce((s, p) => s + (ledger[p.id] ?? 0), 0);
-  const holesPlayed = results.filter((r) => r.winner !== "push" || r.carriedToNext > 0).length;
+
+  const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
+  const toPar = (pid: string): number | null => {
+    let rel = 0;
+    let any = false;
+    for (const e of round.entries) {
+      const g = e.grossScores[pid];
+      if (typeof g === "number") {
+        rel += g - (parByHole.get(e.hole) ?? g);
+        any = true;
+      }
+    }
+    return any ? rel : null;
+  };
 
   return (
     <div className="space-y-4">
@@ -35,19 +57,22 @@ export function LedgerTab({
           return (
             <div
               key={p.id}
-              className="flex items-center gap-3 rounded-xl border border-card-border bg-card-bg px-4 py-3"
+              className={`flex items-center gap-3 rounded-xl border border-l-4 border-card-border bg-card-bg px-4 py-3 ${RANK_RAIL[Math.min(i, 3)]}`}
             >
-              <span className="w-6 text-center text-sm font-bold text-text-faint">
+              <span className="w-5 text-center font-serif text-base font-bold text-text-faint">
                 {i + 1}
               </span>
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-avatar-bg text-sm font-bold text-on-dark">
                 {(p.name || "?").slice(0, 1).toUpperCase()}
               </div>
-              <div className="flex-1">
-                <div className="font-semibold">{p.name || "Unnamed"}</div>
-                <div className="text-xs text-text-muted">HCP {p.handicap}</div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-semibold">{p.name || "Unnamed"}</div>
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-text-muted">
+                  <span>HCP {p.handicap}</span>
+                  <ScoreBadge rel={toPar(p.id)} size="sm" />
+                </div>
               </div>
-              <div className={`text-xl font-extrabold tabular-nums ${color}`}>
+              <div className={`font-serif text-xl font-extrabold tabular-nums ${color}`}>
                 {formatMoney(v)}
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, Trash2, CheckCircle2, RotateCcw, ChevronRight } from "lucide-react";
 import {
   GameSummary,
   listGames,
@@ -91,14 +92,24 @@ export default function Home() {
 
   function GameRow({ g }: { g: GameSummary }) {
     return (
-      <li className="flex items-center gap-2 rounded-xl border border-card-border bg-card-bg">
+      <li
+        className={`flex items-center gap-2 overflow-hidden rounded-xl border border-card-border bg-card-bg border-l-4 ${
+          g.completed ? "border-l-card-border" : "border-l-primary"
+        }`}
+      >
         <button
           onClick={() => router.push(`/game/${g.id}`)}
           className="flex flex-1 items-center justify-between gap-2 px-4 py-4 text-left"
         >
-          <span>
-            <span className="block font-semibold">{g.name}</span>
-            <span className="block text-xs text-text-muted">
+          <span className="min-w-0">
+            <span className="flex items-center gap-2 font-semibold">
+              {!g.completed && (
+                <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-alert ring-pulse" />
+              )}
+              <span className="truncate">{g.name}</span>
+            </span>
+            <span className="mt-0.5 block text-xs text-text-muted">
+              {g.completed ? "Completed · " : ""}
               {new Date(g.createdAt).toLocaleDateString(undefined, {
                 month: "short",
                 day: "numeric",
@@ -106,20 +117,26 @@ export default function Home() {
               })}
             </span>
           </span>
-          <span className="text-chevron">›</span>
+          <ChevronRight className="h-5 w-5 shrink-0 text-chevron" />
         </button>
         {admin && (
           <div className="flex shrink-0 items-center gap-1 pr-2">
             <button
               onClick={() => handleComplete(g.id, !g.completed)}
-              className="rounded-md px-2 py-1 text-xs font-semibold text-accent-on-light"
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-accent-on-light"
             >
+              {g.completed ? (
+                <RotateCcw className="h-3.5 w-3.5" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              )}
               {g.completed ? "Reactivate" : "Complete"}
             </button>
             <button
               onClick={() => handleDelete(g.id, g.name)}
-              className="rounded-md px-2 py-1 text-xs font-semibold text-negative"
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-negative"
             >
+              <Trash2 className="h-3.5 w-3.5" />
               Delete
             </button>
           </div>
@@ -129,7 +146,7 @@ export default function Home() {
   }
 
   return (
-    <div className="mt-4 space-y-6">
+    <div className="mt-4 animate-fade-in space-y-6">
       <div>
         <h2 className="text-xl font-bold">Games</h2>
         <p className="text-sm text-text-muted">
@@ -151,19 +168,24 @@ export default function Home() {
           <button
             type="submit"
             disabled={creating}
-            className="shrink-0 rounded-lg bg-primary px-4 py-2.5 font-semibold text-on-dark disabled:opacity-50"
+            className="flex shrink-0 items-center gap-1 rounded-lg bg-primary px-4 py-2.5 font-semibold text-on-dark disabled:opacity-50"
           >
-            {creating ? "…" : "+ Create"}
+            <Plus className="h-4 w-4" />
+            {creating ? "…" : "Create"}
           </button>
         </form>
       )}
 
       {error && (
-        <p className="rounded-lg bg-[#FDECEF] px-3 py-2 text-sm text-negative">{error}</p>
+        <p className="rounded-lg bg-tint-bad px-3 py-2 text-sm text-negative">{error}</p>
       )}
 
       {games === null ? (
-        <p className="py-10 text-center text-text-muted">Loading…</p>
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="skeleton h-[68px] w-full rounded-xl" />
+          ))}
+        </div>
       ) : games.length === 0 ? (
         <div className="rounded-xl border border-dashed border-card-border bg-card-bg p-8 text-center text-sm text-text-muted">
           No games yet. Tap <span className="font-semibold">⚙ Admin</span> in the header to

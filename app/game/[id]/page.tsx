@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Trash2, CheckCircle2, RotateCcw } from "lucide-react";
 import { computeRound } from "@/lib/wolf";
 import { useGame } from "@/lib/useGame";
 import { setCompleted, deleteGame } from "@/lib/games";
 import { useHeader } from "@/lib/header-context";
+import { liveSummary } from "@/lib/live";
 import { ScoresTab } from "@/components/ScoresTab";
 import { CardTab } from "@/components/CardTab";
 import { SetupTab } from "@/components/SetupTab";
@@ -26,17 +28,23 @@ export default function GamePage() {
   const [tab, setTab] = useState<"scores" | "card">("scores");
   const [admin, setAdmin] = useState(false);
 
-  // Drive the global header: game name + back + admin toggle.
+  const computation = useMemo(() => (round ? computeRound(round) : null), [round]);
+  const ticker = useMemo(
+    () => (round && computation ? liveSummary(round, computation) : null),
+    [round, computation]
+  );
+
+  // Drive the global header: game name (inline-editable) + back + admin + ticker.
   useEffect(() => {
     setHeader({
       title: game?.name ?? "",
+      onTitleChange: rename,
       backHref: "/",
       admin: { active: admin, onToggle: () => setAdmin((v) => !v) },
+      ticker,
     });
     return () => setHeader({});
-  }, [game?.name, admin, setHeader]);
-
-  const computation = useMemo(() => (round ? computeRound(round) : null), [round]);
+  }, [game?.name, admin, ticker, rename, setHeader]);
 
   async function handleComplete() {
     if (!game) return;
@@ -59,7 +67,13 @@ export default function GamePage() {
   }
 
   if (loading) {
-    return <div className="py-20 text-center text-text-muted">Loading game…</div>;
+    return (
+      <div className="mt-4 space-y-3">
+        <div className="skeleton h-12 w-full rounded-full" />
+        <div className="skeleton h-40 w-full" />
+        <div className="skeleton h-40 w-full" />
+      </div>
+    );
   }
   if (error || !game || !round || !computation) {
     return (
@@ -77,7 +91,7 @@ export default function GamePage() {
 
   if (admin) {
     return (
-      <div className="mt-4 space-y-4">
+      <div className="mt-4 animate-fade-in space-y-4">
         <div className="rounded-xl border border-card-border bg-card-bg p-4">
           <label className="text-sm font-semibold">Game name</label>
           <input
@@ -88,15 +102,23 @@ export default function GamePage() {
           <div className="mt-3 flex gap-2">
             <button
               onClick={handleComplete}
-              className="flex-1 rounded-lg border border-card-border py-2 text-sm font-semibold text-accent-on-light"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-card-border py-2 text-sm font-semibold text-accent-on-light"
             >
-              {game.completed ? "Reactivate game" : "Mark completed"}
+              {game.completed ? (
+                <>
+                  <RotateCcw className="h-4 w-4" /> Reactivate
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" /> Mark completed
+                </>
+              )}
             </button>
             <button
               onClick={handleDelete}
-              className="rounded-lg border border-card-border px-4 py-2 text-sm font-semibold text-negative"
+              className="flex items-center gap-1.5 rounded-lg border border-card-border px-4 py-2 text-sm font-semibold text-negative"
             >
-              Delete
+              <Trash2 className="h-4 w-4" /> Delete
             </button>
           </div>
         </div>
@@ -115,10 +137,12 @@ export default function GamePage() {
           ariaLabel="Game views"
         />
       </div>
-      {tab === "scores" && (
-        <ScoresTab round={round} computation={computation} upsertEntry={upsertEntry} />
-      )}
-      {tab === "card" && <CardTab round={round} computation={computation} />}
+      <div key={tab} className="animate-fade-in">
+        {tab === "scores" && (
+          <ScoresTab round={round} computation={computation} upsertEntry={upsertEntry} />
+        )}
+        {tab === "card" && <CardTab round={round} computation={computation} />}
+      </div>
     </div>
   );
 }

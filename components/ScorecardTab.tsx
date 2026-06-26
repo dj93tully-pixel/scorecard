@@ -6,6 +6,7 @@
 import { CSSProperties } from "react";
 import { Round, RoundComputation } from "@/lib/wolf";
 import { coursePar } from "@/lib/storage";
+import { ScoreBadge } from "./ScoreBadge";
 
 // rel = gross - par. Under par → circles, over par → squares, par → plain.
 // Monochrome rings via layered box-shadow; gaps in page-bg (#F4F5F7).
@@ -76,11 +77,27 @@ function NineTable({
   const { pops } = computation;
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
 
+  const parFor = (h: number) => round.course.holes.find((c) => c.number === h)?.par ?? 0;
+
   const sumFor = (playerId: string) =>
     holes.reduce((s, h) => {
       const g = entryByHole.get(h)?.grossScores[playerId];
       return s + (typeof g === "number" ? g : 0);
     }, 0);
+
+  // Player's score vs par across this nine (null if nothing scored) → row wash.
+  const relFor = (playerId: string): number | null => {
+    let rel = 0;
+    let any = false;
+    for (const h of holes) {
+      const g = entryByHole.get(h)?.grossScores[playerId];
+      if (typeof g === "number") {
+        rel += g - parFor(h);
+        any = true;
+      }
+    }
+    return any ? rel : null;
+  };
 
   return (
     <div className="overflow-x-auto rounded-xl border border-card-border bg-card-bg">
@@ -128,9 +145,17 @@ function NineTable({
           </tr>
         </thead>
         <tbody>
-          {round.players.map((p) => (
-            <tr key={p.id} className="border-t border-divider">
-              <td className="sticky left-0 z-10 bg-card-bg px-2 py-3 text-left font-semibold">
+          {round.players.map((p) => {
+            const rel = relFor(p.id);
+            const wash =
+              rel === null || rel === 0 ? "" : rel < 0 ? "bg-tint-good" : "bg-tint-bad";
+            return (
+            <tr key={p.id} className={`border-t border-divider ${wash}`}>
+              <td
+                className={`sticky left-0 z-10 px-2 py-3 text-left font-semibold ${
+                  wash || "bg-card-bg"
+                }`}
+              >
                 {(p.name || "?").slice(0, 8)}
               </td>
               {holes.map((h) => {
@@ -166,7 +191,8 @@ function NineTable({
               })}
               <td className="px-2 py-3 font-bold tabular-nums">{sumFor(p.id) || ""}</td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -183,11 +209,24 @@ export function ScorecardTab({
   const front = Array.from({ length: 9 }, (_, i) => i + 1);
   const back = Array.from({ length: 9 }, (_, i) => i + 10);
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
+  const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
   const total = (playerId: string) =>
     round.course.holes.reduce((s, h) => {
       const g = entryByHole.get(h.number)?.grossScores[playerId];
       return s + (typeof g === "number" ? g : 0);
     }, 0);
+  const toPar = (playerId: string): number | null => {
+    let rel = 0;
+    let any = false;
+    for (const e of round.entries) {
+      const g = e.grossScores[playerId];
+      if (typeof g === "number") {
+        rel += g - (parByHole.get(e.hole) ?? g);
+        any = true;
+      }
+    }
+    return any ? rel : null;
+  };
 
   return (
     <div className="space-y-4">
@@ -205,10 +244,13 @@ export function ScorecardTab({
           return (
             <div
               key={p.id}
-              className="flex items-center gap-1.5 rounded-full border border-card-border bg-card-bg px-3 py-1.5"
+              className="flex items-center gap-1.5 rounded-full border border-card-border bg-card-bg py-1.5 pl-3 pr-1.5"
             >
               <span className="text-xs font-semibold">{(p.name || "?").slice(0, 8)}</span>
-              <span className="text-sm font-extrabold tabular-nums">{t || "–"}</span>
+              <span className="font-serif text-sm font-extrabold tabular-nums">
+                {t || "–"}
+              </span>
+              <ScoreBadge rel={toPar(p.id)} size="sm" />
             </div>
           );
         })}

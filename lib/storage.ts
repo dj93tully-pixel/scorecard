@@ -117,6 +117,12 @@ export function strokeIndexIssues(course: Course): string[] {
   return issues;
 }
 
+/** Format a score relative to par: "E", "-3", "+2". */
+export function formatToPar(rel: number): string {
+  if (rel === 0) return "E";
+  return rel > 0 ? `+${rel}` : `${rel}`;
+}
+
 export function formatMoney(value: number): string {
   const rounded = Math.round(value * 100) / 100;
   const sign = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
