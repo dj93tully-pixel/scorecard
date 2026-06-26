@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { WolfLogo } from "@/components/WolfLogo";
+
+const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: "Wolf — Golf Scorecard & Money Game",
@@ -20,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.className}>
       <body className="min-h-screen bg-page-bg">
         <header className="bg-header-bg text-on-dark">
           <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
@@ -35,7 +38,7 @@ export default function RootLayout({
           {/* Signature gradient strip */}
           <div className="h-1 w-full bg-signature-gradient" />
         </header>
-        <main className="mx-auto max-w-2xl px-3 pb-28 pt-4">{children}</main>
+        <main className="mx-auto max-w-2xl px-3 pb-16">{children}</main>
       </body>
     </html>
   );

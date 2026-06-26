@@ -1,16 +1,58 @@
 // components/ScoresTab.tsx
-// First tab: a vertical stack of hole-by-hole boxes. Each box shows the hole,
-// its handicap (stroke index), who gets pops, lets you pick the wolf + their
-// choice (partner / lone / blind), and enter gross scores.
+// First-class scoring view: a vertical stack of hole boxes. Each box lets you
+// pick the wolf + their choice (partner / lone / blind) and enter each player's
+// gross score on styled player rows. Entered scores render with golf circle/
+// square notation (rings = strokes from par). Presentation only — no money math.
 
 "use client";
 
+import { CSSProperties } from "react";
 import {
   Round,
   RoundComputation,
   HoleEntry,
   defaultWolfForHole,
 } from "@/lib/wolf";
+
+// ── Score shape: concentric rings via layered box-shadow ───────────────────
+// rel = gross - par. Under par → circles, over par → squares, par → plain.
+// Monochrome outlines; gaps in page-bg so rings read as separate outlines.
+function shapeStyle(rel: number | null): CSSProperties {
+  if (rel === null || rel === 0) return {};
+  const n = Math.min(Math.abs(rel), 4);
+  const D = "#16181D";
+  const G = "#F4F5F7";
+  const layers: Array<[number, string]> =
+    n === 1
+      ? [[1.2, D]]
+      : n === 2
+        ? [
+            [1.2, D],
+            [2.6, G],
+            [3.8, D],
+          ]
+        : n === 3
+          ? [
+              [1.2, D],
+              [2.6, G],
+              [3.8, D],
+              [5.2, G],
+              [6.4, D],
+            ]
+          : [
+              [1.2, D],
+              [2.6, G],
+              [3.8, D],
+              [5.2, G],
+              [6.4, D],
+              [7.8, G],
+              [9, D],
+            ];
+  return {
+    boxShadow: layers.map(([w, c]) => `0 0 0 ${w}px ${c}`).join(", "),
+    borderRadius: rel < 0 ? "50%" : "3px",
+  };
+}
 
 function Chip({
   active,
@@ -50,6 +92,7 @@ function HoleBox({
 }) {
   const { players, teeOrder, settings, course } = round;
   const courseHole = course.holes.find((h) => h.number === hole);
+  const par = courseHole?.par ?? null;
   const existing = round.entries.find((e) => e.hole === hole);
 
   const defaultWolf = defaultWolfForHole(teeOrder, hole);
@@ -63,44 +106,19 @@ function HoleBox({
 
   const nonWolf = players.filter((p) => p.id !== wolfId);
   const result = computation.results.find((r) => r.hole === hole);
-
-  // Who gets pops on this hole.
-  const popList = players
-    .map((p) => ({ p, n: computation.pops[p.id]?.[hole] ?? 0 }))
-    .filter((x) => x.n > 0);
-
-  const short = (n: string) => (n || "?").slice(0, 6);
+  const short = (n: string) => (n || "?").slice(0, 14);
 
   return (
     <div className="rounded-xl border border-card-border bg-card-bg p-3">
       {/* Header */}
-      <div className="mb-2 flex items-baseline justify-between">
+      <div className="mb-3 flex items-baseline justify-between">
         <span className="text-lg font-extrabold">Hole {hole}</span>
         <span className="text-xs text-text-muted">
-          Par {courseHole?.par ?? "–"} · Hcp {courseHole?.strokeIndex ?? "–"}
+          Par {par ?? "–"} · Hcp {courseHole?.strokeIndex ?? "–"}
         </span>
       </div>
 
-      {/* Pops */}
-      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
-        <span className="font-semibold uppercase tracking-wide">Pops</span>
-        {popList.length === 0 ? (
-          <span className="text-text-faint">none</span>
-        ) : (
-          popList.map(({ p, n }) => (
-            <span key={p.id} className="inline-flex items-center gap-1">
-              {short(p.name)}
-              <span className="inline-flex gap-0.5">
-                {Array.from({ length: n }).map((_, i) => (
-                  <span key={i} className="h-[5px] w-[5px] rounded-full bg-primary" />
-                ))}
-              </span>
-            </span>
-          ))
-        )}
-      </div>
-
-      {/* Wolf */}
+      {/* Wolf selector */}
       <div className="mb-2">
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
           Wolf
@@ -124,8 +142,8 @@ function HoleBox({
         </div>
       </div>
 
-      {/* Choice: partner / lone / blind */}
-      <div className="mb-2">
+      {/* Choice selector */}
+      <div className="mb-3">
         <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
           Choice
         </div>
@@ -158,48 +176,67 @@ function HoleBox({
         </div>
       </div>
 
-      {/* Scores */}
-      <div>
-        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
-          Scores
-        </div>
-        <div className="grid grid-cols-4 gap-1.5">
-          {players.map((p) => {
-            const isWolf = p.id === wolfId;
-            const isPartner = p.id === partnerId && mode === "2v2";
-            const score = grossScores[p.id];
-            const myPops = computation.pops[p.id]?.[hole] ?? 0;
-            const onColored = isWolf || isPartner;
-            return (
-              <label key={p.id} className="flex flex-col items-center gap-1">
-                <span
-                  className={`flex h-6 w-full items-center justify-center gap-1 rounded-md px-1 text-[11px] font-bold ${
-                    isWolf
-                      ? "bg-alert text-on-dark"
-                      : isPartner
-                        ? "bg-primary text-on-dark"
-                        : "bg-page-bg text-text-primary"
-                  }`}
-                >
-                  <span className="truncate">{short(p.name)}</span>
+      {/* Player rows */}
+      <div className="space-y-1.5">
+        {players.map((p) => {
+          const isWolf = p.id === wolfId;
+          const isPartner = p.id === partnerId && mode === "2v2";
+          const onTeamA = isWolf || isPartner;
+          const myPops = computation.pops[p.id]?.[hole] ?? 0;
+          const teePos = teeOrder.indexOf(p.id) + 1;
+          const score = grossScores[p.id];
+          const hasScore = typeof score === "number";
+          const rel = hasScore && par !== null ? score - par : null;
+
+          return (
+            <div
+              key={p.id}
+              className={`flex items-center justify-between gap-2 overflow-visible rounded-lg border-l-4 py-2.5 pl-2 pr-1 ${
+                isWolf ? "border-alert" : "border-transparent"
+              } ${onTeamA ? "bg-row-tint" : "bg-transparent"}`}
+            >
+              {/* Left: identity */}
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate font-medium text-text-primary">
+                    {p.name || "Unnamed"}
+                  </span>
+                  {/* pops dots (handicap stroke on this hole) */}
                   {myPops > 0 && (
                     <span className="inline-flex shrink-0 gap-0.5">
                       {Array.from({ length: myPops }).map((_, i) => (
                         <span
                           key={i}
-                          className={`h-[4px] w-[4px] rounded-full ${
-                            onColored ? "bg-on-dark" : "bg-primary"
-                          }`}
+                          className="h-[5px] w-[5px] rounded-full bg-primary"
                         />
                       ))}
                     </span>
                   )}
+                  {isWolf && (
+                    <span className="shrink-0 rounded-full bg-alert px-1.5 py-0.5 text-[10px] font-bold leading-none text-on-dark">
+                      WOLF
+                    </span>
+                  )}
+                  {isPartner && (
+                    <span className="shrink-0 rounded-full border border-primary/40 bg-white px-1.5 py-0.5 text-[10px] font-bold leading-none text-accent-on-light">
+                      PARTNER
+                    </span>
+                  )}
+                </div>
+                <span className="text-[12px] text-[#8A9099]">
+                  Tee {teePos}
+                  {hasScore && par !== null ? ` · net ${score - myPops}` : ""}
                 </span>
+              </div>
+
+              {/* Right: score input with circle/square notation */}
+              <div className="flex shrink-0 items-center justify-center px-3 py-1">
                 <input
                   type="number"
                   inputMode="numeric"
                   value={score ?? ""}
-                  placeholder={String(courseHole?.par ?? "")}
+                  placeholder={par !== null ? String(par) : ""}
+                  onFocus={(e) => e.currentTarget.select()}
                   onChange={(e) => {
                     const v = e.target.value;
                     const next = { ...grossScores };
@@ -207,12 +244,17 @@ function HoleBox({
                     else next[p.id] = Math.max(1, parseInt(v) || 1);
                     commit({ grossScores: next });
                   }}
-                  className="h-12 w-full rounded-lg border border-card-border text-center text-xl font-bold tabular-nums"
+                  style={shapeStyle(rel)}
+                  className={`h-11 w-11 bg-card-bg text-center text-xl font-bold tabular-nums outline-none focus:outline-2 focus:outline-primary ${
+                    rel === null || rel === 0
+                      ? "rounded-lg border border-card-border"
+                      : "border-0"
+                  }`}
                 />
-              </label>
-            );
-          })}
-        </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Result */}
