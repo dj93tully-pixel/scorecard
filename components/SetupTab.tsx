@@ -93,7 +93,6 @@ export function SetupTab({
       ...r,
       players: r.players.filter((p) => p.id !== id),
       teeOrder: r.teeOrder.filter((t) => t !== id),
-      entries: r.entries.filter((e) => e.wolfId !== id),
     }));
   }
   function moveTee(id: string, dir: -1 | 1) {

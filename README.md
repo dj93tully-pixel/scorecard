@@ -7,8 +7,26 @@ ledger are all computed by a pure engine and persisted locally.
 ## Stack
 
 - **Next.js 15** (App Router) + **TypeScript** + **Tailwind CSS**
-- **Local persistence only** — React state + `localStorage`. No database.
-- The only server-side code is a thin proxy for course lookups (keeps the API key off the browser).
+- **Supabase** (Postgres + Realtime) as a shared games database — no login. Anyone
+  with the link can create / open / edit / delete games, and edits sync live via
+  Supabase Realtime. Access is gated by the link being private + permissive RLS.
+- A thin server proxy for course lookups (keeps the course-API key off the browser).
+
+### Pages
+
+- `/` — home: list of games, create a new game, delete a game.
+- `/game/[id]` — a game: **Scores** and **Card** tabs, plus an **Admin** panel
+  (Setup) anyone can open to edit players / course / rules.
+
+### Environment
+
+Copy `.env.example` → `.env.local` and fill in:
+
+- `GOLF_COURSE_API_KEY` — server-only, for course import (optional).
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — the Supabase
+  project URL + publishable key. These are browser-safe public values.
+
+On Vercel, add the same three as environment variables.
 
 ## Getting started
 
