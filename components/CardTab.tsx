@@ -413,27 +413,6 @@ export function CardTab({
 
   return (
     <div className="space-y-6">
-      {/* Big all-players scorecard */}
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-xl font-bold">Scorecard</h2>
-          <span className="text-sm text-text-muted">
-            {round.course.name} · Par {coursePar(round.course)}
-          </span>
-        </div>
-        <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" />
-        <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" />
-      </section>
-
-      {/* By-hole money ledger */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">
-          By-hole ledger
-        </h3>
-        <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" />
-        <BigNine round={round} computation={computation} holes={back} title="Back" mode="money" />
-      </section>
-
       {/* Standings → tap a player to drop down their full scorecard */}
       <section className="space-y-2">
         <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">Standings</h3>
@@ -453,6 +432,27 @@ export function CardTab({
             />
           );
         })}
+      </section>
+
+      {/* Big all-players scorecard */}
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xl font-bold">Scorecard</h2>
+          <span className="text-sm text-text-muted">
+            {round.course.name} · Par {coursePar(round.course)}
+          </span>
+        </div>
+        <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" />
+        <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" />
+      </section>
+
+      {/* By-hole money ledger */}
+      <section className="space-y-3">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">
+          By-hole ledger
+        </h3>
+        <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" />
+        <BigNine round={round} computation={computation} holes={back} title="Back" mode="money" />
       </section>
     </div>
   );

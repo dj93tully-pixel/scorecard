@@ -18,19 +18,26 @@ import { formatMoney } from "@/lib/storage";
 function Chip({
   active,
   color = "primary",
+  activeBg,
   onClick,
   children,
 }: {
   active: boolean;
   color?: "primary" | "alert";
+  /** Custom active background (hex) — overrides `color` when set. */
+  activeBg?: string;
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  const activeCls =
-    color === "alert" ? "bg-alert text-on-dark" : "bg-primary text-on-dark";
+  const activeCls = activeBg
+    ? "text-on-dark"
+    : color === "alert"
+      ? "bg-alert text-on-dark"
+      : "bg-primary text-on-dark";
   return (
     <button
       onClick={onClick}
+      style={active && activeBg ? { background: activeBg } : undefined}
       className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
         active ? activeCls : "bg-page-bg text-text-primary"
       }`}
@@ -154,14 +161,14 @@ function HoleBox({
           <div className="flex flex-wrap gap-1.5">
             <Chip
               active={hammer === 1}
-              color="alert"
+              activeBg="#6460AA"
               onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
             >
               <Hammer className="mr-1 inline h-3.5 w-3.5" />1×
             </Chip>
             <Chip
               active={hammer === 2}
-              color="alert"
+              activeBg="#6460AA"
               onClick={() => commit({ hammer: hammer === 2 ? 0 : 2 })}
             >
               <Hammer className="mr-0.5 inline h-3.5 w-3.5" />
@@ -176,12 +183,14 @@ function HoleBox({
           <div className="flex flex-wrap gap-1.5">
             <Chip
               active={forfeit === "A"}
+              activeBg="#0DB14B"
               onClick={() => commit({ forfeit: forfeit === "A" ? undefined : "A" })}
             >
               <Flag className="mr-1 inline h-3.5 w-3.5" />Wolf
             </Chip>
             <Chip
               active={forfeit === "B"}
+              activeBg="#0DB14B"
               onClick={() => commit({ forfeit: forfeit === "B" ? undefined : "B" })}
             >
               <Flag className="mr-1 inline h-3.5 w-3.5" />Field
@@ -268,12 +277,18 @@ function HoleBox({
       {result && (
         <div className="mt-2 flex items-center justify-end gap-2 text-sm">
           {hammer > 0 && (
-            <span className="text-xs font-bold uppercase tracking-wide text-alert">
+            <span
+              className="text-xs font-bold uppercase tracking-wide"
+              style={{ color: "#6460AA" }}
+            >
               {hammer === 2 ? "double hammer" : "hammer"}
             </span>
           )}
           {forfeit && (
-            <span className="text-xs font-bold uppercase tracking-wide text-alert">
+            <span
+              className="text-xs font-bold uppercase tracking-wide"
+              style={{ color: "#0DB14B" }}
+            >
               forfeit
             </span>
           )}
