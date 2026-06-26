@@ -4,6 +4,7 @@
 
 import { Round, RoundComputation, defaultWolfForHole } from "./wolf";
 import { formatMoney } from "./storage";
+import { suggestForHole } from "./caddie";
 import type { TickerData } from "./header-context";
 
 export function liveSummary(round: Round, computation: RoundComputation): TickerData {
@@ -39,6 +40,12 @@ export function liveSummary(round: Round, computation: RoundComputation): Ticker
   const meta: string[] = [];
   if (!isFinal && wolf) meta.push(`Wolf: ${wolf.name || "—"}`);
   if (anyMoney && leader) meta.push(`Leader: ${leader.name || "—"} ${formatMoney(best)}`);
+
+  // Caddie suggestion for the hole currently up (right of the leader).
+  if (!isFinal) {
+    const suggestion = suggestForHole(round, computation, currentHole);
+    if (suggestion) meta.push(`Suggested: ${suggestion.label}`);
+  }
 
   return {
     live: playedCount > 0 && !isFinal,
