@@ -1,0 +1,361 @@
+// components/SetupTab.tsx
+// Round setup: players, money settings, tee order, and the course (manual edit
+// or API import). Big tap targets; everything persists immediately via updateRound.
+
+"use client";
+
+import { useState } from "react";
+import { Round, Course, HandicapMode } from "@/lib/wolf";
+import {
+  makePlayer,
+  blankCourse,
+  coursePar,
+  strokeIndexIssues,
+} from "@/lib/storage";
+import { CourseImport } from "./CourseImport";
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3 py-2">
+      <span className="text-sm font-medium text-text-primary">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+export function SetupTab({
+  round,
+  updateRound,
+}: {
+  round: Round;
+  updateRound: (patch: Partial<Round> | ((r: Round) => Round)) => void;
+}) {
+  const [showImport, setShowImport] = useState(false);
+  const [showCourse, setShowCourse] = useState(false);
+
+  const { players, settings, teeOrder, course } = round;
+  const siIssues = strokeIndexIssues(course);
+
+  // ── Players ──
+  function setPlayer(id: string, patch: Partial<{ name: string; handicap: number }>) {
+    updateRound((r) => ({
+      ...r,
+      players: r.players.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+    }));
+  }
+  function addPlayer() {
+    if (players.length >= 5) return;
+    updateRound((r) => {
+      const p = makePlayer(`Player ${r.players.length + 1}`, 0);
+      return { ...r, players: [...r.players, p], teeOrder: [...r.teeOrder, p.id] };
+    });
+  }
+  function removePlayer(id: string) {
+    if (players.length <= 3) return;
+    updateRound((r) => ({
+      ...r,
+      players: r.players.filter((p) => p.id !== id),
+      teeOrder: r.teeOrder.filter((t) => t !== id),
+      entries: r.entries.filter((e) => e.wolfId !== id),
+    }));
+  }
+
+  // ── Tee order ──
+  function moveTee(id: string, dir: -1 | 1) {
+    updateRound((r) => {
+      const order = [...r.teeOrder];
+      const i = order.indexOf(id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= order.length) return r;
+      [order[i], order[j]] = [order[j], order[i]];
+      return { ...r, teeOrder: order };
+    });
+  }
+
+  // ── Settings ──
+  function setSetting<K extends keyof Round["settings"]>(
+    key: K,
+    value: Round["settings"][K]
+  ) {
+    updateRound((r) => ({ ...r, settings: { ...r.settings, [key]: value } }));
+  }
+
+  // ── Course ──
+  function setHole(num: number, patch: Partial<{ par: number; strokeIndex: number }>) {
+    updateRound((r) => ({
+      ...r,
+      course: {
+        ...r.course,
+        holes: r.course.holes.map((h) =>
+          h.number === num ? { ...h, ...patch } : h
+        ),
+      },
+    }));
+  }
+  function importCourse(c: Course) {
+    updateRound((r) => ({ ...r, course: c }));
+    setShowImport(false);
+    setShowCourse(true);
+  }
+  function resetCourse() {
+    updateRound((r) => ({ ...r, course: blankCourse() }));
+  }
+
+  const numberInput =
+    "w-16 rounded-lg border border-card-border px-2 py-2 text-center tabular-nums";
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-bold">Round Setup</h2>
+
+      {/* Players */}
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="font-bold">Players</h3>
+          <span className="text-xs text-text-muted">{players.length} / 5</span>
+        </div>
+        <div className="space-y-2">
+          {players.map((p) => (
+            <div key={p.id} className="flex items-center gap-2">
+              <input
+                value={p.name}
+                onChange={(e) => setPlayer(p.id, { name: e.target.value })}
+                placeholder="Name"
+                className="flex-1 rounded-lg border border-card-border px-3 py-2"
+              />
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-text-muted">HCP</span>
+                <input
+                  type="number"
+                  value={p.handicap}
+                  onChange={(e) =>
+                    setPlayer(p.id, { handicap: parseInt(e.target.value) || 0 })
+                  }
+                  className={numberInput}
+                />
+              </div>
+              <button
+                onClick={() => removePlayer(p.id)}
+                disabled={players.length <= 3}
+                className="px-2 text-lg text-text-faint disabled:opacity-30"
+                aria-label="Remove player"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={addPlayer}
+          disabled={players.length >= 5}
+          className="mt-3 w-full rounded-lg border border-dashed border-card-border py-2 text-sm font-semibold text-accent-on-light disabled:opacity-40"
+        >
+          + Add player
+        </button>
+      </section>
+
+      {/* Tee order */}
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
+        <h3 className="mb-1 font-bold">Tee order</h3>
+        <p className="mb-2 text-xs text-text-muted">
+          Wolf rotates in this order each hole; the wolf tees last.
+        </p>
+        <div className="space-y-1">
+          {teeOrder.map((id, i) => {
+            const p = players.find((pl) => pl.id === id);
+            if (!p) return null;
+            return (
+              <div
+                key={id}
+                className="flex items-center gap-2 rounded-lg bg-page-bg px-3 py-2"
+              >
+                <span className="w-5 text-sm font-bold text-text-faint">{i + 1}</span>
+                <span className="flex-1 font-medium">{p.name || "Unnamed"}</span>
+                <button
+                  onClick={() => moveTee(id, -1)}
+                  disabled={i === 0}
+                  className="px-2 text-lg disabled:opacity-30"
+                  aria-label="Move up"
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={() => moveTee(id, 1)}
+                  disabled={i === teeOrder.length - 1}
+                  className="px-2 text-lg disabled:opacity-30"
+                  aria-label="Move down"
+                >
+                  ↓
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Money settings */}
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
+        <h3 className="mb-1 font-bold">Money &amp; rules</h3>
+        <div className="divide-y divide-divider">
+          <Field label="Stake ($ per hole)">
+            <input
+              type="number"
+              min={0}
+              value={settings.stake}
+              onChange={(e) => setSetting("stake", parseFloat(e.target.value) || 0)}
+              className={numberInput}
+            />
+          </Field>
+          <Field label="Lone wolf multiplier">
+            <input
+              type="number"
+              min={1}
+              value={settings.loneMult}
+              onChange={(e) => setSetting("loneMult", parseFloat(e.target.value) || 1)}
+              className={numberInput}
+            />
+          </Field>
+          <Field label="Blind wolf multiplier">
+            <input
+              type="number"
+              min={1}
+              value={settings.blindMult}
+              onChange={(e) => setSetting("blindMult", parseFloat(e.target.value) || 1)}
+              className={numberInput}
+            />
+          </Field>
+          <Field label="Blind wolf enabled">
+            <input
+              type="checkbox"
+              checked={settings.blindEnabled}
+              onChange={(e) => setSetting("blindEnabled", e.target.checked)}
+              className="h-6 w-6 accent-[#354CA1]"
+            />
+          </Field>
+          <Field label="Carryover ties">
+            <input
+              type="checkbox"
+              checked={settings.carryover}
+              onChange={(e) => setSetting("carryover", e.target.checked)}
+              className="h-6 w-6 accent-[#354CA1]"
+            />
+          </Field>
+          <Field label="Handicap mode">
+            <select
+              value={settings.handicapMode}
+              onChange={(e) =>
+                setSetting("handicapMode", e.target.value as HandicapMode)
+              }
+              className="rounded-lg border border-card-border px-2 py-2"
+            >
+              <option value="offLow">Off low</option>
+              <option value="full">Full</option>
+            </select>
+          </Field>
+        </div>
+      </section>
+
+      {/* Course */}
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="font-bold">Course</h3>
+          <div className="flex gap-3 text-sm font-semibold text-accent-on-light">
+            <button onClick={() => setShowImport((v) => !v)}>Import</button>
+            <button onClick={() => setShowCourse((v) => !v)}>
+              {showCourse ? "Hide" : "Edit"}
+            </button>
+          </div>
+        </div>
+        <input
+          value={course.name}
+          onChange={(e) =>
+            updateRound((r) => ({ ...r, course: { ...r.course, name: e.target.value } }))
+          }
+          placeholder="Course name"
+          className="mb-1 w-full rounded-lg border border-card-border px-3 py-2"
+        />
+        <div className="flex items-center justify-between text-xs text-text-muted">
+          <span>Par {coursePar(course)}</span>
+          {siIssues.length > 0 ? (
+            <span className="text-negative">
+              Stroke index: {siIssues.slice(0, 3).join(", ")}
+              {siIssues.length > 3 ? "…" : ""}
+            </span>
+          ) : (
+            <span className="text-positive">Stroke index 1–18 ✓</span>
+          )}
+        </div>
+
+        {showImport && (
+          <div className="mt-3">
+            <CourseImport
+              onImport={importCourse}
+              onClose={() => setShowImport(false)}
+            />
+          </div>
+        )}
+
+        {showCourse && (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-center text-sm">
+              <thead>
+                <tr className="text-xs text-text-muted">
+                  <th className="px-1 py-1 text-left">Hole</th>
+                  <th className="px-1 py-1">Par</th>
+                  <th className="px-1 py-1">SI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {course.holes.map((h) => (
+                  <tr key={h.number} className="border-t border-divider">
+                    <td className="px-1 py-1 text-left font-semibold">{h.number}</td>
+                    <td className="px-1 py-1">
+                      <input
+                        type="number"
+                        value={h.par}
+                        onChange={(e) =>
+                          setHole(h.number, { par: parseInt(e.target.value) || 0 })
+                        }
+                        className="w-14 rounded border border-card-border px-1 py-1 text-center"
+                      />
+                    </td>
+                    <td className="px-1 py-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={18}
+                        value={h.strokeIndex}
+                        onChange={(e) =>
+                          setHole(h.number, {
+                            strokeIndex: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        className="w-14 rounded border border-card-border px-1 py-1 text-center"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              onClick={resetCourse}
+              className="mt-2 text-xs font-semibold text-negative"
+            >
+              Reset course
+            </button>
+          </div>
+        )}
+      </section>
+
+      <p className="px-1 text-center text-xs text-text-faint">
+        Everything saves automatically to this device.
+      </p>
+    </div>
+  );
+}

@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* NBC theme tokens mirrored as CSS vars for non-Tailwind use. */
+  --header-bg: #0a0e1c;
+  --ticker-bg: #060912;
+  --page-bg: #f4f5f7;
+  --card-bg: #ffffff;
+  --primary: #354ca1;
+  --alert: #cc0035;
+  --positive: #12b886;
+  --text-primary: #16181d;
+  --text-muted: #878d96;
+}
+
+html,
+body {
+  background: var(--page-bg);
+  color: var(--text-primary);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Make number inputs comfortable on mobile, hide spinners for cleaner taps. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Prevent iOS zoom-on-focus by keeping inputs >=16px. */
+input,
+select,
+button {
+  font-size: 16px;
+}
