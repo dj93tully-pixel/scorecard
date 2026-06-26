@@ -6,6 +6,7 @@
 
 "use client";
 
+import { Hammer, Flag } from "lucide-react";
 import {
   Round,
   RoundComputation,
@@ -60,8 +61,18 @@ function HoleBox({
   const mode = existing?.mode ?? "2v2";
   const partnerId = existing?.partnerId;
   const grossScores = existing?.grossScores ?? {};
+  const hammer = existing?.hammer ?? 0;
+  const forfeit = existing?.forfeit;
 
-  const base: HoleEntry = { hole, wolfId: wolfId!, mode, partnerId, grossScores };
+  const base: HoleEntry = {
+    hole,
+    wolfId: wolfId!,
+    mode,
+    partnerId,
+    grossScores,
+    hammer,
+    forfeit,
+  };
   const commit = (patch: Partial<HoleEntry>) => upsertEntry(hole, patch, base);
 
   const nonWolf = players.filter((p) => p.id !== wolfId);
@@ -131,6 +142,51 @@ function HoleBox({
           >
             Blind
           </Chip>
+        </div>
+      </div>
+
+      {/* Hammer + forfeit */}
+      <div className="mb-3 flex flex-wrap items-end gap-x-5 gap-y-2">
+        <div>
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Hammer
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip
+              active={hammer === 1}
+              color="alert"
+              onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
+            >
+              <Hammer className="mr-1 inline h-3.5 w-3.5" />2×
+            </Chip>
+            <Chip
+              active={hammer === 2}
+              color="alert"
+              onClick={() => commit({ hammer: hammer === 2 ? 0 : 2 })}
+            >
+              <Hammer className="mr-0.5 inline h-3.5 w-3.5" />
+              <Hammer className="mr-1 inline h-3.5 w-3.5" />4×
+            </Chip>
+          </div>
+        </div>
+        <div>
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Forfeit
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip
+              active={forfeit === "A"}
+              onClick={() => commit({ forfeit: forfeit === "A" ? undefined : "A" })}
+            >
+              <Flag className="mr-1 inline h-3.5 w-3.5" />Wolf
+            </Chip>
+            <Chip
+              active={forfeit === "B"}
+              onClick={() => commit({ forfeit: forfeit === "B" ? undefined : "B" })}
+            >
+              <Flag className="mr-1 inline h-3.5 w-3.5" />Field
+            </Chip>
+          </div>
         </div>
       </div>
 
@@ -210,7 +266,17 @@ function HoleBox({
 
       {/* Result */}
       {result && (
-        <div className="mt-2 text-right text-sm">
+        <div className="mt-2 flex items-center justify-end gap-2 text-sm">
+          {hammer > 0 && (
+            <span className="text-xs font-bold uppercase tracking-wide text-alert">
+              {hammer === 2 ? "4×" : "2×"} hammer
+            </span>
+          )}
+          {forfeit && (
+            <span className="text-xs font-bold uppercase tracking-wide text-alert">
+              forfeit
+            </span>
+          )}
           {result.winner === "push" ? (
             <span className="text-text-faint">
               {result.carriedToNext > 0

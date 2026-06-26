@@ -41,6 +41,8 @@ interface EntryRow {
   mode: HoleEntry["mode"];
   partner_id: string | null;
   gross_scores: Record<string, number>;
+  hammer: number | null;
+  forfeit: "A" | "B" | null;
 }
 
 function rowToEntry(r: EntryRow): HoleEntry {
@@ -50,6 +52,8 @@ function rowToEntry(r: EntryRow): HoleEntry {
     mode: r.mode,
     partnerId: r.partner_id ?? undefined,
     grossScores: r.gross_scores ?? {},
+    hammer: r.hammer ?? 0,
+    forfeit: r.forfeit ?? undefined,
   };
 }
 
@@ -170,6 +174,8 @@ export async function saveEntry(gameId: string, entry: HoleEntry): Promise<void>
       mode: entry.mode,
       partner_id: entry.partnerId ?? null,
       gross_scores: entry.grossScores ?? {},
+      hammer: entry.hammer ?? 0,
+      forfeit: entry.forfeit ?? null,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "game_id,hole" }

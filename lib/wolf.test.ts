@@ -328,6 +328,118 @@ describe("money — carryover", () => {
   });
 });
 
+// ── Money: hammer / double hammer / forfeit ────────────────────────────────
+
+describe("money — hammer", () => {
+  it("hammer doubles the hole value (2v2 win)", () => {
+    const round = makeRound([
+      {
+        hole: 18,
+        wolfId: "a",
+        mode: "2v2",
+        partnerId: "b",
+        grossScores: { a: 4, b: 4, c: 6, d: 6 },
+        hammer: 1,
+      },
+    ]);
+    const { ledger, results } = computeRound(round);
+    expect(results[0].pot).toBe(20); // 2 winners × $10
+    expect(ledger.a).toBe(10);
+    expect(ledger.b).toBe(10);
+    expect(ledger.c).toBe(-10);
+    expect(ledger.d).toBe(-10);
+    expect(ledgerSum(ledger)).toBe(0);
+  });
+
+  it("double hammer quadruples the hole value (4×)", () => {
+    const round = makeRound([
+      {
+        hole: 18,
+        wolfId: "a",
+        mode: "2v2",
+        partnerId: "b",
+        grossScores: { a: 4, b: 4, c: 6, d: 6 },
+        hammer: 2,
+      },
+    ]);
+    const { ledger } = computeRound(round);
+    expect(ledger.a).toBe(20);
+    expect(ledger.d).toBe(-20);
+    expect(ledgerSum(ledger)).toBe(0);
+  });
+
+  it("rolls the hammered (doubled) value into the next hole on a push", () => {
+    const round = makeRound(
+      [
+        {
+          hole: 17,
+          wolfId: "a",
+          mode: "2v2",
+          partnerId: "b",
+          grossScores: { a: 4, b: 9, c: 4, d: 9 }, // push (both best net 4)
+          hammer: 1, // 2× → value $10
+        },
+        {
+          hole: 18,
+          wolfId: "a",
+          mode: "2v2",
+          partnerId: "b",
+          grossScores: { a: 4, b: 4, c: 6, d: 6 }, // team A wins
+        },
+      ],
+      { carryover: true, stake: 5 }
+    );
+    const { results, ledger } = computeRound(round);
+    expect(results[0].winner).toBe("push");
+    expect(results[0].carriedToNext).toBe(10); // doubled value carried
+    expect(results[1].stakeApplied).toBe(15); // base 5 + carried 10
+    expect(ledger.a).toBe(15);
+    expect(ledger.c).toBe(-15);
+    expect(ledgerSum(ledger)).toBe(0);
+  });
+});
+
+describe("money — forfeit", () => {
+  it("a forfeit hands the hole to the other side regardless of scores", () => {
+    // Scores say team A wins (best net 4 vs 5), but the wolf side forfeits.
+    const round = makeRound([
+      {
+        hole: 18,
+        wolfId: "a",
+        mode: "2v2",
+        partnerId: "b",
+        grossScores: { a: 4, b: 4, c: 6, d: 6 },
+        forfeit: "A",
+      },
+    ]);
+    const { ledger, results } = computeRound(round);
+    expect(results[0].winner).toBe("B");
+    expect(ledger.a).toBe(-5);
+    expect(ledger.b).toBe(-5);
+    expect(ledger.c).toBe(5);
+    expect(ledger.d).toBe(5);
+    expect(ledgerSum(ledger)).toBe(0);
+  });
+
+  it("forfeit combines with hammer value", () => {
+    const round = makeRound([
+      {
+        hole: 18,
+        wolfId: "a",
+        mode: "2v2",
+        partnerId: "b",
+        grossScores: { a: 6, b: 6, c: 6, d: 6 },
+        hammer: 1,
+        forfeit: "B", // field concedes → wolf side wins $10 each
+      },
+    ]);
+    const { ledger } = computeRound(round);
+    expect(ledger.a).toBe(10);
+    expect(ledger.c).toBe(-10);
+    expect(ledgerSum(ledger)).toBe(0);
+  });
+});
+
 // ── Money: lone wolf ───────────────────────────────────────────────────────
 
 describe("money — lone wolf", () => {

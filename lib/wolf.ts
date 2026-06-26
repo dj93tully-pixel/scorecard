@@ -55,6 +55,13 @@ export interface HoleEntry {
   mode: WolfMode;
   partnerId?: PlayerId; // only for 2v2
   grossScores: Record<PlayerId, number>;
+  /** Accepted hammers on the hole: 0/undefined = none, 1 = hammer (2×), 2 = double hammer (4×). */
+  hammer?: number;
+  /**
+   * A side conceded the hole (a thrown hammer wasn't accepted). The OTHER side
+   * wins regardless of net scores. "A" = wolf side concedes, "B" = field concedes.
+   */
+  forfeit?: "A" | "B";
 }
 
 export interface Round {
@@ -282,14 +289,20 @@ export function computeRound(round: Round): RoundComputation {
     const teamABest = bestNet(teamA, net);
     const teamBBest = bestNet(teamB, net);
 
-    const stakeApplied = settings.stake + carried; // field stake (+ carryover)
-    const wolfStakeApplied =
-      (settings.wolfStake && settings.wolfStake > 0
-        ? settings.wolfStake
-        : settings.stake) + carried;
+    // Hammer multiplies the whole value in play on the hole (base + carryover):
+    // 0 → 1×, 1 → 2× (hammer), 2 → 4× (double hammer).
+    const hammerMult = 2 ** Math.max(0, Math.floor(entry.hammer ?? 0));
+    const baseWolf =
+      settings.wolfStake && settings.wolfStake > 0 ? settings.wolfStake : settings.stake;
+    const stakeApplied = (settings.stake + carried) * hammerMult; // field stake
+    const wolfStakeApplied = (baseWolf + carried) * hammerMult;
 
     let winner: HoleWinner;
-    if (teamABest === null || teamBBest === null) {
+    if (entry.forfeit === "A") {
+      winner = "B"; // wolf side conceded → field wins regardless of scores
+    } else if (entry.forfeit === "B") {
+      winner = "A"; // field conceded → wolf side wins regardless of scores
+    } else if (teamABest === null || teamBBest === null) {
       winner = "push"; // incomplete hole — nothing decided yet
     } else if (teamABest < teamBBest) {
       winner = "A";
