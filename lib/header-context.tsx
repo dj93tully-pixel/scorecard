@@ -4,7 +4,13 @@
 
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
 
 export interface TickerData {
   /** Pulsing live dot when true. */
@@ -15,15 +21,20 @@ export interface TickerData {
   meta?: string;
 }
 
+export interface HeaderButton {
+  label: string;
+  onClick: () => void;
+  icon?: ReactNode;
+  primary?: boolean;
+}
+
 export interface HeaderConfig {
   /** Secondary line under "WOLF" — e.g. the current game name. */
   title?: string;
-  /** If set, the title becomes inline-editable (pencil on hover). */
-  onTitleChange?: (name: string) => void;
-  /** If set, show a back button on the right that navigates here. */
+  /** If set, show a back button on the left of the right cluster. */
   backHref?: string;
-  /** If set, show an Admin toggle button on the right. */
-  admin?: { active: boolean; onToggle: () => void };
+  /** Generic right-side action (e.g. Admin / Edit / Done). */
+  rightButton?: HeaderButton;
   /** If set, render a broadcast ticker strip beneath the header. */
   ticker?: TickerData | null;
 }

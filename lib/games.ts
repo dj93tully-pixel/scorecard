@@ -11,12 +11,14 @@ export interface GameSummary {
   name: string;
   createdAt: string;
   completed: boolean;
+  published: boolean;
 }
 
 export interface Game {
   id: string;
   name: string;
   completed: boolean;
+  published: boolean;
   round: Round;
 }
 
@@ -29,6 +31,7 @@ interface GameRow {
   settings: RoundSettings;
   created_at: string;
   completed: boolean;
+  published: boolean;
 }
 
 interface EntryRow {
@@ -65,7 +68,7 @@ function rowsToRound(game: GameRow, entries: EntryRow[]): Round {
 export async function listGames(): Promise<GameSummary[]> {
   const { data, error } = await supabase
     .from("games")
-    .select("id, name, created_at, completed")
+    .select("id, name, created_at, completed, published")
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((g) => ({
@@ -73,6 +76,7 @@ export async function listGames(): Promise<GameSummary[]> {
     name: g.name,
     createdAt: g.created_at,
     completed: Boolean(g.completed),
+    published: Boolean(g.published),
   }));
 }
 
@@ -88,6 +92,7 @@ export async function getGame(id: string): Promise<Game | null> {
     id: game.id,
     name: game.name,
     completed: Boolean(game.completed),
+    published: Boolean(game.published),
     round: rowsToRound(game as GameRow, (entries ?? []) as EntryRow[]),
   };
 }
@@ -120,6 +125,14 @@ export async function setCompleted(id: string, completed: boolean): Promise<void
   const { error } = await supabase
     .from("games")
     .update({ completed, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function setPublished(id: string, published: boolean): Promise<void> {
+  const { error } = await supabase
+    .from("games")
+    .update({ published, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
 }

@@ -2,15 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, CheckCircle2, RotateCcw, ChevronRight } from "lucide-react";
-import {
-  GameSummary,
-  listGames,
-  createGame,
-  deleteGame,
-  setCompleted,
-  subscribeGamesList,
-} from "@/lib/games";
+import { Settings, ChevronRight } from "lucide-react";
+import { GameSummary, listGames, subscribeGamesList } from "@/lib/games";
 import { supabaseConfigured } from "@/lib/supabase";
 import { useHeader } from "@/lib/header-context";
 
@@ -19,9 +12,6 @@ export default function Home() {
   const { setHeader } = useHeader();
   const [games, setGames] = useState<GameSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [newName, setNewName] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [admin, setAdmin] = useState(false);
 
   function refresh() {
     listGames()
@@ -36,45 +26,16 @@ export default function Home() {
     return unsub;
   }, []);
 
-  // Register the header's Admin toggle (no back button on the home page).
   useEffect(() => {
-    setHeader({ admin: { active: admin, onToggle: () => setAdmin((v) => !v) } });
+    setHeader({
+      rightButton: {
+        label: "Admin",
+        onClick: () => router.push("/admin"),
+        icon: <Settings className="h-4 w-4" />,
+      },
+    });
     return () => setHeader({});
-  }, [admin, setHeader]);
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (creating) return;
-    setCreating(true);
-    setError(null);
-    try {
-      const id = await createGame(newName);
-      setNewName("");
-      router.push(`/game/${id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create game.");
-      setCreating(false);
-    }
-  }
-
-  async function handleDelete(id: string, name: string) {
-    if (!window.confirm(`Delete "${name}"? This removes its scores for everyone.`)) return;
-    try {
-      await deleteGame(id);
-      refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete game.");
-    }
-  }
-
-  async function handleComplete(id: string, completed: boolean) {
-    try {
-      await setCompleted(id, completed);
-      refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update game.");
-    }
-  }
+  }, [router, setHeader]);
 
   if (!supabaseConfigured) {
     return (
@@ -87,19 +48,19 @@ export default function Home() {
     );
   }
 
-  const active = (games ?? []).filter((g) => !g.completed);
+  const active = (games ?? []).filter((g) => g.published && !g.completed);
   const completed = (games ?? []).filter((g) => g.completed);
 
   function GameRow({ g }: { g: GameSummary }) {
     return (
       <li
-        className={`flex items-center gap-2 overflow-hidden rounded-xl border border-card-border bg-card-bg border-l-4 ${
+        className={`overflow-hidden rounded-xl border border-l-4 border-card-border bg-card-bg ${
           g.completed ? "border-l-card-border" : "border-l-primary"
         }`}
       >
         <button
           onClick={() => router.push(`/game/${g.id}`)}
-          className="flex flex-1 items-center justify-between gap-2 px-4 py-4 text-left"
+          className="flex w-full items-center justify-between gap-2 px-4 py-4 text-left"
         >
           <span className="min-w-0">
             <span className="flex items-center gap-2 font-semibold">
@@ -119,28 +80,6 @@ export default function Home() {
           </span>
           <ChevronRight className="h-5 w-5 shrink-0 text-chevron" />
         </button>
-        {admin && (
-          <div className="flex shrink-0 items-center gap-1 pr-2">
-            <button
-              onClick={() => handleComplete(g.id, !g.completed)}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-accent-on-light"
-            >
-              {g.completed ? (
-                <RotateCcw className="h-3.5 w-3.5" />
-              ) : (
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              )}
-              {g.completed ? "Reactivate" : "Complete"}
-            </button>
-            <button
-              onClick={() => handleDelete(g.id, g.name)}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-negative"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete
-            </button>
-          </div>
-        )}
       </li>
     );
   }
@@ -150,31 +89,9 @@ export default function Home() {
       <div>
         <h2 className="text-xl font-bold">Games</h2>
         <p className="text-sm text-text-muted">
-          {admin
-            ? "Admin: create, complete, or delete games."
-            : "Tap a game to open it. Anyone with the link can edit."}
+          Tap a game to score it. New games are created in Admin.
         </p>
       </div>
-
-      {/* Create (admin only) */}
-      {admin && (
-        <form onSubmit={handleCreate} className="flex gap-2">
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="New game name (e.g. Saturday at Pebble)"
-            className="min-w-0 flex-1 rounded-lg border border-card-border px-3 py-2.5"
-          />
-          <button
-            type="submit"
-            disabled={creating}
-            className="flex shrink-0 items-center gap-1 rounded-lg bg-primary px-4 py-2.5 font-semibold text-on-dark disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            {creating ? "…" : "Create"}
-          </button>
-        </form>
-      )}
 
       {error && (
         <p className="rounded-lg bg-tint-bad px-3 py-2 text-sm text-negative">{error}</p>
@@ -186,10 +103,10 @@ export default function Home() {
             <div key={i} className="skeleton h-[68px] w-full rounded-xl" />
           ))}
         </div>
-      ) : games.length === 0 ? (
+      ) : active.length === 0 && completed.length === 0 ? (
         <div className="rounded-xl border border-dashed border-card-border bg-card-bg p-8 text-center text-sm text-text-muted">
-          No games yet. Tap <span className="font-semibold">⚙ Admin</span> in the header to
-          create one.
+          No games yet. Tap <span className="font-semibold">Admin</span> in the header to
+          create and publish one.
         </div>
       ) : (
         <>
