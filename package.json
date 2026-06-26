@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:icons": "node scripts/gen-icons.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
@@ -23,6 +24,7 @@
     "@types/react-dom": "19.0.3",
     "autoprefixer": "10.4.20",
     "postcss": "^8.5.15",
+    "sharp": "^0.35.2",
     "tailwindcss": "3.4.17",
     "typescript": "5.7.3",
     "vitest": "^4.1.9"
