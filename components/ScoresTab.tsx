@@ -12,6 +12,7 @@ import {
   HoleEntry,
   defaultWolfForHole,
 } from "@/lib/wolf";
+import { formatMoney } from "@/lib/storage";
 
 function Chip({
   active,
@@ -141,6 +142,7 @@ function HoleBox({
           const onTeamA = isWolf || isPartner;
           const myPops = computation.pops[p.id]?.[hole] ?? 0;
           const score = grossScores[p.id];
+          const delta = result?.deltas[p.id] ?? 0;
 
           return (
             <div
@@ -173,6 +175,17 @@ function HoleBox({
                   </span>
                 )}
               </div>
+
+              {/* Money won/lost this hole */}
+              {delta !== 0 && (
+                <span
+                  className={`shrink-0 font-serif text-sm font-bold tabular-nums ${
+                    delta > 0 ? "text-positive" : "text-negative"
+                  }`}
+                >
+                  {formatMoney(delta)}
+                </span>
+              )}
 
               {/* Right: plain score input */}
               <input

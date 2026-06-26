@@ -9,6 +9,11 @@ const inter = Inter({ subsets: ["latin"], display: "swap" });
 export const metadata: Metadata = {
   title: "Wolf",
   description: "Track scores, pops, and the Wolf money game live on the course.",
+  appleWebApp: {
+    capable: true,
+    title: "Wolf",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
@@ -26,10 +31,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.className}>
-      <body className="min-h-screen bg-page-bg">
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
+      {/* Body is the dark chrome color so the iPhone safe-area (notch / status bar)
+          above the header reads dark, not white. The light page background lives
+          on <main>, not the body. */}
+      <body className="flex min-h-screen flex-col bg-header-bg">
         <HeaderProvider>
           <Header />
-          <main className="mx-auto max-w-2xl px-3 pb-16">{children}</main>
+          <main className="flex-1 bg-page-bg">
+            <div className="mx-auto max-w-2xl px-3 pb-16">{children}</div>
+          </main>
         </HeaderProvider>
       </body>
     </html>
