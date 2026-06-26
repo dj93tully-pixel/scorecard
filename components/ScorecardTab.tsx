@@ -100,6 +100,19 @@ function NineTable({
                         {g}
                         <PopsDots count={popCount} />
                       </span>
+                    ) : popCount > 0 ? (
+                      // Future hole where this player gets a pop: hollow dots.
+                      <span className="inline-flex items-center justify-center gap-[2px]">
+                        <span className="text-text-faint">·</span>
+                        <span className="inline-flex gap-[1px]">
+                          {Array.from({ length: popCount }).map((_, i) => (
+                            <span
+                              key={i}
+                              className="inline-block h-[4px] w-[4px] rounded-full border border-primary"
+                            />
+                          ))}
+                        </span>
+                      </span>
                     ) : (
                       <span className="text-text-faint">–</span>
                     )}
@@ -140,28 +153,35 @@ export function ScorecardTab({
         </span>
       </div>
 
+      {/* Totals strip (shown above the grid) */}
+      <div className="flex flex-wrap gap-2">
+        {round.players.map((p) => {
+          const t = total(p.id);
+          return (
+            <div
+              key={p.id}
+              className="flex items-center gap-1.5 rounded-full border border-card-border bg-card-bg px-3 py-1.5"
+            >
+              <span className="text-xs font-semibold">{(p.name || "?").slice(0, 8)}</span>
+              <span className="text-sm font-extrabold tabular-nums">{t || "–"}</span>
+            </div>
+          );
+        })}
+      </div>
+
       <NineTable round={round} computation={computation} holes={front} title="Front" />
       <NineTable round={round} computation={computation} holes={back} title="Back" />
 
-      <div className="rounded-xl border border-card-border bg-card-bg">
-        <div className="border-b border-divider px-4 py-2 text-sm font-bold uppercase tracking-wide text-text-muted">
-          Totals
-        </div>
-        {round.players.map((p) => (
-          <div
-            key={p.id}
-            className="flex items-center justify-between border-b border-divider px-4 py-2 last:border-0"
-          >
-            <span className="font-semibold">{p.name || "Unnamed"}</span>
-            <span className="font-bold tabular-nums">{total(p.id) || "–"}</span>
-          </div>
-        ))}
+      <div className="space-y-1 px-1 text-xs text-text-muted">
+        <p className="flex items-center gap-2">
+          <span className="inline-block h-[4px] w-[4px] rounded-full bg-primary" />
+          Solid dots = pops on holes already scored (two = double pop).
+        </p>
+        <p className="flex items-center gap-2">
+          <span className="inline-block h-[5px] w-[5px] rounded-full border border-primary" />
+          Hollow dots = upcoming holes where the player gets a pop.
+        </p>
       </div>
-
-      <p className="flex items-center gap-2 px-1 text-xs text-text-muted">
-        <span className="inline-block h-[4px] w-[4px] rounded-full bg-primary" />
-        Dots mark handicap strokes (pops) — two dots means a double pop.
-      </p>
     </div>
   );
 }

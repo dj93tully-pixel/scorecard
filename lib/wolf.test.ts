@@ -227,6 +227,71 @@ describe("money — 2v2", () => {
   });
 });
 
+// ── Money: 5 players with a separate wolf-team stake ───────────────────────
+
+describe("money — wolf-team stake (uneven teams)", () => {
+  function fivePlayers(): Player[] {
+    return [
+      { id: "a", name: "A", handicap: 0 },
+      { id: "b", name: "B", handicap: 0 },
+      { id: "c", name: "C", handicap: 0 },
+      { id: "d", name: "D", handicap: 0 },
+      { id: "e", name: "E", handicap: 0 },
+    ];
+  }
+  function makeFiveRound(entry: Round["entries"][number], settings: Partial<RoundSettings>) {
+    const players = fivePlayers();
+    return {
+      course: makeCourse(),
+      players,
+      teeOrder: players.map((p) => p.id),
+      settings: { ...DEFAULT_SETTINGS, ...settings },
+      entries: [entry],
+    } as Round;
+  }
+
+  it("wolf team wins: field pays $2 each, wolf team gets $3 each (balanced)", () => {
+    // 2 wolf-team vs 3 field; wolfStake 3, field stake 2.
+    const round = makeFiveRound(
+      {
+        hole: 1, // SI 1, but all scratch so no pops
+        wolfId: "a",
+        mode: "2v2",
+        partnerId: "b",
+        grossScores: { a: 4, b: 4, c: 5, d: 5, e: 5 },
+      },
+      { stake: 2, wolfStake: 3 }
+    );
+    const { ledger } = computeRound(round);
+    expect(ledger.a).toBe(3);
+    expect(ledger.b).toBe(3);
+    expect(ledger.c).toBe(-2);
+    expect(ledger.d).toBe(-2);
+    expect(ledger.e).toBe(-2);
+    expect(ledgerSum(ledger)).toBe(0);
+  });
+
+  it("field wins: wolf team pays $3 each, field gets $2 each (balanced)", () => {
+    const round = makeFiveRound(
+      {
+        hole: 1,
+        wolfId: "a",
+        mode: "2v2",
+        partnerId: "b",
+        grossScores: { a: 5, b: 5, c: 4, d: 5, e: 5 },
+      },
+      { stake: 2, wolfStake: 3 }
+    );
+    const { ledger } = computeRound(round);
+    expect(ledger.a).toBe(-3);
+    expect(ledger.b).toBe(-3);
+    expect(ledger.c).toBe(2);
+    expect(ledger.d).toBe(2);
+    expect(ledger.e).toBe(2);
+    expect(ledgerSum(ledger)).toBe(0);
+  });
+});
+
 // ── Money: carryover ───────────────────────────────────────────────────────
 
 describe("money — carryover", () => {

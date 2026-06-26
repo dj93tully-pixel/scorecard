@@ -33,7 +33,13 @@ export interface Player {
 export type HandicapMode = "offLow" | "full" | "direct";
 
 export interface RoundSettings {
-  stake: number; // $ per hole
+  stake: number; // $ per hole each FIELD player risks
+  /**
+   * Optional separate stake each WOLF-TEAM player risks in a 2v2 hole. Useful
+   * for uneven teams (e.g. 5 players): set wolf=$3, field=$2 so 2×$3 balances
+   * 3×$2. 0 or undefined means "same as stake" (symmetric).
+   */
+  wolfStake?: number;
   loneMult: number; // default 1
   blindMult: number; // default 2
   blindEnabled: boolean;
@@ -61,6 +67,7 @@ export interface Round {
 
 export const DEFAULT_SETTINGS: RoundSettings = {
   stake: 5,
+  wolfStake: 0, // 0 = same as stake (symmetric)
   loneMult: 1,
   blindMult: 2,
   blindEnabled: true,
@@ -145,10 +152,12 @@ export interface HoleResult {
   teamABest: number | null; // best (lowest) net ball for team A
   teamBBest: number | null;
   winner: HoleWinner;
-  /** Effective stake actually in play on this hole (base + any carryover). */
+  /** Effective field stake in play on this hole (base + any carryover). */
   stakeApplied: number;
   /** Money change per player for this hole. Always sums to 0. */
   deltas: Record<PlayerId, number>;
+  /** Total money moved on the hole (sum of the positive deltas). */
+  pot: number;
   /** Carryover amount rolled into the NEXT hole after this one resolves. */
   carriedToNext: number;
 }
@@ -180,43 +189,53 @@ function bestNet(team: PlayerId[], net: Record<PlayerId, number>): number | null
 }
 
 /**
- * Resolve the money deltas for a single hole given the effective stake.
- * Guarantees the returned deltas sum to exactly 0.
+ * Resolve the money deltas for a single hole. Guarantees the returned deltas
+ * sum to exactly 0. `fieldStake` is what each field player risks; `wolfStake`
+ * is what each wolf-team player risks (equal to fieldStake unless a separate
+ * wolf-team stake is configured).
  *
- * - 2v2: the losing team collectively pays `stake` per losing player; that
- *   pot is split evenly among the winners. For even 4-player teams this is
- *   exactly "each winner +stake, each loser -stake".
- * - lone/blind: the wolf plays EACH opponent for `mult * stake`. With N players
- *   the wolf faces (N-1) opponents, so a winning wolf nets +(N-1)*mult*stake
- *   and each opponent loses mult*stake (matches "+3 units" with 4 players).
+ * - 2v2: the losing side pays its per-player risk; that pot is split evenly
+ *   among the winners. For even 4-player teams with equal stakes this is
+ *   exactly "each winner +stake, each loser -stake". With a higher wolfStake on
+ *   uneven teams (e.g. 5 players) the totals balance (2×$3 vs 3×$2).
+ * - lone/blind: the wolf plays EACH opponent for `mult * fieldStake`. With N
+ *   players the wolf faces (N-1) opponents, so a winning wolf nets
+ *   +(N-1)*mult*fieldStake and each opponent loses mult*fieldStake.
  */
 function resolveDeltas(
   winner: HoleWinner,
   teamA: PlayerId[],
   teamB: PlayerId[],
   mode: WolfMode,
-  stake: number,
+  fieldStake: number,
+  wolfStake: number,
   settings: RoundSettings
 ): Record<PlayerId, number> {
   const deltas: Record<PlayerId, number> = {};
   for (const id of [...teamA, ...teamB]) deltas[id] = 0;
   if (winner === "push") return deltas;
 
-  const winners = winner === "A" ? teamA : teamB;
-  const losers = winner === "A" ? teamB : teamA;
-
   if (mode === "2v2") {
-    // Losing team pays `stake` each; pot split evenly among winners.
-    const pot = stake * losers.length;
-    const share = pot / winners.length;
-    for (const id of winners) deltas[id] += share;
-    for (const id of losers) deltas[id] -= stake;
+    // teamA is always the wolf team; teamB is the field.
+    if (winner === "A") {
+      // Wolf team wins: each field player pays fieldStake; split among wolf team.
+      const pot = fieldStake * teamB.length;
+      const share = pot / teamA.length;
+      for (const id of teamA) deltas[id] += share;
+      for (const id of teamB) deltas[id] -= fieldStake;
+    } else {
+      // Field wins: each wolf-team player pays wolfStake; split among the field.
+      const pot = wolfStake * teamA.length;
+      const share = pot / teamB.length;
+      for (const id of teamB) deltas[id] += share;
+      for (const id of teamA) deltas[id] -= wolfStake;
+    }
     return deltas;
   }
 
   // lone / blind: wolf vs the field, head-to-head against each opponent.
   const mult = mode === "blind" ? settings.blindMult : settings.loneMult;
-  const unit = mult * stake;
+  const unit = mult * fieldStake;
   const wolfId = teamA[0];
   const opponents = teamB;
   const wolfWon = winner === "A";
@@ -263,7 +282,11 @@ export function computeRound(round: Round): RoundComputation {
     const teamABest = bestNet(teamA, net);
     const teamBBest = bestNet(teamB, net);
 
-    const stakeApplied = settings.stake + carried;
+    const stakeApplied = settings.stake + carried; // field stake (+ carryover)
+    const wolfStakeApplied =
+      (settings.wolfStake && settings.wolfStake > 0
+        ? settings.wolfStake
+        : settings.stake) + carried;
 
     let winner: HoleWinner;
     if (teamABest === null || teamBBest === null) {
@@ -282,8 +305,10 @@ export function computeRound(round: Round): RoundComputation {
       teamB,
       entry.mode,
       stakeApplied,
+      wolfStakeApplied,
       settings
     );
+    const pot = Object.values(deltas).reduce((s, v) => (v > 0 ? s + v : s), 0);
 
     // Carryover bookkeeping.
     let carriedToNext = 0;
@@ -310,6 +335,7 @@ export function computeRound(round: Round): RoundComputation {
       winner,
       stakeApplied,
       deltas,
+      pot,
       carriedToNext,
     });
   }

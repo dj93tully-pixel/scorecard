@@ -28,7 +28,7 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
         active ? activeCls : "bg-page-bg text-text-primary"
       }`}
     >
@@ -118,7 +118,6 @@ function HoleBox({
                 })
               }
             >
-              {p.id === wolfId ? "🐺 " : ""}
               {short(p.name)}
             </Chip>
           ))}
@@ -169,10 +168,12 @@ function HoleBox({
             const isWolf = p.id === wolfId;
             const isPartner = p.id === partnerId && mode === "2v2";
             const score = grossScores[p.id];
+            const myPops = computation.pops[p.id]?.[hole] ?? 0;
+            const onColored = isWolf || isPartner;
             return (
               <label key={p.id} className="flex flex-col items-center gap-1">
                 <span
-                  className={`flex h-6 w-full items-center justify-center gap-0.5 rounded-md text-[11px] font-bold ${
+                  className={`flex h-6 w-full items-center justify-center gap-1 rounded-md px-1 text-[11px] font-bold ${
                     isWolf
                       ? "bg-alert text-on-dark"
                       : isPartner
@@ -180,7 +181,19 @@ function HoleBox({
                         : "bg-page-bg text-text-primary"
                   }`}
                 >
-                  {isWolf ? "🐺" : short(p.name)}
+                  <span className="truncate">{short(p.name)}</span>
+                  {myPops > 0 && (
+                    <span className="inline-flex shrink-0 gap-0.5">
+                      {Array.from({ length: myPops }).map((_, i) => (
+                        <span
+                          key={i}
+                          className={`h-[4px] w-[4px] rounded-full ${
+                            onColored ? "bg-on-dark" : "bg-primary"
+                          }`}
+                        />
+                      ))}
+                    </span>
+                  )}
                 </span>
                 <input
                   type="number"
@@ -214,7 +227,7 @@ function HoleBox({
           ) : (
             <span className="font-bold">
               {result.winner === "A" ? "Wolf team" : "Field"} wins{" "}
-              <span className="text-positive">${result.stakeApplied}</span>
+              <span className="text-positive">${result.pot}</span>
             </span>
           )}
         </div>

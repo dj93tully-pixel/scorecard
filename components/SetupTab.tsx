@@ -38,10 +38,16 @@ export function SetupTab({
 }) {
   const [showImport, setShowImport] = useState(false);
   const [showCourse, setShowCourse] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
 
   const { players, settings, teeOrder, course } = round;
   const siIssues = strokeIndexIssues(course);
   const isDirect = settings.handicapMode === "direct";
+
+  // Select the contents of a number field on focus so typing replaces the
+  // existing digit instead of appending to it (e.g. 1 → 3, not 13).
+  const selectOnFocus = (e: React.FocusEvent<HTMLInputElement>) =>
+    e.currentTarget.select();
 
   // ── Course ──
   function setHole(num: number, patch: Partial<{ par: number; strokeIndex: number }>) {
@@ -57,6 +63,8 @@ export function SetupTab({
     updateRound((r) => ({ ...r, course: c }));
     setShowImport(false);
     setShowCourse(true);
+    const par = c.holes.reduce((s, h) => s + h.par, 0);
+    setFlash(`Imported “${c.name}” — ${c.holes.length} holes, par ${par}`);
   }
   function resetCourse() {
     updateRound((r) => ({ ...r, course: blankCourse() }));
@@ -133,6 +141,18 @@ export function SetupTab({
             </button>
           </div>
         </div>
+        {flash && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-pill-bg px-3 py-2 text-sm font-semibold text-pill-text">
+            <span>✓ {flash}</span>
+            <button
+              onClick={() => setFlash(null)}
+              className="shrink-0 text-pill-text/70"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <input
           value={course.name}
           onChange={(e) =>
@@ -177,6 +197,7 @@ export function SetupTab({
                       <input
                         type="number"
                         value={h.par}
+                        onFocus={selectOnFocus}
                         onChange={(e) =>
                           setHole(h.number, { par: parseInt(e.target.value) || 0 })
                         }
@@ -189,6 +210,7 @@ export function SetupTab({
                         min={1}
                         max={18}
                         value={h.strokeIndex}
+                        onFocus={selectOnFocus}
                         onChange={(e) =>
                           setHole(h.number, { strokeIndex: parseInt(e.target.value) || 0 })
                         }
@@ -258,6 +280,7 @@ export function SetupTab({
                     type="number"
                     min={0}
                     value={p.pops ?? 0}
+                    onFocus={selectOnFocus}
                     onChange={(e) => setPlayer(p.id, { pops: parseInt(e.target.value) || 0 })}
                     className={numberInput}
                   />
@@ -265,6 +288,7 @@ export function SetupTab({
                   <input
                     type="number"
                     value={p.handicap}
+                    onFocus={selectOnFocus}
                     onChange={(e) =>
                       setPlayer(p.id, { handicap: parseInt(e.target.value) || 0 })
                     }
@@ -290,24 +314,28 @@ export function SetupTab({
                   ▼
                 </button>
               </div>
-              <button
-                onClick={() => removePlayer(p.id)}
-                disabled={players.length <= 3}
-                className="px-1 text-lg text-text-faint disabled:opacity-30"
-                aria-label="Remove player"
-              >
-                ✕
-              </button>
             </div>
           ))}
         </div>
-        <button
-          onClick={addPlayer}
-          disabled={players.length >= 5}
-          className="mt-3 w-full rounded-lg border border-dashed border-card-border py-2 text-sm font-semibold text-accent-on-light disabled:opacity-40"
-        >
-          + Add player
-        </button>
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={addPlayer}
+            disabled={players.length >= 5}
+            className="flex-1 rounded-lg border border-dashed border-card-border py-2 text-sm font-semibold text-accent-on-light disabled:opacity-40"
+          >
+            + Add player
+          </button>
+          <button
+            onClick={() => {
+              const last = orderedPlayers[orderedPlayers.length - 1];
+              if (last) removePlayer(last.id);
+            }}
+            disabled={players.length <= 3}
+            className="rounded-lg border border-dashed border-card-border px-4 py-2 text-sm font-semibold text-text-muted disabled:opacity-40"
+          >
+            − Remove
+          </button>
+        </div>
         <p className="mt-2 text-xs text-text-faint">
           List order is the tee order — the wolf rotates down this list each hole
           (override on any hole in Scores).
@@ -318,12 +346,23 @@ export function SetupTab({
       <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <h3 className="mb-1 font-bold">Money &amp; rules</h3>
         <div className="divide-y divide-divider">
-          <Field label="Stake ($ per hole)">
+          <Field label="Stake — field $/hole">
             <input
               type="number"
               min={0}
               value={settings.stake}
+              onFocus={selectOnFocus}
               onChange={(e) => setSetting("stake", parseFloat(e.target.value) || 0)}
+              className={numberInput}
+            />
+          </Field>
+          <Field label="Wolf team $/hole (0 = same)">
+            <input
+              type="number"
+              min={0}
+              value={settings.wolfStake ?? 0}
+              onFocus={selectOnFocus}
+              onChange={(e) => setSetting("wolfStake", parseFloat(e.target.value) || 0)}
               className={numberInput}
             />
           </Field>
@@ -332,6 +371,7 @@ export function SetupTab({
               type="number"
               min={1}
               value={settings.loneMult}
+              onFocus={selectOnFocus}
               onChange={(e) => setSetting("loneMult", parseFloat(e.target.value) || 1)}
               className={numberInput}
             />
@@ -341,6 +381,7 @@ export function SetupTab({
               type="number"
               min={1}
               value={settings.blindMult}
+              onFocus={selectOnFocus}
               onChange={(e) => setSetting("blindMult", parseFloat(e.target.value) || 1)}
               className={numberInput}
             />

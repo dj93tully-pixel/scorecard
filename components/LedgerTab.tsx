@@ -81,7 +81,7 @@ export function LedgerTab({
                   ? r.carriedToNext > 0
                     ? `Push — carries $${r.carriedToNext}`
                     : "Push"
-                  : `${r.winner === "A" ? "Wolf team" : "Field"} won $${r.stakeApplied}`;
+                  : `${r.winner === "A" ? "Wolf team" : "Field"} won $${r.pot}`;
               return (
                 <div
                   key={r.hole}
