@@ -5,10 +5,54 @@
 
 "use client";
 
+import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { WolfLogo } from "./WolfLogo";
 import { useHeader } from "@/lib/header-context";
+
+// Ticker meta text — scrolls (ping-pong) only when it's wider than the space.
+function TickerMeta({ text }: { text: string }) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [shift, setShift] = useState(0);
+
+  useEffect(() => {
+    function measure() {
+      const box = boxRef.current;
+      const span = textRef.current;
+      if (!box || !span) return;
+      const over = span.scrollWidth - box.clientWidth;
+      setShift(over > 4 ? over : 0);
+    }
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (boxRef.current) ro.observe(boxRef.current);
+    if (textRef.current) ro.observe(textRef.current);
+    return () => ro.disconnect();
+  }, [text]);
+
+  const animating = shift > 0;
+  const duration = Math.max(5, shift / 22);
+  const style: CSSProperties | undefined = animating
+    ? ({
+        "--marquee-shift": `-${shift}px`,
+        animation: `marquee ${duration}s ease-in-out infinite alternate`,
+      } as CSSProperties)
+    : undefined;
+
+  return (
+    <div ref={boxRef} className="relative min-w-0 flex-1 overflow-hidden">
+      <span
+        ref={textRef}
+        style={style}
+        className="inline-block whitespace-nowrap text-[12px] text-text-muted"
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
 
 export function Header() {
   const router = useRouter();
@@ -63,9 +107,7 @@ export function Header() {
             <span className="shrink-0 text-[12px] font-semibold text-on-dark">
               {ticker.primary}
             </span>
-            {ticker.meta && (
-              <span className="truncate text-[12px] text-text-muted">{ticker.meta}</span>
-            )}
+            {ticker.meta && <TickerMeta text={ticker.meta} />}
           </div>
         </div>
       )}

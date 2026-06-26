@@ -379,7 +379,7 @@ function LedgerCard({
                     view === v ? "text-text-primary" : "text-text-faint"
                   }`}
                 >
-                  {v === "scores" ? "Scores" : "By-hole ledger"}
+                  {v === "scores" ? "Scores" : "Money"}
                 </button>
               ))}
             </div>

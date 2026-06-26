@@ -59,6 +59,16 @@ button {
   animation: ring-pulse 2s infinite;
 }
 
+/* ── Ticker marquee — only applied (via JS) when the text overflows ── */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--marquee-shift, 0));
+  }
+}
+
 /* ── Loading skeleton shimmer ── */
 .skeleton {
   background: #e9ecf2;
