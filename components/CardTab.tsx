@@ -350,11 +350,9 @@ function LedgerCard({
     >
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-3 px-3 py-3 text-left">
         <span className="w-4 text-center font-serif text-base font-bold text-text-faint">{rankIndex + 1}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-semibold">{player.name || "Unnamed"}</span>
-          <span className="mt-0.5 block text-xs text-text-muted">
-            <ScoreBadge rel={toPar} size="sm" />
-          </span>
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="truncate font-semibold">{player.name || "Unnamed"}</span>
+          <ScoreBadge rel={toPar} size="sm" />
         </span>
         <span className={`font-serif text-lg font-extrabold tabular-nums ${moneyColor}`}>
           {formatMoney(money)}

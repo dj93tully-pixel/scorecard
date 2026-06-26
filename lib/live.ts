@@ -44,7 +44,7 @@ export function liveSummary(round: Round, computation: RoundComputation): Ticker
   // Caddie suggestion for the hole currently up (right of the leader).
   if (!isFinal) {
     const suggestion = suggestForHole(round, computation, currentHole);
-    if (suggestion) meta.push(`Suggested: ${suggestion.label}`);
+    if (suggestion) meta.push(`AI: ${suggestion.label}`);
   }
 
   return {

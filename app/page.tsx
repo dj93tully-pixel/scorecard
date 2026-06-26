@@ -88,9 +88,7 @@ export default function Home() {
     <div className="mt-4 animate-fade-in space-y-6">
       <div>
         <h2 className="text-xl font-bold">Games</h2>
-        <p className="text-sm text-text-muted">
-          Tap a game to score it. New games are created in Admin.
-        </p>
+        <p className="text-sm text-text-muted">Tap a game to score it.</p>
       </div>
 
       {error && (
