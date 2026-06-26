@@ -1,9 +1,369 @@
 // components/CardTab.tsx
-// "Card" tab: the full scorecard on top, the live money ledger below.
+// Card tab = one big all-players scorecard + a by-hole money ledger up top, then
+// the standings as "ledger badges" that drop down to each player's own detailed
+// scorecard (scores + by-hole money), golf-pool style. Presentation only.
 
-import { Round, RoundComputation } from "@/lib/wolf";
-import { ScorecardTab } from "./ScorecardTab";
-import { LedgerTab } from "./LedgerTab";
+"use client";
+
+import { CSSProperties, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { Round, RoundComputation, Player } from "@/lib/wolf";
+import { coursePar, formatMoney } from "@/lib/storage";
+import { ScoreBadge } from "./ScoreBadge";
+
+const INK = "#16181D";
+const MUTED = "#8A90A0";
+const SURFACE2 = "#F4F6FA";
+const HAIRLINE = "rgba(22,24,29,0.08)";
+const STRONG = "rgba(22,24,29,0.20)";
+const POS = "#2BC081";
+const NEG = "#F0524B";
+const PRIMARY = "#2D78FF";
+
+const RANK_RAIL = ["border-l-rank-1", "border-l-rank-2", "border-l-rank-3", "border-l-rank-4"];
+
+// Concentric rings = strokes from par (cap 4). Under = circles, over = squares.
+function ringStyle(rel: number): CSSProperties {
+  if (rel === 0) return {};
+  const n = Math.min(Math.abs(rel), 4);
+  const layers: string[] = [];
+  let spread = 0;
+  for (let i = 0; i < n; i++) {
+    if (i > 0) {
+      spread += 1.3;
+      layers.push(`0 0 0 ${spread}px ${SURFACE2}`);
+    }
+    spread += 1.1;
+    layers.push(`0 0 0 ${spread}px ${INK}`);
+  }
+  return { boxShadow: layers.join(", "), borderRadius: rel < 0 ? "50%" : "3px" };
+}
+
+function StrokeCell({ gross, rel, pops }: { gross: number; rel: number; pops: number }) {
+  return (
+    <span style={{ position: "relative", display: "inline-flex" }}>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "17px",
+          height: "17px",
+          fontSize: "11px",
+          fontWeight: 600,
+          color: INK,
+          ...ringStyle(rel),
+        }}
+      >
+        {gross}
+      </span>
+      {pops > 0 && (
+        <span style={{ position: "absolute", top: "-1px", right: "-2px", display: "inline-flex", gap: "1px" }}>
+          {Array.from({ length: pops }).map((_, i) => (
+            <span key={i} style={{ width: "3px", height: "3px", borderRadius: "9999px", background: PRIMARY }} />
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ── One big all-players nine (scores or by-hole money) ──────────────────────
+function BigNine({
+  round,
+  computation,
+  holes,
+  title,
+  mode,
+}: {
+  round: Round;
+  computation: RoundComputation;
+  holes: number[];
+  title: string;
+  mode: "scores" | "money";
+}) {
+  const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
+  const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
+  const resultByHole = new Map(computation.results.map((r) => [r.hole, r]));
+  const grossOf = (pid: string, h: number) => entryByHole.get(h)?.grossScores[pid];
+  const popsOf = (pid: string, h: number) => computation.pops[pid]?.[h] ?? 0;
+  const moneyOf = (pid: string, h: number) => resultByHole.get(h)?.deltas[pid] ?? 0;
+  const totalLabel = title === "Front" ? "OUT" : "IN";
+  const parTotal = holes.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
+  const playerTotal = (pid: string) =>
+    mode === "scores"
+      ? holes.reduce((s, h) => s + (grossOf(pid, h) ?? 0), 0)
+      : holes.reduce((s, h) => s + moneyOf(pid, h), 0);
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-card-border bg-card-bg">
+      <table className="w-full border-collapse text-center">
+        <thead>
+          <tr className="bg-row-tint text-[10px] font-semibold text-text-muted">
+            <th className="sticky left-0 z-10 bg-row-tint px-2 py-1.5 text-left">{title}</th>
+            {holes.map((h) => (
+              <th key={h} className="px-1.5 py-1.5">
+                {h}
+              </th>
+            ))}
+            <th className="px-1.5 py-1.5">{totalLabel}</th>
+          </tr>
+          {mode === "scores" && (
+            <tr className="text-[9px] text-text-faint">
+              <td className="sticky left-0 z-10 bg-card-bg px-2 py-0.5 text-left">Par</td>
+              {holes.map((h) => (
+                <td key={h} className="px-1.5 py-0.5">
+                  {parByHole.get(h)}
+                </td>
+              ))}
+              <td className="px-1.5 py-0.5">{parTotal}</td>
+            </tr>
+          )}
+        </thead>
+        <tbody>
+          {round.players.map((p) => {
+            const tot = playerTotal(p.id);
+            return (
+              <tr key={p.id} className="border-t border-divider">
+                <td className="sticky left-0 z-10 bg-card-bg px-2 py-2 text-left text-xs font-semibold">
+                  {(p.name || "?").slice(0, 8)}
+                </td>
+                {holes.map((h) => {
+                  if (mode === "scores") {
+                    const g = grossOf(p.id, h);
+                    return (
+                      <td key={h} className="px-1.5 py-2">
+                        {typeof g === "number" ? (
+                          <StrokeCell
+                            gross={g}
+                            rel={g - (parByHole.get(h) ?? g)}
+                            pops={popsOf(p.id, h)}
+                          />
+                        ) : (
+                          <span className="text-text-faint">–</span>
+                        )}
+                      </td>
+                    );
+                  }
+                  const m = moneyOf(p.id, h);
+                  return (
+                    <td
+                      key={h}
+                      className="px-1.5 py-2 text-[9px] font-bold tabular-nums"
+                      style={{ color: m > 0 ? POS : m < 0 ? NEG : "#C4C8CE" }}
+                    >
+                      {m === 0 ? "·" : formatMoney(m)}
+                    </td>
+                  );
+                })}
+                <td
+                  className="px-1.5 py-2 text-xs font-bold tabular-nums"
+                  style={
+                    mode === "money"
+                      ? { color: tot > 0 ? POS : tot < 0 ? NEG : INK }
+                      : undefined
+                  }
+                >
+                  {mode === "scores" ? tot || "" : tot === 0 ? "–" : formatMoney(tot)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Single-player nine in the compact golf-pool card style ──────────────────
+const gridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(9, 1fr)",
+  gap: "1px",
+  justifyItems: "center",
+  alignItems: "center",
+};
+const numStyle: CSSProperties = { fontSize: "8px", color: MUTED, fontWeight: 600 };
+const parStyle: CSSProperties = { fontSize: "8px", color: "#9AA1AD", fontWeight: 600, lineHeight: 1 };
+
+function PlayerNine({
+  round,
+  computation,
+  player,
+  from,
+  label,
+  mode,
+}: {
+  round: Round;
+  computation: RoundComputation;
+  player: Player;
+  from: number;
+  label: string;
+  mode: "scores" | "money";
+}) {
+  const nums = Array.from({ length: 9 }, (_, i) => from + i);
+  const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
+  const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
+  const resultByHole = new Map(computation.results.map((r) => [r.hole, r]));
+  const grossOf = (h: number) => entryByHole.get(h)?.grossScores[player.id];
+  const popsOf = (h: number) => computation.pops[player.id]?.[h] ?? 0;
+  const moneyOf = (h: number) => resultByHole.get(h)?.deltas[player.id] ?? 0;
+  const parTotal = nums.reduce((s, n) => s + (parByHole.get(n) ?? 0), 0);
+  const total =
+    mode === "scores"
+      ? nums.reduce((s, n) => s + (grossOf(n) ?? 0), 0)
+      : nums.reduce((s, n) => s + moneyOf(n), 0);
+
+  return (
+    <div style={{ display: "flex", alignItems: "stretch", gap: "3px" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={gridStyle}>
+          {nums.map((n) => (
+            <span key={n} style={numStyle}>
+              {n}
+            </span>
+          ))}
+        </div>
+        {mode === "scores" && (
+          <div
+            style={{
+              ...gridStyle,
+              background: HAIRLINE,
+              borderTop: `0.5px solid ${STRONG}`,
+              borderBottom: `0.5px solid ${STRONG}`,
+              padding: "1.5px 0",
+              margin: "1px 0",
+            }}
+          >
+            {nums.map((n) => (
+              <span key={n} style={parStyle}>
+                {parByHole.get(n) ?? ""}
+              </span>
+            ))}
+          </div>
+        )}
+        <div style={{ ...gridStyle, marginTop: "3px" }}>
+          {nums.map((n) => {
+            if (mode === "money") {
+              const m = moneyOf(n);
+              return (
+                <span
+                  key={n}
+                  style={{ fontSize: "8.5px", fontWeight: 700, color: m > 0 ? POS : m < 0 ? NEG : "#C4C8CE" }}
+                >
+                  {m === 0 ? "·" : formatMoney(m)}
+                </span>
+              );
+            }
+            const g = grossOf(n);
+            return typeof g === "number" ? (
+              <StrokeCell key={n} gross={g} rel={g - (parByHole.get(n) ?? g)} pops={popsOf(n)} />
+            ) : (
+              <span key={n} style={{ fontSize: "11px", color: INK, opacity: 0.35 }}>
+                –
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      <div
+        style={{
+          width: "30px",
+          flexShrink: 0,
+          borderLeft: `0.75px solid ${STRONG}`,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "1px 0",
+        }}
+      >
+        <span style={numStyle}>{label}</span>
+        {mode === "scores" && <span style={parStyle}>{parTotal || ""}</span>}
+        <span
+          style={{
+            fontSize: "11px",
+            fontWeight: 700,
+            color: mode === "money" ? (total > 0 ? POS : total < 0 ? NEG : INK) : INK,
+          }}
+        >
+          {mode === "scores" ? total || "–" : total === 0 ? "–" : formatMoney(total)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Ledger badge that drops down to the player's detailed scorecard ─────────
+function LedgerCard({
+  round,
+  computation,
+  player,
+  rank,
+}: {
+  round: Round;
+  computation: RoundComputation;
+  player: Player;
+  rank: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const money = computation.ledger[player.id] ?? 0;
+  const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
+  let toPar: number | null = null;
+  for (const e of round.entries) {
+    const g = e.grossScores[player.id];
+    if (typeof g === "number") toPar = (toPar ?? 0) + g - (parByHole.get(e.hole) ?? g);
+  }
+  const moneyColor = money > 0 ? "text-positive" : money < 0 ? "text-negative" : "text-text-muted";
+
+  return (
+    <div
+      className={`overflow-hidden rounded-xl border border-l-4 border-card-border bg-card-bg ${RANK_RAIL[Math.min(rank, 3)]}`}
+    >
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-3 px-3 py-3 text-left">
+        <span className="w-4 text-center font-serif text-base font-bold text-text-faint">{rank + 1}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold">{player.name || "Unnamed"}</span>
+          <span className="mt-0.5 block text-xs text-text-muted">
+            <ScoreBadge rel={toPar} size="sm" />
+          </span>
+        </span>
+        <span className={`font-serif text-lg font-extrabold tabular-nums ${moneyColor}`}>
+          {formatMoney(money)}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          className="animate-fade-in"
+          style={{ background: SURFACE2, borderTop: `1px solid ${STRONG}`, padding: "8px 10px 10px" }}
+        >
+          <div className="mb-1 text-[9px] font-bold uppercase tracking-wide text-text-faint">Scores</div>
+          <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
+            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode="scores" />
+          </div>
+          <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px" }}>
+            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode="scores" />
+          </div>
+
+          <div className="mb-1 mt-3 text-[9px] font-bold uppercase tracking-wide text-text-faint">
+            By-hole ledger
+          </div>
+          <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
+            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode="money" />
+          </div>
+          <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px" }}>
+            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode="money" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function CardTab({
   round,
@@ -12,11 +372,42 @@ export function CardTab({
   round: Round;
   computation: RoundComputation;
 }) {
+  const front = Array.from({ length: 9 }, (_, i) => i + 1);
+  const back = Array.from({ length: 9 }, (_, i) => i + 10);
+  const standings = [...round.players].sort(
+    (a, b) => (computation.ledger[b.id] ?? 0) - (computation.ledger[a.id] ?? 0)
+  );
+
   return (
-    <div className="space-y-8">
-      <ScorecardTab round={round} computation={computation} />
-      <div className="h-px bg-divider" />
-      <LedgerTab round={round} computation={computation} />
+    <div className="space-y-6">
+      {/* Big all-players scorecard */}
+      <section className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xl font-bold">Scorecard</h2>
+          <span className="text-sm text-text-muted">
+            {round.course.name} · Par {coursePar(round.course)}
+          </span>
+        </div>
+        <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" />
+        <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" />
+      </section>
+
+      {/* By-hole money ledger */}
+      <section className="space-y-3">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">
+          By-hole ledger
+        </h3>
+        <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" />
+        <BigNine round={round} computation={computation} holes={back} title="Back" mode="money" />
+      </section>
+
+      {/* Standings → tap a player to drop down their full scorecard */}
+      <section className="space-y-2">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">Standings</h3>
+        {standings.map((p, i) => (
+          <LedgerCard key={p.id} round={round} computation={computation} player={p} rank={i} />
+        ))}
+      </section>
     </div>
   );
 }

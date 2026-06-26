@@ -192,7 +192,7 @@ function HoleBox({
                 type="number"
                 inputMode="numeric"
                 value={score ?? ""}
-                placeholder={par !== null ? String(par) : ""}
+                placeholder="–"
                 onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => {
                   const v = e.target.value;
