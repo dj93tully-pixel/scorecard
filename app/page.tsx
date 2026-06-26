@@ -5,15 +5,15 @@ import { Round, HoleEntry, computeRound } from "@/lib/wolf";
 import { loadRound, saveRound, newRound } from "@/lib/storage";
 import { SetupTab } from "@/components/SetupTab";
 import { ScoresTab } from "@/components/ScoresTab";
-import { LedgerTab } from "@/components/LedgerTab";
+import { CardTab } from "@/components/CardTab";
 import { PillTabs, PillTab } from "@/components/PillTabs";
 
-type TabId = "setup" | "scores" | "ledger";
+type TabId = "scores" | "card" | "setup";
 
 const TABS: PillTab[] = [
-  { id: "setup", label: "Setup" },
   { id: "scores", label: "Scores" },
-  { id: "ledger", label: "Ledger" },
+  { id: "card", label: "Card" },
+  { id: "setup", label: "Setup" },
 ];
 
 const TAB_KEY = "wolf:activeTab";
@@ -82,11 +82,11 @@ export default function Home() {
         <PillTabs tabs={TABS} activeId={tab} onChange={changeTab} ariaLabel="Views" />
       </div>
 
-      {tab === "setup" && <SetupTab round={round} updateRound={updateRound} />}
       {tab === "scores" && (
         <ScoresTab round={round} computation={computation} upsertEntry={upsertEntry} />
       )}
-      {tab === "ledger" && <LedgerTab round={round} computation={computation} />}
+      {tab === "card" && <CardTab round={round} computation={computation} />}
+      {tab === "setup" && <SetupTab round={round} updateRound={updateRound} />}
     </div>
   );
 }

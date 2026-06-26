@@ -386,14 +386,6 @@ export function SetupTab({
               className={numberInput}
             />
           </Field>
-          <Field label="Blind wolf enabled">
-            <input
-              type="checkbox"
-              checked={settings.blindEnabled}
-              onChange={(e) => setSetting("blindEnabled", e.target.checked)}
-              className="h-6 w-6 accent-[#354CA1]"
-            />
-          </Field>
           <Field label="Carryover ties">
             <input
               type="checkbox"

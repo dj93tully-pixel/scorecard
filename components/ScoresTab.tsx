@@ -1,58 +1,17 @@
 // components/ScoresTab.tsx
 // First-class scoring view: a vertical stack of hole boxes. Each box lets you
 // pick the wolf + their choice (partner / lone / blind) and enter each player's
-// gross score on styled player rows. Entered scores render with golf circle/
-// square notation (rings = strokes from par). Presentation only — no money math.
+// gross score on compact player rows with plain number inputs. The golf
+// circle/square notation lives on the scorecard (Card tab), not here.
 
 "use client";
 
-import { CSSProperties } from "react";
 import {
   Round,
   RoundComputation,
   HoleEntry,
   defaultWolfForHole,
 } from "@/lib/wolf";
-
-// ── Score shape: concentric rings via layered box-shadow ───────────────────
-// rel = gross - par. Under par → circles, over par → squares, par → plain.
-// Monochrome outlines; gaps in page-bg so rings read as separate outlines.
-function shapeStyle(rel: number | null): CSSProperties {
-  if (rel === null || rel === 0) return {};
-  const n = Math.min(Math.abs(rel), 4);
-  const D = "#16181D";
-  const G = "#F4F5F7";
-  const layers: Array<[number, string]> =
-    n === 1
-      ? [[1.2, D]]
-      : n === 2
-        ? [
-            [1.2, D],
-            [2.6, G],
-            [3.8, D],
-          ]
-        : n === 3
-          ? [
-              [1.2, D],
-              [2.6, G],
-              [3.8, D],
-              [5.2, G],
-              [6.4, D],
-            ]
-          : [
-              [1.2, D],
-              [2.6, G],
-              [3.8, D],
-              [5.2, G],
-              [6.4, D],
-              [7.8, G],
-              [9, D],
-            ];
-  return {
-    boxShadow: layers.map(([w, c]) => `0 0 0 ${w}px ${c}`).join(", "),
-    borderRadius: rel < 0 ? "50%" : "3px",
-  };
-}
 
 function Chip({
   active,
@@ -90,7 +49,7 @@ function HoleBox({
   hole: number;
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
-  const { players, teeOrder, settings, course } = round;
+  const { players, teeOrder, course } = round;
   const courseHole = course.holes.find((h) => h.number === hole);
   const par = courseHole?.par ?? null;
   const existing = round.entries.find((e) => e.hole === hole);
@@ -164,94 +123,73 @@ function HoleBox({
           >
             Lone
           </Chip>
-          {settings.blindEnabled && (
-            <Chip
-              active={mode === "blind"}
-              color="alert"
-              onClick={() => commit({ mode: "blind", partnerId: undefined })}
-            >
-              Blind
-            </Chip>
-          )}
+          <Chip
+            active={mode === "blind"}
+            color="alert"
+            onClick={() => commit({ mode: "blind", partnerId: undefined })}
+          >
+            Blind
+          </Chip>
         </div>
       </div>
 
-      {/* Player rows */}
-      <div className="space-y-1.5">
+      {/* Player rows (compact, single line) */}
+      <div className="space-y-1">
         {players.map((p) => {
           const isWolf = p.id === wolfId;
           const isPartner = p.id === partnerId && mode === "2v2";
           const onTeamA = isWolf || isPartner;
           const myPops = computation.pops[p.id]?.[hole] ?? 0;
-          const teePos = teeOrder.indexOf(p.id) + 1;
           const score = grossScores[p.id];
-          const hasScore = typeof score === "number";
-          const rel = hasScore && par !== null ? score - par : null;
 
           return (
             <div
               key={p.id}
-              className={`flex items-center justify-between gap-2 overflow-visible rounded-lg border-l-4 py-2.5 pl-2 pr-1 ${
+              className={`flex items-center justify-between gap-2 rounded-lg border-l-4 py-1 pl-2 pr-1 ${
                 isWolf ? "border-alert" : "border-transparent"
               } ${onTeamA ? "bg-row-tint" : "bg-transparent"}`}
             >
               {/* Left: identity */}
-              <div className="flex min-w-0 flex-1 flex-col">
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate font-medium text-text-primary">
-                    {p.name || "Unnamed"}
-                  </span>
-                  {/* pops dots (handicap stroke on this hole) */}
-                  {myPops > 0 && (
-                    <span className="inline-flex shrink-0 gap-0.5">
-                      {Array.from({ length: myPops }).map((_, i) => (
-                        <span
-                          key={i}
-                          className="h-[5px] w-[5px] rounded-full bg-primary"
-                        />
-                      ))}
-                    </span>
-                  )}
-                  {isWolf && (
-                    <span className="shrink-0 rounded-full bg-alert px-1.5 py-0.5 text-[10px] font-bold leading-none text-on-dark">
-                      WOLF
-                    </span>
-                  )}
-                  {isPartner && (
-                    <span className="shrink-0 rounded-full border border-primary/40 bg-white px-1.5 py-0.5 text-[10px] font-bold leading-none text-accent-on-light">
-                      PARTNER
-                    </span>
-                  )}
-                </div>
-                <span className="text-[12px] text-[#8A9099]">
-                  Tee {teePos}
-                  {hasScore && par !== null ? ` · net ${score - myPops}` : ""}
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                <span className="truncate font-medium text-text-primary">
+                  {p.name || "Unnamed"}
                 </span>
+                {/* pops dots (handicap stroke on this hole) */}
+                {myPops > 0 && (
+                  <span className="inline-flex shrink-0 gap-0.5">
+                    {Array.from({ length: myPops }).map((_, i) => (
+                      <span key={i} className="h-[5px] w-[5px] rounded-full bg-primary" />
+                    ))}
+                  </span>
+                )}
+                {isWolf && (
+                  <span className="shrink-0 rounded-full bg-alert px-1.5 py-0.5 text-[10px] font-bold leading-none text-on-dark">
+                    WOLF
+                  </span>
+                )}
+                {isPartner && (
+                  <span className="shrink-0 rounded-full border border-primary/40 bg-white px-1.5 py-0.5 text-[10px] font-bold leading-none text-accent-on-light">
+                    PARTNER
+                  </span>
+                )}
               </div>
 
-              {/* Right: score input with circle/square notation */}
-              <div className="flex shrink-0 items-center justify-center px-3 py-1">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={score ?? ""}
-                  placeholder={par !== null ? String(par) : ""}
-                  onFocus={(e) => e.currentTarget.select()}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    const next = { ...grossScores };
-                    if (v === "") delete next[p.id];
-                    else next[p.id] = Math.max(1, parseInt(v) || 1);
-                    commit({ grossScores: next });
-                  }}
-                  style={shapeStyle(rel)}
-                  className={`h-11 w-11 bg-card-bg text-center text-xl font-bold tabular-nums outline-none focus:outline-2 focus:outline-primary ${
-                    rel === null || rel === 0
-                      ? "rounded-lg border border-card-border"
-                      : "border-0"
-                  }`}
-                />
-              </div>
+              {/* Right: plain score input */}
+              <input
+                type="number"
+                inputMode="numeric"
+                value={score ?? ""}
+                placeholder={par !== null ? String(par) : ""}
+                onFocus={(e) => e.currentTarget.select()}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const next = { ...grossScores };
+                  if (v === "") delete next[p.id];
+                  else next[p.id] = Math.max(1, parseInt(v) || 1);
+                  commit({ grossScores: next });
+                }}
+                className="h-9 w-12 shrink-0 rounded-lg border border-card-border bg-card-bg text-center text-lg font-bold tabular-nums outline-none focus:border-primary"
+              />
             </div>
           );
         })}
