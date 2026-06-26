@@ -89,7 +89,7 @@ function BigNine({
       : holes.reduce((s, h) => s + moneyOf(pid, h), 0);
 
   return (
-    <div className="overflow-x-auto rounded-xl border-y border-card-border bg-surface-2">
+    <div className="overflow-x-auto border-y border-card-border bg-surface-2">
       <table className="w-full border-collapse text-center">
         <thead>
           <tr className="text-[10px] font-semibold text-text-muted">
@@ -143,6 +143,9 @@ function BigNine({
                             rel={g - (parByHole.get(h) ?? g)}
                             pops={popsOf(p.id, h)}
                           />
+                        ) : popsOf(p.id, h) > 0 ? (
+                          // Future hole where this player gets a pop.
+                          <span style={{ color: PRIMARY, fontWeight: 700 }}>–</span>
                         ) : (
                           <span className="text-text-faint">–</span>
                         )}
@@ -262,6 +265,10 @@ function PlayerNine({
             const g = grossOf(n);
             return typeof g === "number" ? (
               <StrokeCell key={n} gross={g} rel={g - (parByHole.get(n) ?? g)} pops={popsOf(n)} />
+            ) : popsOf(n) > 0 ? (
+              <span key={n} style={{ fontSize: "11px", color: PRIMARY, fontWeight: 700 }}>
+                –
+              </span>
             ) : (
               <span key={n} style={{ fontSize: "11px", color: INK, opacity: 0.35 }}>
                 –
