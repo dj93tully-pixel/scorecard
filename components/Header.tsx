@@ -58,11 +58,27 @@ export function Header() {
   const router = useRouter();
   const { config } = useHeader();
   const ticker = config.ticker;
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Expose the live header height so in-page tab bars can stick right below it.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const apply = () =>
+      document.documentElement.style.setProperty("--header-h", `${el.offsetHeight}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   return (
-    <header className="safe-top sticky top-0 z-30 bg-header-bg text-on-dark">
-      <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
-        <WolfLogo className="h-8 w-8 shrink-0 text-accent-on-dark" />
+    <header
+      ref={headerRef}
+      className="safe-top sticky top-0 z-30 bg-header-bg text-on-dark"
+    >
+      <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-2">
+        <WolfLogo className="h-7 w-7 shrink-0 text-accent-on-dark" />
         <div className="min-w-0 flex-1 leading-tight">
           <h1 className="text-lg font-bold uppercase tracking-[0.18em]">WOLF</h1>
           {config.title ? (
@@ -98,7 +114,7 @@ export function Header() {
       {/* Live ticker strip */}
       {ticker && (
         <div className="bg-ticker-bg">
-          <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-1.5">
+          <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-1">
             <span
               className={`h-[6px] w-[6px] shrink-0 rounded-full ${
                 ticker.live ? "bg-alert ring-pulse" : "bg-text-muted"

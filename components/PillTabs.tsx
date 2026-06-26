@@ -47,7 +47,7 @@ export function PillTabs({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={`mx-auto flex w-full max-w-[480px] gap-[2px] rounded-full bg-divider p-[5px] ${className}`}
+      className={`mx-auto flex w-full max-w-[480px] gap-[2px] rounded-full bg-divider p-[3px] ${className}`}
     >
       {tabs.map((t, i) => {
         const isActive = t.id === activeId;
@@ -65,7 +65,7 @@ export function PillTabs({
             style={{
               boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.12)" : undefined,
             }}
-            className={`relative flex-1 rounded-full py-[9px] text-[15px] font-medium transition-all duration-150 ${
+            className={`relative flex-1 rounded-full py-[6px] text-[14px] font-medium transition-all duration-150 ${
               isActive
                 ? "bg-white text-accent-on-light"
                 : "bg-transparent text-text-faint"

@@ -71,7 +71,10 @@ export default function GamePage() {
 
   return (
     <div>
-      <div className="mb-4 pt-3">
+      <div
+        className="sticky z-20 -mx-3 mb-4 bg-page-bg px-3 pb-2 pt-2"
+        style={{ top: "var(--header-h, 88px)" }}
+      >
         <PillTabs
           tabs={TABS}
           activeId={tab}

@@ -157,7 +157,7 @@ function HoleBox({
               color="alert"
               onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
             >
-              <Hammer className="mr-1 inline h-3.5 w-3.5" />2×
+              <Hammer className="mr-1 inline h-3.5 w-3.5" />1×
             </Chip>
             <Chip
               active={hammer === 2}
@@ -165,7 +165,7 @@ function HoleBox({
               onClick={() => commit({ hammer: hammer === 2 ? 0 : 2 })}
             >
               <Hammer className="mr-0.5 inline h-3.5 w-3.5" />
-              <Hammer className="mr-1 inline h-3.5 w-3.5" />4×
+              <Hammer className="mr-1 inline h-3.5 w-3.5" />2×
             </Chip>
           </div>
         </div>
@@ -269,7 +269,7 @@ function HoleBox({
         <div className="mt-2 flex items-center justify-end gap-2 text-sm">
           {hammer > 0 && (
             <span className="text-xs font-bold uppercase tracking-wide text-alert">
-              {hammer === 2 ? "4×" : "2×"} hammer
+              {hammer === 2 ? "double hammer" : "hammer"}
             </span>
           )}
           {forfeit && (
