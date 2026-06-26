@@ -5,6 +5,7 @@
 "use client";
 
 import { useState } from "react";
+import { Pencil, Search } from "lucide-react";
 import { Round, Course, HandicapMode } from "@/lib/wolf";
 import {
   makePlayer,
@@ -37,12 +38,14 @@ export function SetupTab({
   updateRound: (patch: Partial<Round> | ((r: Round) => Round)) => void;
 }) {
   const [showImport, setShowImport] = useState(false);
-  const [showCourse, setShowCourse] = useState(false);
+  const [courseOpen, setCourseOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
   const { players, settings, teeOrder, course } = round;
   const siIssues = strokeIndexIssues(course);
   const isDirect = settings.handicapMode === "direct";
+  // "New Course" is the blank default — treat anything else as a real course.
+  const hasCourse = course.name.trim() !== "" && course.name !== "New Course";
 
   // Select the contents of a number field on focus so typing replaces the
   // existing digit instead of appending to it (e.g. 1 → 3, not 13).
@@ -62,7 +65,7 @@ export function SetupTab({
   function importCourse(c: Course) {
     updateRound((r) => ({ ...r, course: c }));
     setShowImport(false);
-    setShowCourse(true);
+    setCourseOpen(false); // collapse back to the course badge
     const par = c.holes.reduce((s, h) => s + h.par, 0);
     setFlash(`Imported “${c.name}” — ${c.holes.length} holes, par ${par}`);
   }
@@ -133,13 +136,16 @@ export function SetupTab({
       <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <div className="mb-2 flex items-center justify-between">
           <h3 className="font-bold">Course</h3>
-          <div className="flex gap-3 text-sm font-semibold text-accent-on-light">
-            <button onClick={() => setShowImport((v) => !v)}>Import</button>
-            <button onClick={() => setShowCourse((v) => !v)}>
-              {showCourse ? "Hide" : "Edit"}
+          {courseOpen && (
+            <button
+              onClick={() => setCourseOpen(false)}
+              className="text-sm font-semibold text-accent-on-light"
+            >
+              Done
             </button>
-          </div>
+          )}
         </div>
+
         {flash && (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-pill-bg px-3 py-2 text-sm font-semibold text-pill-text">
             <span>✓ {flash}</span>
@@ -152,80 +158,102 @@ export function SetupTab({
             </button>
           </div>
         )}
-        <input
-          value={course.name}
-          onChange={(e) =>
-            updateRound((r) => ({ ...r, course: { ...r.course, name: e.target.value } }))
-          }
-          placeholder="Course name"
-          className="mb-1 w-full rounded-lg border border-card-border px-3 py-2"
-        />
-        <div className="flex items-center justify-between text-xs text-text-muted">
-          <span>Par {coursePar(course)}</span>
-          {siIssues.length > 0 ? (
-            <span className="text-negative">
-              Stroke index: {siIssues.slice(0, 3).join(", ")}
-              {siIssues.length > 3 ? "…" : ""}
-            </span>
-          ) : (
-            <span className="text-positive">Stroke index 1–18 ✓</span>
-          )}
-        </div>
 
-        {showImport && (
-          <div className="mt-3">
-            <CourseImport onImport={importCourse} onClose={() => setShowImport(false)} />
-          </div>
-        )}
-
-        {showCourse && (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-center text-sm">
-              <thead>
-                <tr className="text-xs text-text-muted">
-                  <th className="px-1 py-1 text-left">Hole</th>
-                  <th className="px-1 py-1">Par</th>
-                  <th className="px-1 py-1">Hcp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {course.holes.map((h) => (
-                  <tr key={h.number} className="border-t border-divider">
-                    <td className="px-1 py-1 text-left font-semibold">{h.number}</td>
-                    <td className="px-1 py-1">
-                      <input
-                        type="number"
-                        value={h.par}
-                        onFocus={selectOnFocus}
-                        onChange={(e) =>
-                          setHole(h.number, { par: parseInt(e.target.value) || 0 })
-                        }
-                        className="w-14 rounded border border-card-border px-1 py-1 text-center"
-                      />
-                    </td>
-                    <td className="px-1 py-1">
-                      <input
-                        type="number"
-                        min={1}
-                        max={18}
-                        value={h.strokeIndex}
-                        onFocus={selectOnFocus}
-                        onChange={(e) =>
-                          setHole(h.number, { strokeIndex: parseInt(e.target.value) || 0 })
-                        }
-                        className="w-14 rounded border border-card-border px-1 py-1 text-center"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {!courseOpen ? (
+          // Clickable course badge — opens the editor to import or hand-edit.
+          <button
+            onClick={() => setCourseOpen(true)}
+            className="flex w-full items-center justify-between gap-2 rounded-lg border border-card-border bg-surface-2 px-3 py-3 text-left"
+          >
+            {hasCourse ? (
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">{course.name}</span>
+                <span className="mt-0.5 block text-xs text-text-muted">
+                  Par {coursePar(course)} · 18 holes
+                  {siIssues.length === 0 ? " · SI ✓" : " · SI needs fixing"}
+                </span>
+              </span>
+            ) : (
+              <span className="font-semibold text-accent-on-light">
+                + Import or set up a course
+              </span>
+            )}
+            <Pencil className="h-4 w-4 shrink-0 text-text-muted" />
+          </button>
+        ) : (
+          <div className="space-y-3">
             <button
-              onClick={resetCourse}
-              className="mt-2 text-xs font-semibold text-negative"
+              onClick={() => setShowImport((v) => !v)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2.5 font-semibold text-on-dark"
             >
-              Reset course
+              <Search className="h-4 w-4" />
+              {showImport ? "Close search" : "Import course"}
             </button>
+
+            {showImport && (
+              <CourseImport onImport={importCourse} onClose={() => setShowImport(false)} />
+            )}
+
+            <div className="flex items-center justify-between text-xs text-text-muted">
+              <span className="truncate">{course.name}</span>
+              {siIssues.length > 0 ? (
+                <span className="shrink-0 text-negative">
+                  SI: {siIssues.slice(0, 2).join(", ")}
+                  {siIssues.length > 2 ? "…" : ""}
+                </span>
+              ) : (
+                <span className="shrink-0 text-positive">SI 1–18 ✓</span>
+              )}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-center text-sm">
+                <thead>
+                  <tr className="text-xs text-text-muted">
+                    <th className="px-1 py-1 text-left">Hole</th>
+                    <th className="px-1 py-1">Par</th>
+                    <th className="px-1 py-1">Hcp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {course.holes.map((h) => (
+                    <tr key={h.number} className="border-t border-divider">
+                      <td className="px-1 py-1 text-left font-semibold">{h.number}</td>
+                      <td className="px-1 py-1">
+                        <input
+                          type="number"
+                          value={h.par}
+                          onFocus={selectOnFocus}
+                          onChange={(e) =>
+                            setHole(h.number, { par: parseInt(e.target.value) || 0 })
+                          }
+                          className="w-14 rounded border border-card-border px-1 py-1 text-center"
+                        />
+                      </td>
+                      <td className="px-1 py-1">
+                        <input
+                          type="number"
+                          min={1}
+                          max={18}
+                          value={h.strokeIndex}
+                          onFocus={selectOnFocus}
+                          onChange={(e) =>
+                            setHole(h.number, { strokeIndex: parseInt(e.target.value) || 0 })
+                          }
+                          className="w-14 rounded border border-card-border px-1 py-1 text-center"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <button
+                onClick={resetCourse}
+                className="mt-2 text-xs font-semibold text-negative"
+              >
+                Reset course
+              </button>
+            </div>
           </div>
         )}
       </section>
