@@ -72,7 +72,12 @@ export async function GET(
     const course = data.course ?? data;
     const clubName: string = course.club_name ?? "";
     const courseName: string = course.course_name ?? "";
-    const displayName = [clubName, courseName].filter(Boolean).join(" — ") || "Imported Course";
+    // Join club + course, but avoid "X — X" when the API repeats the same name.
+    const nameParts = [clubName, courseName].filter(Boolean);
+    const displayName =
+      (clubName && courseName && clubName === courseName
+        ? clubName
+        : nameParts.join(" — ")) || "Imported Course";
 
     // Tees may live under course.tees.male / .female / a flat array.
     const teeGroups: RawTee[] = [];
