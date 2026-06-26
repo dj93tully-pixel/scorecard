@@ -39,31 +39,23 @@ function ringStyle(rel: number): CSSProperties {
   return { boxShadow: layers.join(", "), borderRadius: rel < 0 ? "50%" : "3px" };
 }
 
+// A pop on the hole is shown by coloring the score blue (same as the old dot).
 function StrokeCell({ gross, rel, pops }: { gross: number; rel: number; pops: number }) {
   return (
-    <span style={{ position: "relative", display: "inline-flex" }}>
-      <span
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "17px",
-          height: "17px",
-          fontSize: "11px",
-          fontWeight: 600,
-          color: INK,
-          ...ringStyle(rel),
-        }}
-      >
-        {gross}
-      </span>
-      {pops > 0 && (
-        <span style={{ position: "absolute", top: "-1px", right: "-2px", display: "inline-flex", gap: "1px" }}>
-          {Array.from({ length: pops }).map((_, i) => (
-            <span key={i} style={{ width: "3px", height: "3px", borderRadius: "9999px", background: PRIMARY }} />
-          ))}
-        </span>
-      )}
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "17px",
+        height: "17px",
+        fontSize: "11px",
+        fontWeight: 600,
+        color: pops > 0 ? PRIMARY : INK,
+        ...ringStyle(rel),
+      }}
+    >
+      {gross}
     </span>
   );
 }
@@ -84,6 +76,7 @@ function BigNine({
 }) {
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
+  const siByHole = new Map(round.course.holes.map((h) => [h.number, h.strokeIndex]));
   const resultByHole = new Map(computation.results.map((r) => [r.hole, r]));
   const grossOf = (pid: string, h: number) => entryByHole.get(h)?.grossScores[pid];
   const popsOf = (pid: string, h: number) => computation.pops[pid]?.[h] ?? 0;
@@ -96,7 +89,7 @@ function BigNine({
       : holes.reduce((s, h) => s + moneyOf(pid, h), 0);
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-card-border bg-surface-2">
+    <div className="overflow-x-auto rounded-xl border-y border-card-border bg-surface-2">
       <table className="w-full border-collapse text-center">
         <thead>
           <tr className="text-[10px] font-semibold text-text-muted">
@@ -109,15 +102,26 @@ function BigNine({
             <th className="px-1.5 py-1.5">{totalLabel}</th>
           </tr>
           {mode === "scores" && (
-            <tr className="text-[9px] text-text-faint" style={{ background: HAIRLINE }}>
-              <td className="sticky left-0 z-10 bg-surface-2 px-2 py-0.5 text-left">Par</td>
-              {holes.map((h) => (
-                <td key={h} className="px-1.5 py-0.5">
-                  {parByHole.get(h)}
-                </td>
-              ))}
-              <td className="px-1.5 py-0.5">{parTotal}</td>
-            </tr>
+            <>
+              <tr className="text-[9px] text-text-faint" style={{ background: HAIRLINE }}>
+                <td className="sticky left-0 z-10 bg-surface-2 px-2 py-0.5 text-left">Par</td>
+                {holes.map((h) => (
+                  <td key={h} className="px-1.5 py-0.5">
+                    {parByHole.get(h)}
+                  </td>
+                ))}
+                <td className="px-1.5 py-0.5">{parTotal}</td>
+              </tr>
+              <tr className="text-[9px] text-text-faint">
+                <td className="sticky left-0 z-10 bg-surface-2 px-2 py-0.5 text-left">Hcp</td>
+                {holes.map((h) => (
+                  <td key={h} className="px-1.5 py-0.5">
+                    {siByHole.get(h)}
+                  </td>
+                ))}
+                <td className="px-1.5 py-0.5" />
+              </tr>
+            </>
           )}
         </thead>
         <tbody>

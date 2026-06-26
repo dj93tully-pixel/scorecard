@@ -16,7 +16,7 @@ export function Header() {
   const ticker = config.ticker;
 
   return (
-    <header className="safe-top bg-header-bg text-on-dark">
+    <header className="safe-top sticky top-0 z-30 bg-header-bg text-on-dark">
       <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
         <WolfLogo className="h-8 w-8 shrink-0 text-accent-on-dark" />
         <div className="min-w-0 flex-1 leading-tight">

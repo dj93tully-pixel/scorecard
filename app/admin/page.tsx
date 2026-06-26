@@ -122,7 +122,7 @@ export default function AdminPage() {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 -mx-3 mb-4 bg-page-bg px-3 py-3">
+      <div className="mb-4 pt-3">
         <PillTabs
           tabs={TABS}
           activeId={tab}
