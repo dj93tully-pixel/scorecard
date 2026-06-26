@@ -133,6 +133,40 @@ describe("pops — full mode", () => {
   });
 });
 
+// ── Pops: direct mode ──────────────────────────────────────────────────────
+
+describe("pops — direct mode", () => {
+  it("uses each player's pops value verbatim, ignoring handicaps", () => {
+    const players: Player[] = [
+      { id: "a", name: "A", handicap: 99, pops: 0 },
+      { id: "b", name: "B", handicap: 0, pops: 6 },
+    ];
+    const r = strokesReceived(players, "direct");
+    expect(r.a).toBe(0);
+    expect(r.b).toBe(6);
+  });
+
+  it("spreads direct pops across holes by stroke index, with double pops > 18", () => {
+    const players: Player[] = [
+      { id: "a", name: "A", handicap: 0, pops: 0 },
+      { id: "b", name: "B", handicap: 0, pops: 20 },
+    ];
+    const grid = computePops(players, makeCourse(), "direct");
+    expect(grid.a[1]).toBe(0);
+    // 20 pops → 1 everywhere, +1 on SI 1..2
+    expect(grid.b[1]).toBe(2);
+    expect(grid.b[2]).toBe(2);
+    expect(grid.b[3]).toBe(1);
+    expect(grid.b[18]).toBe(1);
+  });
+
+  it("treats a missing pops value as 0", () => {
+    const players: Player[] = [{ id: "a", name: "A", handicap: 12 }];
+    const r = strokesReceived(players, "direct");
+    expect(r.a).toBe(0);
+  });
+});
+
 // ── Money: 2v2 ─────────────────────────────────────────────────────────────
 
 describe("money — 2v2", () => {

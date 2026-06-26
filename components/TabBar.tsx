@@ -1,13 +1,13 @@
 // components/TabBar.tsx
 // Thumb-reachable bottom navigation. Big tap targets for one-handed use.
+// Order: Scores (input) · Overview (card + ledger) · Setup.
 
-export type TabKey = "setup" | "play" | "card" | "ledger";
+export type TabKey = "scores" | "overview" | "setup";
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
+  { key: "scores", label: "Scores", icon: "🐺" },
+  { key: "overview", label: "Overview", icon: "▦" },
   { key: "setup", label: "Setup", icon: "⚙" },
-  { key: "play", label: "Play", icon: "🐺" },
-  { key: "card", label: "Card", icon: "▦" },
-  { key: "ledger", label: "Ledger", icon: "$" },
 ];
 
 export function TabBar({
@@ -29,18 +29,12 @@ export function TabBar({
               className="flex flex-1 flex-col items-center gap-0.5 py-3"
               aria-current={isActive ? "page" : undefined}
             >
-              <span
-                className={`text-lg leading-none ${
-                  isActive ? "" : "opacity-60"
-                }`}
-              >
+              <span className={`text-lg leading-none ${isActive ? "" : "opacity-60"}`}>
                 {t.icon}
               </span>
               <span
                 className={`text-[11px] font-semibold ${
-                  isActive
-                    ? "text-accent-on-light"
-                    : "text-text-muted"
+                  isActive ? "text-accent-on-light" : "text-text-muted"
                 }`}
               >
                 {t.label}

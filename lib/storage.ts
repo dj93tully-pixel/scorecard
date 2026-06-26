@@ -31,7 +31,7 @@ export function blankCourse(name = "New Course"): Course {
 }
 
 export function makePlayer(name = "", handicap = 0): Player {
-  return { id: uid(), name, handicap };
+  return { id: uid(), name, handicap, pops: 0 };
 }
 
 export function defaultPlayers(): Player[] {

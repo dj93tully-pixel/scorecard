@@ -4,19 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import { Round, HoleEntry, computeRound } from "@/lib/wolf";
 import { loadRound, saveRound, newRound } from "@/lib/storage";
 import { SetupTab } from "@/components/SetupTab";
-import { PlayTab } from "@/components/PlayTab";
-import { ScorecardTab } from "@/components/ScorecardTab";
-import { LedgerTab } from "@/components/LedgerTab";
+import { ScoresTab } from "@/components/ScoresTab";
+import { OverviewTab } from "@/components/OverviewTab";
 import { TabBar, TabKey } from "@/components/TabBar";
 
 export default function Home() {
   const [round, setRound] = useState<Round | null>(null);
-  const [tab, setTab] = useState<TabKey>("setup");
-  const [hole, setHole] = useState(1);
+  const [tab, setTab] = useState<TabKey>("scores");
 
   // Hydrate from localStorage on mount.
   useEffect(() => {
-    setRound(loadRound() ?? newRound());
+    const existing = loadRound();
+    setRound(existing ?? newRound());
+    // Brand-new rounds (nothing saved yet) start on Setup.
+    if (!existing) setTab("setup");
   }, []);
 
   // Persist on every change.
@@ -30,9 +31,7 @@ export default function Home() {
   );
 
   if (!round || !computation) {
-    return (
-      <div className="py-20 text-center text-text-muted">Loading…</div>
-    );
+    return <div className="py-20 text-center text-text-muted">Loading…</div>;
   }
 
   function updateRound(patch: Partial<Round> | ((r: Round) => Round)) {
@@ -57,24 +56,13 @@ export default function Home() {
 
   return (
     <div>
-      {tab === "setup" && (
-        <SetupTab round={round} updateRound={updateRound} />
+      {tab === "scores" && (
+        <ScoresTab round={round} computation={computation} upsertEntry={upsertEntry} />
       )}
-      {tab === "play" && (
-        <PlayTab
-          round={round}
-          computation={computation}
-          hole={hole}
-          setHole={setHole}
-          upsertEntry={upsertEntry}
-        />
+      {tab === "overview" && (
+        <OverviewTab round={round} computation={computation} />
       )}
-      {tab === "card" && (
-        <ScorecardTab round={round} computation={computation} />
-      )}
-      {tab === "ledger" && (
-        <LedgerTab round={round} computation={computation} />
-      )}
+      {tab === "setup" && <SetupTab round={round} updateRound={updateRound} />}
 
       <TabBar active={tab} onChange={setTab} />
     </div>

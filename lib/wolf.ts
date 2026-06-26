@@ -24,10 +24,13 @@ export interface Course {
 export interface Player {
   id: PlayerId;
   name: string;
-  handicap: number; // integer
+  handicap: number; // integer; used when handicapMode is offLow/full
+  pops?: number; // direct strokes received; used when handicapMode is "direct"
 }
 
-export type HandicapMode = "offLow" | "full";
+// "offLow"/"full" derive pops from handicaps; "direct" uses each player's `pops`
+// value verbatim (still spread across holes by stroke index).
+export type HandicapMode = "offLow" | "full" | "direct";
 
 export interface RoundSettings {
   stake: number; // $ per hole
@@ -80,6 +83,11 @@ export function strokesReceived(
 ): Record<PlayerId, number> {
   const out: Record<PlayerId, number> = {};
   if (players.length === 0) return out;
+  if (mode === "direct") {
+    // Pops entered directly per player; ignore handicaps entirely.
+    for (const p of players) out[p.id] = Math.max(0, Math.floor(p.pops ?? 0));
+    return out;
+  }
   const low = Math.min(...players.map((p) => p.handicap));
   for (const p of players) {
     out[p.id] = mode === "full" ? Math.max(0, p.handicap) : Math.max(0, p.handicap - low);
