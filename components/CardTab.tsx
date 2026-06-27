@@ -8,8 +8,7 @@
 import { CSSProperties, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Round, RoundComputation, Player } from "@/lib/wolf";
-import { coursePar, formatMoney } from "@/lib/storage";
-import { ScoreBadge } from "./ScoreBadge";
+import { coursePar, formatMoney, formatToPar } from "@/lib/storage";
 
 const INK = "#16181D";
 const MUTED = "#8A90A0";
@@ -40,21 +39,26 @@ function ringStyle(rel: number): CSSProperties {
 }
 
 // A pop on the hole is shown by coloring the score blue (same as the old dot).
+// Worse than +3 → one solid black square with white text (instead of 4+ rings).
 function StrokeCell({ gross, rel, pops }: { gross: number; rel: number; pops: number }) {
+  const base = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "17px",
+    height: "17px",
+    fontSize: "11px",
+    fontWeight: 600,
+  } as const;
+  if (rel > 3) {
+    return (
+      <span style={{ ...base, color: "#FFFFFF", background: INK, borderRadius: "3px" }}>
+        {gross}
+      </span>
+    );
+  }
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "17px",
-        height: "17px",
-        fontSize: "11px",
-        fontWeight: 600,
-        color: pops > 0 ? PRIMARY : INK,
-        ...ringStyle(rel),
-      }}
-    >
+    <span style={{ ...base, color: pops > 0 ? PRIMARY : INK, ...ringStyle(rel) }}>
       {gross}
     </span>
   );
@@ -67,12 +71,14 @@ function BigNine({
   holes,
   title,
   mode,
+  net = false,
 }: {
   round: Round;
   computation: RoundComputation;
   holes: number[];
   title: string;
   mode: "scores" | "money";
+  net?: boolean; // scores mode: show net (gross − pops) instead of gross
 }) {
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
@@ -84,9 +90,13 @@ function BigNine({
   const totalLabel = title === "Front" ? "OUT" : "IN";
   const parTotal = holes.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
   const playerTotal = (pid: string) =>
-    mode === "scores"
-      ? holes.reduce((s, h) => s + (grossOf(pid, h) ?? 0), 0)
-      : holes.reduce((s, h) => s + moneyOf(pid, h), 0);
+    mode === "money"
+      ? holes.reduce((s, h) => s + moneyOf(pid, h), 0)
+      : holes.reduce((s, h) => {
+          const g = grossOf(pid, h);
+          if (typeof g !== "number") return s;
+          return s + (net ? g - popsOf(pid, h) : g);
+        }, 0);
 
   return (
     <div className="overflow-x-auto border-y border-card-border bg-surface-2">
@@ -135,15 +145,18 @@ function BigNine({
                 {holes.map((h) => {
                   if (mode === "scores") {
                     const g = grossOf(p.id, h);
+                    const pops = popsOf(p.id, h);
+                    const par = parByHole.get(h) ?? 0;
+                    const num = typeof g === "number" ? (net ? g - pops : g) : null;
                     return (
                       <td key={h} className="px-1.5 py-2">
-                        {typeof g === "number" ? (
+                        {num !== null ? (
                           <StrokeCell
-                            gross={g}
-                            rel={g - (parByHole.get(h) ?? g)}
-                            pops={popsOf(p.id, h)}
+                            gross={num}
+                            rel={num - par}
+                            pops={net ? 0 : pops}
                           />
-                        ) : popsOf(p.id, h) > 0 ? (
+                        ) : pops > 0 ? (
                           // Future hole where this player gets a pop.
                           <span style={{ color: PRIMARY, fontWeight: 700 }}>–</span>
                         ) : (
@@ -352,7 +365,9 @@ function LedgerCard({
         <span className="w-4 text-center font-serif text-base font-bold text-text-faint">{rankIndex + 1}</span>
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <span className="truncate font-semibold">{player.name || "Unnamed"}</span>
-          <ScoreBadge rel={toPar} size="sm" tone="blue" />
+          <span className="shrink-0 font-serif text-sm font-bold tabular-nums text-primary">
+            {toPar === null ? "–" : formatToPar(toPar)}
+          </span>
         </span>
         <span className={`font-serif text-lg font-extrabold tabular-nums ${moneyColor}`}>
           {formatMoney(money)}
@@ -407,6 +422,8 @@ export function CardTab({
 }) {
   const front = Array.from({ length: 9 }, (_, i) => i + 1);
   const back = Array.from({ length: 9 }, (_, i) => i + 10);
+  const [scoreView, setScoreView] = useState<"gross" | "net">("gross");
+  const net = scoreView === "net";
   const standings = [...round.players].sort(
     (a, b) => (computation.ledger[b.id] ?? 0) - (computation.ledger[a.id] ?? 0)
   );
@@ -443,14 +460,29 @@ export function CardTab({
 
       {/* Big all-players scorecard */}
       <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-bold">Scorecard</h2>
-          <span className="text-sm text-text-muted">
-            {round.course.name} · Par {coursePar(round.course)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-text-muted">Par {coursePar(round.course)}</span>
+            <div className="inline-flex overflow-hidden rounded-lg border border-card-border text-xs font-semibold">
+              {(["gross", "net"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setScoreView(v)}
+                  className={`px-2.5 py-1 capitalize ${
+                    v === "net" ? "border-l border-card-border" : ""
+                  } ${
+                    scoreView === v ? "bg-primary text-on-dark" : "bg-card-bg text-text-muted"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" />
-        <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" />
+        <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" net={net} />
+        <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" net={net} />
       </section>
     </div>
   );
