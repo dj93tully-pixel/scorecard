@@ -462,18 +462,14 @@ export function CardTab({
       <section className="space-y-3">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold">Scorecard</h2>
-          <div className="inline-flex rounded-full bg-divider p-[1.5px] font-semibold">
+          <div className="inline-flex rounded-full bg-divider p-[2px] text-[10px] font-medium">
             {(["gross", "net"] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setScoreView(v)}
-                style={
-                  scoreView === v
-                    ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" }
-                    : { background: "#1B2A52" }
-                }
-                className={`rounded-full px-1.5 py-[1px] text-[9px] capitalize transition ${
-                  scoreView === v ? "bg-white text-accent-on-light" : "text-on-dark"
+                style={scoreView === v ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
+                className={`rounded-full px-[9px] py-0.5 capitalize transition ${
+                  scoreView === v ? "bg-white text-accent-on-light" : "text-text-faint"
                 }`}
               >
                 {v}
