@@ -9,6 +9,7 @@ import { blankCourse, defaultPlayers } from "./storage";
 export interface GameSummary {
   id: string;
   name: string;
+  courseName: string;
   createdAt: string;
   completed: boolean;
   published: boolean;
@@ -72,12 +73,13 @@ function rowsToRound(game: GameRow, entries: EntryRow[]): Round {
 export async function listGames(): Promise<GameSummary[]> {
   const { data, error } = await supabase
     .from("games")
-    .select("id, name, created_at, completed, published")
+    .select("id, name, created_at, completed, published, courseName:course->>name")
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((g) => ({
     id: g.id,
     name: g.name,
+    courseName: (g.courseName as string) ?? "",
     createdAt: g.created_at,
     completed: Boolean(g.completed),
     published: Boolean(g.published),

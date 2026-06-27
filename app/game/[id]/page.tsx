@@ -34,7 +34,7 @@ export default function GamePage() {
   // Drive the global header: game name + back + ticker + Edit (→ admin).
   useEffect(() => {
     setHeader({
-      title: game?.name ?? "",
+      brandTitle: game?.name ?? "",
       backHref: "/",
       ticker,
       rightButton: {

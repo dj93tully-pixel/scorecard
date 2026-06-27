@@ -60,7 +60,7 @@ export default function Home() {
       >
         <button
           onClick={() => router.push(`/game/${g.id}`)}
-          className="flex w-full items-center justify-between gap-2 px-4 py-4 text-left"
+          className="flex w-full items-center justify-between gap-2 px-4 py-5 text-left"
         >
           <span className="min-w-0">
             <span className="flex items-center gap-2 font-semibold">
@@ -69,7 +69,12 @@ export default function Home() {
               )}
               <span className="truncate">{g.name}</span>
             </span>
-            <span className="mt-0.5 block text-xs text-text-muted">
+            {g.courseName && (
+              <span className="mt-1 block truncate text-sm text-text-muted">
+                {g.courseName}
+              </span>
+            )}
+            <span className="mt-0.5 block text-xs text-text-faint">
               {g.completed ? "Completed · " : ""}
               {new Date(g.createdAt).toLocaleDateString(undefined, {
                 month: "short",
