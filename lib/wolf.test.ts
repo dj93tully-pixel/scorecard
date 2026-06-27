@@ -290,6 +290,46 @@ describe("money — wolf-team stake (uneven teams)", () => {
     expect(ledger.e).toBe(2);
     expect(ledgerSum(ledger)).toBe(0);
   });
+
+  it("no partner selected: wolf plays each opponent head-to-head at the base stake", () => {
+    // 5 players, wolf alone, no partner. Stake $2 → wolf wins $2 from each of the
+    // 4 others: +8 to the wolf, -2 to each opponent (not the 2v2 pot-split).
+    const round = makeFiveRound(
+      {
+        hole: 1,
+        wolfId: "a",
+        mode: "2v2", // no partnerId → wolf is alone
+        grossScores: { a: 4, b: 5, c: 5, d: 5, e: 5 },
+      },
+      { stake: 2, wolfStake: 3 } // wolfStake is irrelevant when the wolf is alone
+    );
+    const { ledger } = computeRound(round);
+    expect(ledger.a).toBe(8);
+    expect(ledger.b).toBe(-2);
+    expect(ledger.c).toBe(-2);
+    expect(ledger.d).toBe(-2);
+    expect(ledger.e).toBe(-2);
+    expect(ledgerSum(ledger)).toBe(0);
+  });
+
+  it("no partner selected, wolf loses: symmetric -8 / +2 each", () => {
+    const round = makeFiveRound(
+      {
+        hole: 1,
+        wolfId: "a",
+        mode: "2v2",
+        grossScores: { a: 5, b: 4, c: 5, d: 5, e: 5 },
+      },
+      { stake: 2, wolfStake: 3 }
+    );
+    const { ledger } = computeRound(round);
+    expect(ledger.a).toBe(-8);
+    expect(ledger.b).toBe(2);
+    expect(ledger.c).toBe(2);
+    expect(ledger.d).toBe(2);
+    expect(ledger.e).toBe(2);
+    expect(ledgerSum(ledger)).toBe(0);
+  });
 });
 
 // ── Money: carryover ───────────────────────────────────────────────────────

@@ -201,12 +201,13 @@ function bestNet(team: PlayerId[], net: Record<PlayerId, number>): number | null
  * is what each wolf-team player risks (equal to fieldStake unless a separate
  * wolf-team stake is configured).
  *
- * - 2v2: the losing side pays its per-player risk; that pot is split evenly
- *   among the winners. For even 4-player teams with equal stakes this is
- *   exactly "each winner +stake, each loser -stake". With a higher wolfStake on
- *   uneven teams (e.g. 5 players) the totals balance (2×$3 vs 3×$2).
- * - lone/blind: the wolf plays EACH opponent for `mult * fieldStake`. With N
- *   players the wolf faces (N-1) opponents, so a winning wolf nets
+ * - 2v2 (with a partner): the losing side pays its per-player risk; that pot is
+ *   split evenly among the winners. For even 4-player teams with equal stakes
+ *   this is exactly "each winner +stake, each loser -stake". With a higher
+ *   wolfStake on uneven teams (e.g. 5 players) the totals balance (2×$3 vs 3×$2).
+ * - no partner / lone / blind: the wolf is alone and plays EACH opponent for
+ *   `mult * fieldStake` (no partner → 1×, lone → loneMult, blind → blindMult).
+ *   With N players the wolf faces (N-1) opponents, so a winning wolf nets
  *   +(N-1)*mult*fieldStake and each opponent loses mult*fieldStake.
  */
 function resolveDeltas(
@@ -222,7 +223,9 @@ function resolveDeltas(
   for (const id of [...teamA, ...teamB]) deltas[id] = 0;
   if (winner === "push") return deltas;
 
-  if (mode === "2v2") {
+  // Genuine 2v2 (wolf + a partner). A "2v2" hole with NO partner selected is the
+  // wolf alone vs the field and is settled head-to-head below, not pot-split.
+  if (mode === "2v2" && teamA.length >= 2) {
     // teamA is always the wolf team; teamB is the field.
     if (winner === "A") {
       // Wolf team wins: each field player pays fieldStake; split among wolf team.
@@ -240,8 +243,12 @@ function resolveDeltas(
     return deltas;
   }
 
-  // lone / blind: wolf vs the field, head-to-head against each opponent.
-  const mult = mode === "blind" ? settings.blindMult : settings.loneMult;
+  // Wolf alone vs the field, head-to-head against EACH opponent. The wolf wins
+  // (or loses) the per-opponent unit against all of them, so with N players the
+  // wolf swings ±(N-1)*unit and each opponent swings ∓unit. Multiplier:
+  //   no partner → 1×, lone → loneMult, blind → blindMult.
+  const mult =
+    mode === "blind" ? settings.blindMult : mode === "lone" ? settings.loneMult : 1;
   const unit = mult * fieldStake;
   const wolfId = teamA[0];
   const opponents = teamB;
