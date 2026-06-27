@@ -215,15 +215,20 @@ function HoleBox({
               <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 <span className="truncate font-medium text-text-primary">
                   {p.name || "Unnamed"}
+                  {/* pop badge — superscript "pop" per handicap stroke on this hole */}
+                  {myPops > 0 && (
+                    <sup className="ml-0.5 whitespace-nowrap">
+                      {Array.from({ length: myPops }).map((_, i) => (
+                        <span
+                          key={i}
+                          className="mr-0.5 rounded bg-primary px-1 py-[1px] text-[8px] font-bold leading-none text-on-dark"
+                        >
+                          pop
+                        </span>
+                      ))}
+                    </sup>
+                  )}
                 </span>
-                {/* pops dots (handicap stroke on this hole) */}
-                {myPops > 0 && (
-                  <span className="inline-flex shrink-0 gap-0.5">
-                    {Array.from({ length: myPops }).map((_, i) => (
-                      <span key={i} className="h-[5px] w-[5px] rounded-full bg-primary" />
-                    ))}
-                  </span>
-                )}
                 {isWolf && (
                   <span className="shrink-0 rounded-full bg-alert px-1.5 py-0.5 text-[10px] font-bold leading-none text-on-dark">
                     WOLF
