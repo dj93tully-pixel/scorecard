@@ -225,11 +225,7 @@ function HoleBox({
                   </span>
                 )}
                 {isWolf && <PawPrint className="h-4 w-4 shrink-0 text-alert" />}
-                {isPartner && (
-                  <span className="shrink-0 rounded-full border border-primary/40 bg-white px-1.5 py-0.5 text-[10px] font-bold leading-none text-accent-on-light">
-                    PARTNER
-                  </span>
-                )}
+                {isPartner && <Users className="h-4 w-4 shrink-0 text-primary" />}
                 {conceded && (
                   <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none text-text-faint">
                     conceded
