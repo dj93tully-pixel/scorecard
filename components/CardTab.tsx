@@ -246,7 +246,7 @@ function PlayerNine({
                 key={n}
                 style={
                   hasPop
-                    ? { fontSize: "8px", color: PRIMARY, fontWeight: 700 }
+                    ? { fontSize: "8px", color: PRIMARY, fontWeight: 900 }
                     : numStyle
                 }
               >
