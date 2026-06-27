@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Course } from "@/lib/wolf";
 
@@ -31,33 +31,32 @@ interface CourseDetail {
 
 export function CourseImport({ onImport }: { onImport: (course: Course) => void }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [apiResults, setApiResults] = useState<SearchResult[]>([]);
   const [detail, setDetail] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Live, debounced search as you type (no button needed).
+  // The API matches whole words only (and is rate-limited), so we hit it with
+  // just the FIRST word and re-fetch only when that word changes…
+  const apiQuery = query.trim().split(/\s+/)[0] ?? "";
   useEffect(() => {
-    const q = query.trim();
     setError(null);
-    if (q.length < 2) {
-      setResults([]);
+    if (apiQuery.length < 2) {
+      setApiResults([]);
       setLoading(false);
       return;
     }
     setLoading(true);
     const ctrl = new AbortController();
     const t = setTimeout(() => {
-      fetch(`/api/courses/search?q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
+      fetch(`/api/courses/search?q=${encodeURIComponent(apiQuery)}`, { signal: ctrl.signal })
         .then((r) => r.json())
         .then((data) => {
           if (data.error) {
             setError(data.error);
-            setResults([]);
+            setApiResults([]);
           } else {
-            const cs = data.courses ?? [];
-            setResults(cs);
-            if (cs.length === 0) setError("No courses found.");
+            setApiResults(data.courses ?? []);
           }
         })
         .catch((e) => {
@@ -69,7 +68,18 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [query]);
+  }, [apiQuery]);
+
+  // …then filter that pool live by every word the user has typed.
+  const results = useMemo(() => {
+    const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return apiResults
+      .filter((r) => {
+        const hay = `${r.club_name} ${r.course_name} ${r.location}`.toLowerCase();
+        return words.every((w) => hay.includes(w));
+      })
+      .slice(0, 10);
+  }, [apiResults, query]);
 
   async function pick(id: SearchResult["id"]) {
     setLoading(true);
@@ -122,6 +132,10 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
         <p className="rounded-lg bg-[#FDECEF] px-3 py-2 text-sm text-negative">
           {error}
         </p>
+      )}
+
+      {!detail && !error && !loading && results.length === 0 && query.trim().length >= 2 && (
+        <p className="px-1 py-2 text-sm text-text-muted">No courses found.</p>
       )}
 
       {!detail && results.length > 0 && (

@@ -35,17 +35,19 @@ export async function GET(req: NextRequest) {
     if (!res.ok) {
       const body = await res.text();
       console.error(`[courses/search] upstream ${res.status}:`, body.slice(0, 500));
-      return NextResponse.json(
-        { error: `Course search failed (${res.status}).` },
-        { status: res.status }
-      );
+      const error =
+        res.status === 429
+          ? "Searching too fast — pause a second and try again."
+          : `Course search failed (${res.status}).`;
+      return NextResponse.json({ error }, { status: res.status });
     }
 
     const data = await res.json();
-    // Normalize to a lean shape for the client (cap at 10 results). `location`
-    // from the API is an object — flatten it to "City, ST".
+    // Normalize to a lean shape for the client. Return a generous pool (the
+    // client filters it down by the full query). `location` from the API is an
+    // object — flatten it to "City, ST".
     const courses = (data.courses ?? [])
-      .slice(0, 10)
+      .slice(0, 30)
       .map((c: Record<string, unknown>) => {
         const loc = c.location as { city?: string; state?: string } | string | undefined;
         const location =
