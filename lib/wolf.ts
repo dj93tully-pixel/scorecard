@@ -40,8 +40,8 @@ export interface RoundSettings {
    * 3×$2. 0 or undefined means "same as stake" (symmetric).
    */
   wolfStake?: number;
-  loneMult: number; // default 1
-  blindMult: number; // default 2
+  loneMult: number; // default 2 (lone wolf = 2× the bet)
+  blindMult: number; // default 3 (blind wolf = 3× the bet)
   blindEnabled: boolean;
   carryover: boolean; // ties push; if true, roll stake into next hole
   handicapMode: HandicapMode;
@@ -75,8 +75,8 @@ export interface Round {
 export const DEFAULT_SETTINGS: RoundSettings = {
   stake: 5,
   wolfStake: 0, // 0 = same as stake (symmetric)
-  loneMult: 1,
-  blindMult: 2,
+  loneMult: 2,
+  blindMult: 3,
   blindEnabled: true,
   carryover: false,
   handicapMode: "offLow",

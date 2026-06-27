@@ -91,7 +91,7 @@ export function suggestForHole(
   opts.push({
     mode: "lone",
     label: "Lone",
-    ev: ev(wolfNet, fieldBestAll, nOpp * (settings.loneMult || 1) * stake),
+    ev: ev(wolfNet, fieldBestAll, nOpp * (settings.loneMult || 2) * stake),
   });
 
   // Blind: only a sensible call when the wolf is clearly the best ball here
@@ -100,7 +100,7 @@ export function suggestForHole(
     opts.push({
       mode: "blind",
       label: "Blind",
-      ev: ev(wolfNet, fieldBestAll, nOpp * (settings.blindMult || 2) * stake),
+      ev: ev(wolfNet, fieldBestAll, nOpp * (settings.blindMult || 3) * stake),
     });
   }
 
