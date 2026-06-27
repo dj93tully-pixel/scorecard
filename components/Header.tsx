@@ -40,7 +40,7 @@ function TickerMeta({ text }: { text: string }) {
   const duration = Math.max(8, (contentW + GAP) / 35); // ~35 px/sec
 
   return (
-    <div ref={boxRef} className="relative ml-2 flex min-w-0 flex-1 items-center overflow-hidden">
+    <div ref={boxRef} className="relative ml-1 flex min-w-0 flex-1 items-center overflow-hidden">
       <div
         className="flex shrink-0 whitespace-nowrap"
         style={
