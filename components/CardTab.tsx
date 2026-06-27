@@ -8,7 +8,7 @@
 import { CSSProperties, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Round, RoundComputation, Player } from "@/lib/wolf";
-import { coursePar, formatMoney, formatToPar } from "@/lib/storage";
+import { formatMoney, formatToPar } from "@/lib/storage";
 
 const INK = "#16181D";
 const MUTED = "#8A90A0";
@@ -460,25 +460,21 @@ export function CardTab({
 
       {/* Big all-players scorecard */}
       <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold">Scorecard</h2>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-text-muted">Par {coursePar(round.course)}</span>
-            <div className="inline-flex overflow-hidden rounded-lg border border-card-border text-xs font-semibold">
-              {(["gross", "net"] as const).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setScoreView(v)}
-                  className={`px-2.5 py-1 capitalize ${
-                    v === "net" ? "border-l border-card-border" : ""
-                  } ${
-                    scoreView === v ? "bg-primary text-on-dark" : "bg-card-bg text-text-muted"
-                  }`}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
+          <div className="inline-flex rounded-full bg-divider p-[2px] text-[11px] font-medium">
+            {(["gross", "net"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setScoreView(v)}
+                style={scoreView === v ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
+                className={`rounded-full px-2.5 py-0.5 capitalize transition ${
+                  scoreView === v ? "bg-white text-accent-on-light" : "text-text-faint"
+                }`}
+              >
+                {v}
+              </button>
+            ))}
           </div>
         </div>
         <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" net={net} />
