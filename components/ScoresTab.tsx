@@ -6,7 +6,7 @@
 
 "use client";
 
-import { Hammer, Flag } from "lucide-react";
+import { Hammer, Flag, PawPrint, Users, ChevronDown } from "lucide-react";
 import {
   Round,
   RoundComputation,
@@ -14,38 +14,6 @@ import {
   defaultWolfForHole,
 } from "@/lib/wolf";
 import { formatMoney } from "@/lib/storage";
-
-function Chip({
-  active,
-  color = "primary",
-  activeBg,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  color?: "primary" | "alert";
-  /** Custom active background (hex) — overrides `color` when set. */
-  activeBg?: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  const activeCls = activeBg
-    ? "text-on-dark"
-    : color === "alert"
-      ? "bg-alert text-on-dark"
-      : "bg-primary text-on-dark";
-  return (
-    <button
-      onClick={onClick}
-      style={active && activeBg ? { background: activeBg } : undefined}
-      className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
-        active ? activeCls : "bg-page-bg text-text-primary"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 function HoleBox({
   round,
@@ -86,6 +54,18 @@ function HoleBox({
   const result = computation.results.find((r) => r.hole === hole);
   const short = (n: string) => (n || "?").slice(0, 14);
 
+  // Partner dropdown value: a player id, "lone", "blind", or "" (no partner).
+  const partnerValue =
+    mode === "lone" ? "lone" : mode === "blind" ? "blind" : partnerId ?? "";
+  const partnerSelected =
+    mode === "lone" || mode === "blind" || (mode === "2v2" && !!partnerId);
+  function choosePartner(v: string) {
+    if (v === "lone") commit({ mode: "lone", partnerId: undefined });
+    else if (v === "blind") commit({ mode: "blind", partnerId: undefined });
+    else if (v === "") commit({ mode: "2v2", partnerId: undefined });
+    else commit({ mode: "2v2", partnerId: v });
+  }
+
   return (
     <div className="rounded-xl border border-card-border bg-card-bg p-3">
       {/* Header */}
@@ -96,107 +76,113 @@ function HoleBox({
         </span>
       </div>
 
-      {/* Wolf selector */}
-      <div className="mb-2">
-        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
-          Wolf
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {players.map((p) => (
-            <Chip
-              key={p.id}
-              active={p.id === wolfId}
-              color="alert"
-              onClick={() =>
-                commit({
-                  wolfId: p.id,
-                  partnerId: partnerId === p.id ? undefined : partnerId,
-                })
-              }
-            >
-              {short(p.name)}
-            </Chip>
-          ))}
-        </div>
-      </div>
-
-      {/* Choice selector */}
-      <div className="mb-3">
-        <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
-          Choice
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {nonWolf.map((p) => (
-            <Chip
-              key={p.id}
-              active={mode === "2v2" && partnerId === p.id}
-              onClick={() => commit({ mode: "2v2", partnerId: p.id })}
-            >
-              {short(p.name)}
-            </Chip>
-          ))}
-          <Chip
-            active={mode === "lone"}
-            color="alert"
-            onClick={() => commit({ mode: "lone", partnerId: undefined })}
+      {/* Single dense control toolbar (wraps to 2 lines on narrow phones) */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        {/* Wolf (red-tinted dropdown) */}
+        <div
+          className="relative inline-flex items-center rounded-lg border"
+          style={{ background: "#FBE9EE", borderColor: "#F3C2D0" }}
+        >
+          <PawPrint className="pointer-events-none absolute left-2 h-[15px] w-[15px] text-alert" />
+          <select
+            aria-label="Wolf"
+            value={wolfId}
+            onChange={(e) =>
+              commit({
+                wolfId: e.target.value,
+                partnerId: partnerId === e.target.value ? undefined : partnerId,
+              })
+            }
+            className="appearance-none bg-transparent py-1.5 pl-7 pr-6 text-[13px] font-medium text-alert outline-none"
           >
-            Lone
-          </Chip>
-          <Chip
-            active={mode === "blind"}
-            color="alert"
-            onClick={() => commit({ mode: "blind", partnerId: undefined })}
-          >
-            Blind
-          </Chip>
+            {players.map((p) => (
+              <option key={p.id} value={p.id}>
+                {short(p.name)}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-1.5 h-[15px] w-[15px] text-alert" />
         </div>
-      </div>
 
-      {/* Hammer + forfeit */}
-      <div className="mb-3 flex flex-wrap items-end gap-x-5 gap-y-2">
-        <div>
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Hammer
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            <Chip
-              active={hammer === 1}
-              activeBg="#6460AA"
-              onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
-            >
-              <Hammer className="mr-1 inline h-3.5 w-3.5" />1×
-            </Chip>
-            <Chip
-              active={hammer === 2}
-              activeBg="#6460AA"
-              onClick={() => commit({ hammer: hammer === 2 ? 0 : 2 })}
-            >
-              <Hammer className="mr-0.5 inline h-3.5 w-3.5" />
-              <Hammer className="mr-1 inline h-3.5 w-3.5" />2×
-            </Chip>
-          </div>
+        {/* Partner / Lone / Blind */}
+        <div
+          className={`relative inline-flex items-center rounded-lg border ${
+            partnerSelected ? "border-primary bg-primary" : "border-card-border bg-card-bg"
+          }`}
+        >
+          <Users
+            className={`pointer-events-none absolute left-2 h-[15px] w-[15px] ${
+              partnerSelected ? "text-on-dark" : "text-text-muted"
+            }`}
+          />
+          <select
+            aria-label="Partner"
+            value={partnerValue}
+            onChange={(e) => choosePartner(e.target.value)}
+            className={`appearance-none bg-transparent py-1.5 pl-7 pr-6 text-[13px] font-medium outline-none ${
+              partnerSelected ? "text-on-dark" : "text-text-muted"
+            }`}
+          >
+            <option value="">Partner</option>
+            {nonWolf.map((p) => (
+              <option key={p.id} value={p.id}>
+                {short(p.name)}
+              </option>
+            ))}
+            <option value="lone">Lone</option>
+            <option value="blind">Blind</option>
+          </select>
+          <ChevronDown
+            className={`pointer-events-none absolute right-1.5 h-[15px] w-[15px] ${
+              partnerSelected ? "text-on-dark" : "text-text-muted"
+            }`}
+          />
         </div>
-        <div>
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Forfeit
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            <Chip
-              active={forfeit === "A"}
-              activeBg="#0DB14B"
-              onClick={() => commit({ forfeit: forfeit === "A" ? undefined : "A" })}
-            >
-              <Flag className="mr-1 inline h-3.5 w-3.5" />Wolf
-            </Chip>
-            <Chip
-              active={forfeit === "B"}
-              activeBg="#0DB14B"
-              onClick={() => commit({ forfeit: forfeit === "B" ? undefined : "B" })}
-            >
-              <Flag className="mr-1 inline h-3.5 w-3.5" />Field
-            </Chip>
-          </div>
+
+        {/* divider */}
+        <span className="h-6 w-px self-center bg-card-border" />
+
+        {/* Hammer multiplier (segmented 1× / 2×) */}
+        <div className="inline-flex overflow-hidden rounded-lg border border-card-border">
+          <button
+            onClick={() => commit({ hammer: 0 })}
+            className={`flex items-center gap-1 px-2.5 py-1.5 text-[13px] font-medium ${
+              hammer === 0 ? "bg-primary text-on-dark" : "bg-card-bg text-text-muted"
+            }`}
+          >
+            <Hammer className="h-[15px] w-[15px]" />1×
+          </button>
+          <button
+            onClick={() => commit({ hammer: 1 })}
+            className={`flex items-center gap-1 border-l border-card-border px-2.5 py-1.5 text-[13px] font-medium ${
+              hammer === 1 ? "bg-primary text-on-dark" : "bg-card-bg text-text-muted"
+            }`}
+          >
+            <Hammer className="h-[15px] w-[15px]" />2×
+          </button>
         </div>
+
+        {/* Forfeit (Field / Wolf) */}
+        <button
+          onClick={() => commit({ forfeit: forfeit === "B" ? undefined : "B" })}
+          className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium ${
+            forfeit === "B"
+              ? "border-alert bg-alert text-on-dark"
+              : "border-card-border bg-card-bg text-text-muted"
+          }`}
+        >
+          <Flag className="h-[15px] w-[15px]" />Field
+        </button>
+        <button
+          onClick={() => commit({ forfeit: forfeit === "A" ? undefined : "A" })}
+          className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium ${
+            forfeit === "A"
+              ? "border-alert bg-alert text-on-dark"
+              : "border-card-border bg-card-bg text-text-muted"
+          }`}
+        >
+          <Flag className="h-[15px] w-[15px]" />Wolf
+        </button>
       </div>
 
       {/* Player rows (compact, single line) */}
@@ -208,6 +194,9 @@ function HoleBox({
           const myPops = computation.pops[p.id]?.[hole] ?? 0;
           const score = grossScores[p.id];
           const delta = result?.deltas[p.id] ?? 0;
+          // This player's side conceded → scores aren't needed.
+          const conceded =
+            (forfeit === "A" && onTeamA) || (forfeit === "B" && !onTeamA);
 
           return (
             <div
@@ -239,6 +228,11 @@ function HoleBox({
                     PARTNER
                   </span>
                 )}
+                {conceded && (
+                  <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none text-text-faint">
+                    conceded
+                  </span>
+                )}
               </div>
 
               {/* Money won/lost this hole */}
@@ -252,12 +246,13 @@ function HoleBox({
                 </span>
               )}
 
-              {/* Right: plain score input */}
+              {/* Right: plain score input (disabled when this side conceded) */}
               <input
                 type="number"
                 inputMode="numeric"
                 value={score ?? ""}
                 placeholder="–"
+                disabled={conceded}
                 onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -266,7 +261,11 @@ function HoleBox({
                   else next[p.id] = Math.max(1, parseInt(v) || 1);
                   commit({ grossScores: next });
                 }}
-                className="h-9 w-12 shrink-0 rounded-lg border border-card-border bg-card-bg text-center text-lg font-bold tabular-nums outline-none focus:border-primary"
+                className={`h-9 w-12 shrink-0 rounded-lg border text-center text-lg font-bold tabular-nums outline-none ${
+                  conceded
+                    ? "border-card-border bg-surface-2 text-text-faint opacity-60"
+                    : "border-card-border bg-card-bg focus:border-primary"
+                }`}
               />
             </div>
           );
@@ -275,23 +274,7 @@ function HoleBox({
 
       {/* Result */}
       {result && (
-        <div className="mt-2 flex items-center justify-end gap-2 text-sm">
-          {hammer > 0 && (
-            <span
-              className="text-xs font-bold uppercase tracking-wide"
-              style={{ color: "#6460AA" }}
-            >
-              {hammer === 2 ? "double hammer" : "hammer"}
-            </span>
-          )}
-          {forfeit && (
-            <span
-              className="text-xs font-bold uppercase tracking-wide"
-              style={{ color: "#0DB14B" }}
-            >
-              forfeit
-            </span>
-          )}
+        <div className="mt-2 text-right text-sm">
           {result.winner === "push" ? (
             <span className="text-text-faint">
               {result.carriedToNext > 0
@@ -300,8 +283,12 @@ function HoleBox({
             </span>
           ) : (
             <span className="font-bold">
-              {result.winner === "A" ? "Wolf team" : "Field"} wins{" "}
+              {hammer > 0 && (
+                <span className="text-text-muted">{2 ** hammer}× · </span>
+              )}
+              {result.winner === "A" ? "Wolf" : "Field"} wins{" "}
               <span className="text-positive">${result.pot}</span>
+              {forfeit && <span className="font-medium text-text-muted"> · forfeit</span>}
             </span>
           )}
         </div>
