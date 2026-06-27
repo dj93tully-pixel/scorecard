@@ -29,8 +29,6 @@ export interface HeaderButton {
 }
 
 export interface HeaderConfig {
-  /** Replaces the "WOLF" wordmark with this text (smaller) — e.g. a game name. */
-  brandTitle?: string;
   /** Secondary line under "WOLF" — e.g. the current game name. */
   title?: string;
   /** If set, show a back button on the left of the right cluster. */

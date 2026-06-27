@@ -90,18 +90,10 @@ export function Header() {
       <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-2">
         <WolfLogo className="h-7 w-7 shrink-0 text-accent-on-dark" />
         <div className="min-w-0 flex-1 leading-tight">
-          {config.brandTitle ? (
-            <h1 className="truncate text-base font-bold uppercase tracking-[0.18em]">
-              {config.brandTitle}
-            </h1>
-          ) : (
-            <>
-              <h1 className="text-lg font-bold uppercase tracking-[0.18em]">WOLF</h1>
-              {config.title ? (
-                <p className="truncate text-[12px] text-text-muted">{config.title}</p>
-              ) : null}
-            </>
-          )}
+          <h1 className="text-lg font-bold uppercase tracking-[0.18em]">WOLF</h1>
+          {config.title ? (
+            <p className="truncate text-[12px] text-text-muted">{config.title}</p>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {config.backHref && (
