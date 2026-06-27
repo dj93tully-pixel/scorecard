@@ -39,7 +39,7 @@ export function liveSummary(round: Round, computation: RoundComputation): Ticker
 
   const meta: string[] = [];
   if (!isFinal && wolf) meta.push(`Wolf: ${wolf.name || "—"}`);
-  if (anyMoney && leader) meta.push(`Leader: ${leader.name || "—"} ${formatMoney(best)}`);
+  if (anyMoney && leader) meta.push(`Lead: ${leader.name || "—"} ${formatMoney(best)}`);
 
   // Caddie suggestion for the hole currently up (right of the leader).
   if (!isFinal) {
