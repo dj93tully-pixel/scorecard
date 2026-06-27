@@ -238,24 +238,11 @@ function PlayerNine({
   return (
     <div style={{ display: "flex", alignItems: "stretch", gap: "3px" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ ...gridStyle, marginBottom: "2px" }}>
+        <div style={gridStyle}>
           {nums.map((n) =>
             mode === "scores" && popsOf(n) > 0 ? (
-              // Hole number centered inside the pop burst — sized to sit fully
-              // within the burst's inner core (2-digit holes nudged smaller).
-              <PopBurst key={n} size={20}>
-                <span
-                  style={{
-                    position: "relative",
-                    zIndex: 1,
-                    fontSize: n >= 10 ? "7px" : "8px",
-                    lineHeight: 1,
-                    fontWeight: 600,
-                    color: MUTED,
-                  }}
-                >
-                  {n}
-                </span>
+              <PopBurst key={n} size={15}>
+                <span style={numStyle}>{n}</span>
               </PopBurst>
             ) : (
               <span key={n} style={numStyle}>
