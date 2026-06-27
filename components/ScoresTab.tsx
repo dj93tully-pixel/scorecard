@@ -328,23 +328,23 @@ export function ScoresTab({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-xl font-bold">Scores</h2>
-        <span className="text-sm text-text-muted">{round.course.name}</span>
-      </div>
-
       {/* Quick hole jumper: two rows of 9 (1–9, 10–18). */}
-      <div className="grid grid-cols-9 gap-1 rounded-xl border border-card-border bg-card-bg p-2">
+      <div className="grid grid-cols-9 gap-1 rounded-xl border border-primary/30 bg-primary/10 p-2">
         {round.course.holes.map((h) => (
           <button
             key={h.number}
             onClick={() => goToHole(h.number)}
             aria-label={`Go to hole ${h.number}`}
-            className="aspect-square rounded-md border border-card-border bg-surface-2 text-xs font-semibold tabular-nums text-text-primary active:bg-primary active:text-on-dark"
+            className="aspect-square rounded-md border border-primary/30 bg-card-bg text-xs font-semibold tabular-nums text-primary active:bg-primary active:text-on-dark"
           >
             {h.number}
           </button>
         ))}
+      </div>
+
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-xl font-bold">Scores</h2>
+        <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
 
       {round.course.holes.map((h) => (
