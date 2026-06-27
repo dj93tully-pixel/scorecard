@@ -237,12 +237,20 @@ export function SetupTab({
                 ))}
               </tbody>
             </table>
-            <button
-              onClick={resetCourse}
-              className="mt-2 text-xs font-semibold text-negative"
-            >
-              Reset course
-            </button>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <button
+                onClick={resetCourse}
+                className="text-xs font-semibold text-negative"
+              >
+                Reset course
+              </button>
+              <button
+                onClick={() => setCoursePanel("none")}
+                className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-on-dark"
+              >
+                Done
+              </button>
+            </div>
           </div>
         )}
       </section>
