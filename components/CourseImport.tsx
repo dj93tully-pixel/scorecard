@@ -4,7 +4,8 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Search } from "lucide-react";
 import { Course } from "@/lib/wolf";
 
 interface SearchResult {
@@ -28,37 +29,47 @@ interface CourseDetail {
   tees: TeeDetail[];
 }
 
-export function CourseImport({
-  onImport,
-  onClose,
-}: {
-  onImport: (course: Course) => void;
-  onClose: () => void;
-}) {
+export function CourseImport({ onImport }: { onImport: (course: Course) => void }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [detail, setDetail] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function search(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
-    setLoading(true);
+  // Live, debounced search as you type (no button needed).
+  useEffect(() => {
+    const q = query.trim();
     setError(null);
-    setDetail(null);
-    try {
-      const res = await fetch(`/api/courses/search?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Search failed");
-      setResults(data.courses ?? []);
-      if ((data.courses ?? []).length === 0) setError("No courses found.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Search failed");
-    } finally {
+    if (q.length < 2) {
+      setResults([]);
       setLoading(false);
+      return;
     }
-  }
+    setLoading(true);
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      fetch(`/api/courses/search?q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.error) {
+            setError(data.error);
+            setResults([]);
+          } else {
+            const cs = data.courses ?? [];
+            setResults(cs);
+            if (cs.length === 0) setError("No courses found.");
+          }
+        })
+        .catch((e) => {
+          if (e?.name !== "AbortError") setError("Search failed.");
+        })
+        .finally(() => setLoading(false));
+    }, 350);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [query]);
 
   async function pick(id: SearchResult["id"]) {
     setLoading(true);
@@ -88,33 +99,23 @@ export function CourseImport({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-card-border bg-card-bg p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold">Import course</h3>
-        <button
-          onClick={onClose}
-          className="text-sm font-semibold text-text-muted"
-        >
-          Close
-        </button>
-      </div>
-
+    <div className="space-y-3">
       {!detail && (
-        <form onSubmit={search} className="flex gap-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
           <input
+            autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search club or course…"
-            className="flex-1 rounded-lg border border-card-border px-3 py-2"
+            className="w-full rounded-lg border border-card-border py-2 pl-9 pr-8"
           />
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-lg bg-primary px-4 py-2 font-semibold text-on-dark disabled:opacity-50"
-          >
-            {loading ? "…" : "Search"}
-          </button>
-        </form>
+          {loading && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-faint">
+              …
+            </span>
+          )}
+        </div>
       )}
 
       {error && (
