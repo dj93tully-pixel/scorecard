@@ -59,13 +59,14 @@ button {
   animation: ring-pulse 2s infinite;
 }
 
-/* ── Ticker marquee — only applied (via JS) when the text overflows ── */
-@keyframes marquee {
+/* ── Ticker marquee — continuous one-direction scroll (two copies; -50% loops
+   seamlessly). Only applied via JS when the text overflows. ── */
+@keyframes marquee-loop {
   from {
     transform: translateX(0);
   }
   to {
-    transform: translateX(var(--marquee-shift, 0));
+    transform: translateX(-50%);
   }
 }
 

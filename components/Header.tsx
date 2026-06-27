@@ -5,51 +5,61 @@
 
 "use client";
 
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { WolfLogo } from "./WolfLogo";
 import { useHeader } from "@/lib/header-context";
 
-// Ticker meta text — scrolls (ping-pong) only when it's wider than the space.
+// Ticker meta text — continuously scrolls in one direction, but only when it's
+// wider than the available space. Uses two copies + a -50% loop so it wraps
+// seamlessly. flex/items-center keeps it vertically aligned with "Hole N".
+const GAP = 40; // px gap between the looping copies
+
 function TickerMeta({ text }: { text: string }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
-  const [shift, setShift] = useState(0);
+  const [contentW, setContentW] = useState(0);
+  const [overflow, setOverflow] = useState(false);
 
   useEffect(() => {
     function measure() {
       const box = boxRef.current;
       const span = textRef.current;
       if (!box || !span) return;
-      const over = span.scrollWidth - box.clientWidth;
-      setShift(over > 4 ? over : 0);
+      const w = span.scrollWidth; // margin excluded → clean text width
+      setContentW(w);
+      setOverflow(w > box.clientWidth + 4);
     }
     measure();
     const ro = new ResizeObserver(measure);
     if (boxRef.current) ro.observe(boxRef.current);
-    if (textRef.current) ro.observe(textRef.current);
     return () => ro.disconnect();
   }, [text]);
 
-  const animating = shift > 0;
-  const duration = Math.max(5, shift / 22);
-  const style: CSSProperties | undefined = animating
-    ? ({
-        "--marquee-shift": `-${shift}px`,
-        animation: `marquee ${duration}s ease-in-out infinite alternate`,
-      } as CSSProperties)
-    : undefined;
+  const duration = Math.max(8, (contentW + GAP) / 35); // ~35 px/sec
 
   return (
-    <div ref={boxRef} className="relative min-w-0 flex-1 overflow-hidden">
-      <span
-        ref={textRef}
-        style={style}
-        className="inline-block whitespace-nowrap text-[12px] text-text-muted"
+    <div ref={boxRef} className="relative flex min-w-0 flex-1 items-center overflow-hidden">
+      <div
+        className="flex shrink-0 whitespace-nowrap"
+        style={
+          overflow ? { animation: `marquee-loop ${duration}s linear infinite` } : undefined
+        }
       >
-        {text}
-      </span>
+        <span
+          ref={textRef}
+          className="text-[12px] text-text-muted"
+          style={overflow ? { marginRight: GAP } : undefined}
+        >
+          {text}
+        </span>
+        {overflow && (
+          <span aria-hidden className="text-[12px] text-text-muted" style={{ marginRight: GAP }}>
+            {text}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
