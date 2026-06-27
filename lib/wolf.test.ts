@@ -444,17 +444,14 @@ describe("money — forfeit", () => {
 
 describe("money — lone wolf", () => {
   it("win: wolf +3*mult*stake, each opponent -mult*stake", () => {
-    const round = makeRound(
-      [
-        {
-          hole: 18,
-          wolfId: "a",
-          mode: "lone",
-          grossScores: { a: 3, b: 4, c: 4, d: 5 }, // d nets 4; field best 4; wolf 3 wins
-        },
-      ],
-      { stake: 5, loneMult: 1 }
-    );
+    const round = makeRound([
+      {
+        hole: 18,
+        wolfId: "a",
+        mode: "lone",
+        grossScores: { a: 3, b: 4, c: 4, d: 5 }, // d nets 4; field best 4; wolf 3 wins
+      },
+    ]);
     const { ledger, results } = computeRound(round);
     expect(results[0].winner).toBe("A");
     expect(ledger.a).toBe(15); // 3 * 1 * 5
@@ -465,17 +462,14 @@ describe("money — lone wolf", () => {
   });
 
   it("loss: wolf -3*mult*stake, each opponent +mult*stake", () => {
-    const round = makeRound(
-      [
-        {
-          hole: 18,
-          wolfId: "a",
-          mode: "lone",
-          grossScores: { a: 6, b: 4, c: 7, d: 7 }, // field best 4 < wolf 6
-        },
-      ],
-      { stake: 5, loneMult: 1 }
-    );
+    const round = makeRound([
+      {
+        hole: 18,
+        wolfId: "a",
+        mode: "lone",
+        grossScores: { a: 6, b: 4, c: 7, d: 7 }, // field best 4 < wolf 6
+      },
+    ]);
     const { ledger, results } = computeRound(round);
     expect(results[0].winner).toBe("B");
     expect(ledger.a).toBe(-15);
