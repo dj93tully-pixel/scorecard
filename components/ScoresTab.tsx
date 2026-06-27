@@ -71,7 +71,11 @@ function HoleBox({
   }
 
   return (
-    <div className="rounded-xl border border-card-border bg-card-bg p-3">
+    <div
+      id={`hole-${hole}`}
+      style={{ scrollMarginTop: "calc(var(--header-h, 88px) + 3.75rem)" }}
+      className="rounded-xl border border-card-border bg-card-bg p-3"
+    >
       {/* Header */}
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="leading-tight">
@@ -306,6 +310,13 @@ export function ScoresTab({
 }) {
   const ready = round.players.length >= 3 && round.course.holes.length > 0;
 
+  // Jump to a hole's card. The card carries scroll-margin-top so it lands just
+  // below the sticky tab bar rather than under it.
+  const goToHole = (n: number) =>
+    document
+      .getElementById(`hole-${n}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   if (!ready) {
     return (
       <div className="rounded-xl border border-dashed border-card-border bg-card-bg p-6 text-center text-sm text-text-muted">
@@ -321,6 +332,21 @@ export function ScoresTab({
         <h2 className="text-xl font-bold">Scores</h2>
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
+
+      {/* Quick hole jumper: two rows of 9 (1–9, 10–18). */}
+      <div className="grid grid-cols-9 gap-1 rounded-xl border border-card-border bg-card-bg p-2">
+        {round.course.holes.map((h) => (
+          <button
+            key={h.number}
+            onClick={() => goToHole(h.number)}
+            aria-label={`Go to hole ${h.number}`}
+            className="aspect-square rounded-md border border-card-border bg-surface-2 text-xs font-semibold tabular-nums text-text-primary active:bg-primary active:text-on-dark"
+          >
+            {h.number}
+          </button>
+        ))}
+      </div>
+
       {round.course.holes.map((h) => (
         <HoleBox
           key={h.number}
