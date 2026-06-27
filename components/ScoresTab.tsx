@@ -14,6 +14,7 @@ import {
   defaultWolfForHole,
 } from "@/lib/wolf";
 import { formatMoney } from "@/lib/storage";
+import { PopBurst } from "./PopBurst";
 
 // Vibrant peacock-family accents for the hole-card toggles.
 const HAMMER = "#7C3AED"; // vibrant purple
@@ -216,11 +217,11 @@ function HoleBox({
                 <span className="truncate font-medium text-text-primary">
                   {p.name || "Unnamed"}
                 </span>
-                {/* pops dots (handicap stroke on this hole) */}
+                {/* pop bursts (handicap stroke on this hole) */}
                 {myPops > 0 && (
-                  <span className="inline-flex shrink-0 gap-0.5">
+                  <span className="inline-flex shrink-0 items-center gap-0.5">
                     {Array.from({ length: myPops }).map((_, i) => (
-                      <span key={i} className="h-[5px] w-[5px] rounded-full bg-primary" />
+                      <PopBurst key={i} variant="filled" size={12} />
                     ))}
                   </span>
                 )}

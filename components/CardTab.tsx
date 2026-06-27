@@ -9,6 +9,7 @@ import { CSSProperties, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Round, RoundComputation, Player } from "@/lib/wolf";
 import { formatMoney, formatToPar } from "@/lib/storage";
+import { PopBurst } from "./PopBurst";
 
 const INK = "#16181D";
 const MUTED = "#8A90A0";
@@ -206,43 +207,6 @@ const gridStyle: CSSProperties = {
 const numStyle: CSSProperties = { fontSize: "8px", color: MUTED, fontWeight: 600 };
 const parStyle: CSSProperties = { fontSize: "8px", color: "#9AA1AD", fontWeight: 600, lineHeight: 1 };
 
-// A blue "pop" starburst around a hole number — marks holes where the player
-// gets a handicap stroke on their scorecard.
-function PopBurst({ n }: { n: number }) {
-  const pts: string[] = [];
-  const spikes = 10;
-  for (let i = 0; i < spikes * 2; i++) {
-    const r = i % 2 === 0 ? 50 : 33;
-    const a = (Math.PI / spikes) * i - Math.PI / 2;
-    pts.push(`${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`);
-  }
-  return (
-    <span
-      style={{
-        position: "relative",
-        display: "inline-flex",
-        height: "15px",
-        width: "15px",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <svg
-        viewBox="0 0 100 100"
-        width="15"
-        height="15"
-        style={{ position: "absolute", inset: 0 }}
-        aria-hidden
-      >
-        <polygon points={pts.join(" ")} fill={PRIMARY} />
-      </svg>
-      <span style={{ position: "relative", color: "#FFFFFF", fontSize: "7px", fontWeight: 700, lineHeight: 1 }}>
-        {n}
-      </span>
-    </span>
-  );
-}
-
 function PlayerNine({
   round,
   computation,
@@ -277,7 +241,9 @@ function PlayerNine({
         <div style={gridStyle}>
           {nums.map((n) =>
             mode === "scores" && popsOf(n) > 0 ? (
-              <PopBurst key={n} n={n} />
+              <PopBurst key={n} size={15}>
+                <span style={numStyle}>{n}</span>
+              </PopBurst>
             ) : (
               <span key={n} style={numStyle}>
                 {n}
