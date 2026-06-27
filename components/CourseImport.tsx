@@ -131,13 +131,13 @@ export function CourseImport({
                 onClick={() => pick(r.id)}
                 className="flex w-full items-center justify-between gap-2 py-3 text-left"
               >
-                <span>
-                  <span className="block font-semibold">{r.club_name}</span>
-                  <span className="block text-xs text-text-muted">
-                    {[r.course_name, r.location].filter(Boolean).join(" · ")}
-                  </span>
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold">{r.club_name}</span>
+                  {r.location && (
+                    <span className="block truncate text-xs text-text-muted">{r.location}</span>
+                  )}
                 </span>
-                <span className="text-chevron">›</span>
+                <span className="shrink-0 text-chevron">›</span>
               </button>
             </li>
           ))}

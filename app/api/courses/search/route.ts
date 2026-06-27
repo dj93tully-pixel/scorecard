@@ -42,13 +42,25 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await res.json();
-    // Normalize to a lean shape for the client.
-    const courses = (data.courses ?? []).map((c: Record<string, unknown>) => ({
-      id: c.id,
-      club_name: c.club_name ?? "",
-      course_name: c.course_name ?? "",
-      location: c.location ?? c.location_text ?? "",
-    }));
+    // Normalize to a lean shape for the client (cap at 10 results). `location`
+    // from the API is an object — flatten it to "City, ST".
+    const courses = (data.courses ?? [])
+      .slice(0, 10)
+      .map((c: Record<string, unknown>) => {
+        const loc = c.location as { city?: string; state?: string } | string | undefined;
+        const location =
+          loc && typeof loc === "object"
+            ? [loc.city, loc.state].filter(Boolean).join(", ")
+            : typeof loc === "string"
+              ? loc
+              : "";
+        return {
+          id: c.id,
+          club_name: c.club_name ?? "",
+          course_name: c.course_name ?? "",
+          location,
+        };
+      });
     return NextResponse.json({ courses });
   } catch (err) {
     console.error("[courses/search] error:", err);

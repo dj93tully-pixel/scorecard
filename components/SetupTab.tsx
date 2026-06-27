@@ -37,7 +37,7 @@ export function SetupTab({
   round: Round;
   updateRound: (patch: Partial<Round> | ((r: Round) => Round)) => void;
 }) {
-  const [showImport, setShowImport] = useState(false);
+  const [courseMode, setCourseMode] = useState<"import" | "manual">("import");
   const [courseOpen, setCourseOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
@@ -64,7 +64,6 @@ export function SetupTab({
   }
   function importCourse(c: Course) {
     updateRound((r) => ({ ...r, course: c }));
-    setShowImport(false);
     setCourseOpen(false); // collapse back to the course badge
     const par = c.holes.reduce((s, h) => s + h.par, 0);
     setFlash(`Imported “${c.name}” — ${c.holes.length} holes, par ${par}`);
@@ -162,7 +161,10 @@ export function SetupTab({
         {!courseOpen ? (
           // Clickable course badge — opens the editor to import or hand-edit.
           <button
-            onClick={() => setCourseOpen(true)}
+            onClick={() => {
+              setCourseMode(hasCourse ? "manual" : "import");
+              setCourseOpen(true);
+            }}
             className="flex w-full items-center justify-between gap-2 rounded-lg border border-card-border bg-surface-2 px-3 py-3 text-left"
           >
             {hasCourse ? (
@@ -182,32 +184,50 @@ export function SetupTab({
           </button>
         ) : (
           <div className="space-y-3">
-            <button
-              onClick={() => setShowImport((v) => !v)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2.5 font-semibold text-on-dark"
-            >
-              <Search className="h-4 w-4" />
-              {showImport ? "Close search" : "Import course"}
-            </button>
-
-            {showImport && (
-              <CourseImport onImport={importCourse} onClose={() => setShowImport(false)} />
-            )}
-
-            <div className="flex items-center justify-between text-xs text-text-muted">
-              <span className="truncate">{course.name}</span>
-              {siIssues.length > 0 ? (
-                <span className="shrink-0 text-negative">
-                  SI: {siIssues.slice(0, 2).join(", ")}
-                  {siIssues.length > 2 ? "…" : ""}
-                </span>
-              ) : (
-                <span className="shrink-0 text-positive">SI 1–18 ✓</span>
-              )}
+            {/* Import vs manual */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCourseMode("import")}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold ${
+                  courseMode === "import"
+                    ? "bg-primary text-on-dark"
+                    : "border border-card-border bg-card-bg text-text-muted"
+                }`}
+              >
+                <Search className="h-4 w-4" />
+                Import course
+              </button>
+              <button
+                onClick={() => setCourseMode("manual")}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold ${
+                  courseMode === "manual"
+                    ? "bg-primary text-on-dark"
+                    : "border border-card-border bg-card-bg text-text-muted"
+                }`}
+              >
+                <Pencil className="h-4 w-4" />
+                Manual
+              </button>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-center text-sm">
+            {courseMode === "import" ? (
+              <CourseImport onImport={importCourse} onClose={() => setCourseOpen(false)} />
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-text-muted">
+                  <span className="truncate">{course.name}</span>
+                  {siIssues.length > 0 ? (
+                    <span className="shrink-0 text-negative">
+                      SI: {siIssues.slice(0, 2).join(", ")}
+                      {siIssues.length > 2 ? "…" : ""}
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-positive">SI 1–18 ✓</span>
+                  )}
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-center text-sm">
                 <thead>
                   <tr className="text-xs text-text-muted">
                     <th className="px-1 py-1 text-left">Hole</th>
@@ -251,9 +271,11 @@ export function SetupTab({
                 onClick={resetCourse}
                 className="mt-2 text-xs font-semibold text-negative"
               >
-                Reset course
-              </button>
-            </div>
+                    Reset course
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>

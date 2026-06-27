@@ -90,6 +90,10 @@ export async function GET(
       }
     }
 
+    // Dedupe by tee name: the API lists male + female tees separately, but their
+    // par + stroke index (all we use) are identical — so "Blue/White/…" would
+    // otherwise appear twice. Keep the first of each name.
+    const seen = new Set<string>();
     const tees = teeGroups
       .filter((tee) => Array.isArray(tee.holes) && tee.holes.length > 0)
       .map((tee) => ({
@@ -97,7 +101,13 @@ export async function GET(
         yards: tee.total_yards ?? null,
         par: tee.par_total ?? null,
         holes: mapHoles(tee.holes as RawHole[]),
-      }));
+      }))
+      .filter((tee) => {
+        const key = tee.name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
     return NextResponse.json({
       name: displayName,
