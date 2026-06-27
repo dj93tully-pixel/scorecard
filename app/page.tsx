@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, ChevronRight } from "lucide-react";
+import { Settings, ChevronRight, ChevronDown } from "lucide-react";
 import { GameSummary, listGames, subscribeGamesList } from "@/lib/games";
 import { supabaseConfigured } from "@/lib/supabase";
 import { useHeader } from "@/lib/header-context";
@@ -12,6 +12,7 @@ export default function Home() {
   const { setHeader } = useHeader();
   const [games, setGames] = useState<GameSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   function refresh() {
     listGames()
@@ -51,39 +52,54 @@ export default function Home() {
   const active = (games ?? []).filter((g) => g.published && !g.completed);
   const completed = (games ?? []).filter((g) => g.completed);
 
-  function GameRow({ g }: { g: GameSummary }) {
+  function GameRow({
+    g,
+    variant,
+  }: {
+    g: GameSummary;
+    variant: "active" | "completed";
+  }) {
+    const date = new Date(g.createdAt).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const meta = [g.courseName, date].filter(Boolean).join(" · ");
     return (
-      <li
-        className={`overflow-hidden rounded-xl border border-l-4 border-card-border bg-card-bg ${
-          g.completed ? "border-l-card-border" : "border-l-primary"
-        }`}
-      >
+      <li>
         <button
           onClick={() => router.push(`/game/${g.id}`)}
-          className="flex w-full items-center justify-between gap-2 px-4 py-5 text-left"
+          className="relative flex w-full items-center gap-3 rounded-lg py-3 pr-2 text-left transition-colors hover:bg-[#E7EAF6] active:bg-[#E7EAF6]"
         >
-          <span className="min-w-0">
-            <span className="flex items-center gap-2 font-semibold">
-              {!g.completed && (
-                <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-alert ring-pulse" />
+          {/* Left accent rail (inset top/bottom) */}
+          <span
+            className="absolute bottom-2 left-0 top-2 w-1 rounded-[2px]"
+            style={{ background: variant === "active" ? "#354CA1" : "#C4C8CE" }}
+          />
+          <span className="min-w-0 flex-1 pl-[18px]">
+            {/* Line 1: title + status chip */}
+            <span className="flex items-center gap-[9px]">
+              <span className="truncate text-[17px] font-bold text-[#16181D]">{g.name}</span>
+              {variant === "active" ? (
+                <span className="flex shrink-0 items-center gap-1">
+                  <span
+                    className="h-[7px] w-[7px] rounded-full"
+                    style={{ background: "#354CA1" }}
+                  />
+                  <span className="text-[11px] font-bold tracking-[0.03em] text-[#2E4391]">
+                    ACTIVE
+                  </span>
+                </span>
+              ) : (
+                <span className="shrink-0 text-[11px] font-bold tracking-[0.03em] text-[#9098A4]">
+                  FINAL
+                </span>
               )}
-              <span className="truncate">{g.name}</span>
             </span>
-            {g.courseName && (
-              <span className="mt-1 block truncate text-sm text-text-muted">
-                {g.courseName}
-              </span>
-            )}
-            <span className="mt-0.5 block text-xs text-text-faint">
-              {g.completed ? "Completed · " : ""}
-              {new Date(g.createdAt).toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </span>
+            {/* Line 2: muted meta */}
+            <span className="mt-0.5 block truncate text-[14px] text-[#878D96]">{meta}</span>
           </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-chevron" />
+          <ChevronRight className="h-5 w-5 shrink-0" style={{ color: "#C4C8CE" }} />
         </button>
       </li>
     );
@@ -113,31 +129,46 @@ export default function Home() {
         </div>
       ) : (
         <>
-          <section className="space-y-2">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">
+          <section className="space-y-1">
+            <h3 className="px-[18px] text-[11px] font-bold uppercase tracking-[0.07em] text-text-faint">
               Active
             </h3>
             {active.length === 0 ? (
-              <p className="text-sm text-text-faint">No active games.</p>
+              <p className="px-[18px] text-sm text-text-faint">No active games.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul>
                 {active.map((g) => (
-                  <GameRow key={g.id} g={g} />
+                  <GameRow key={g.id} g={g} variant="active" />
                 ))}
               </ul>
             )}
           </section>
 
           {completed.length > 0 && (
-            <section className="space-y-2">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">
-                Completed
-              </h3>
-              <ul className="space-y-2 opacity-75">
-                {completed.map((g) => (
-                  <GameRow key={g.id} g={g} />
-                ))}
-              </ul>
+            <section className="space-y-1">
+              <button
+                onClick={() => setShowCompleted((v) => !v)}
+                className="flex w-full items-center gap-3 py-2"
+                aria-expanded={showCompleted}
+              >
+                <span className="h-px flex-1" style={{ background: "#E1E4E8" }} />
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-[#9098A4]">
+                  {completed.length} Completed
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${
+                      showCompleted ? "rotate-180" : ""
+                    }`}
+                  />
+                </span>
+                <span className="h-px flex-1" style={{ background: "#E1E4E8" }} />
+              </button>
+              {showCompleted && (
+                <ul>
+                  {completed.map((g) => (
+                    <GameRow key={g.id} g={g} variant="completed" />
+                  ))}
+                </ul>
+              )}
             </section>
           )}
         </>
