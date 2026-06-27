@@ -352,7 +352,7 @@ function LedgerCard({
         <span className="w-4 text-center font-serif text-base font-bold text-text-faint">{rankIndex + 1}</span>
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <span className="truncate font-semibold">{player.name || "Unnamed"}</span>
-          <ScoreBadge rel={toPar} size="sm" />
+          <ScoreBadge rel={toPar} size="sm" tone="blue" />
         </span>
         <span className={`font-serif text-lg font-extrabold tabular-nums ${moneyColor}`}>
           {formatMoney(money)}
@@ -434,6 +434,13 @@ export function CardTab({
         })}
       </section>
 
+      {/* By-hole money ledger */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-bold">Ledger</h2>
+        <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" />
+        <BigNine round={round} computation={computation} holes={back} title="Back" mode="money" />
+      </section>
+
       {/* Big all-players scorecard */}
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
@@ -444,15 +451,6 @@ export function CardTab({
         </div>
         <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" />
         <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" />
-      </section>
-
-      {/* By-hole money ledger */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">
-          By-hole ledger
-        </h3>
-        <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" />
-        <BigNine round={round} computation={computation} holes={back} title="Back" mode="money" />
       </section>
     </div>
   );

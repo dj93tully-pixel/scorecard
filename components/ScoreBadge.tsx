@@ -13,19 +13,24 @@ const SIZE = {
 export function ScoreBadge({
   rel,
   size = "md",
+  tone = "score",
   className = "",
 }: {
   /** Score relative to par. null = not started. */
   rel: number | null;
   size?: keyof typeof SIZE;
+  /** "score" = green/red by par; "blue" = always blue. */
+  tone?: "score" | "blue";
   className?: string;
 }) {
   const color =
-    rel === null || rel === 0
-      ? "bg-surface-2 text-score-even"
-      : rel < 0
-        ? "bg-score-under/15 text-score-under"
-        : "bg-score-over/15 text-score-over";
+    tone === "blue"
+      ? "bg-primary/15 text-primary"
+      : rel === null || rel === 0
+        ? "bg-surface-2 text-score-even"
+        : rel < 0
+          ? "bg-score-under/15 text-score-under"
+          : "bg-score-over/15 text-score-over";
 
   return (
     <span
