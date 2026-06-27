@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Settings } from "lucide-react";
 import { computeRound } from "@/lib/wolf";
 import { useGame } from "@/lib/useGame";
 import { useHeader } from "@/lib/header-context";
@@ -31,20 +30,16 @@ export default function GamePage() {
     [round, computation]
   );
 
-  // Drive the global header: game name + back + ticker + Edit (→ admin).
+  // Drive the global header: game name + back + ticker. Editing lives only in
+  // the Admin section (reached from the main page), not here.
   useEffect(() => {
     setHeader({
       title: game?.name ?? "",
       backHref: "/",
       ticker,
-      rightButton: {
-        label: "Edit",
-        onClick: () => router.push(`/admin?edit=${id}`),
-        icon: <Settings className="h-4 w-4" />,
-      },
     });
     return () => setHeader({});
-  }, [game?.name, ticker, id, router, setHeader]);
+  }, [game?.name, ticker, setHeader]);
 
   if (loading) {
     return (

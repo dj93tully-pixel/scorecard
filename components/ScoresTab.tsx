@@ -105,16 +105,6 @@ function HoleBox({
             <Hammer className="h-[15px] w-[15px]" />
           </button>
           <button
-            onClick={() => commit({ forfeit: forfeit === "B" ? undefined : "B" })}
-            aria-label="Field forfeits"
-            style={forfeit === "B" ? { background: FORFEIT, borderColor: FORFEIT } : undefined}
-            className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[13px] font-medium ${
-              forfeit === "B" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-            }`}
-          >
-            <Flag className="h-[15px] w-[15px]" />F
-          </button>
-          <button
             onClick={() => commit({ forfeit: forfeit === "A" ? undefined : "A" })}
             aria-label="Wolf forfeits"
             style={forfeit === "A" ? { background: FORFEIT, borderColor: FORFEIT } : undefined}
@@ -123,6 +113,16 @@ function HoleBox({
             }`}
           >
             <Flag className="h-[15px] w-[15px]" />W
+          </button>
+          <button
+            onClick={() => commit({ forfeit: forfeit === "B" ? undefined : "B" })}
+            aria-label="Field forfeits"
+            style={forfeit === "B" ? { background: FORFEIT, borderColor: FORFEIT } : undefined}
+            className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[13px] font-medium ${
+              forfeit === "B" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            }`}
+          >
+            <Flag className="h-[15px] w-[15px]" />F
           </button>
         </div>
       </div>
