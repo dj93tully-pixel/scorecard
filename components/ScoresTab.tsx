@@ -15,6 +15,10 @@ import {
 } from "@/lib/wolf";
 import { formatMoney } from "@/lib/storage";
 
+// Vibrant peacock-family accents for the hole-card toggles.
+const HAMMER = "#7C3AED"; // vibrant purple
+const FORFEIT = "#06B6A4"; // vibrant cyan-bluish-green
+
 function HoleBox({
   round,
   computation,
@@ -142,43 +146,41 @@ function HoleBox({
         {/* divider */}
         <span className="h-6 w-px self-center bg-card-border" />
 
-        {/* Hammer multiplier (segmented 1× / 2×) */}
-        <div className="inline-flex overflow-hidden rounded-lg border border-card-border">
-          <button
-            onClick={() => commit({ hammer: 0 })}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-[13px] font-medium ${
-              hammer === 0 ? "bg-primary text-on-dark" : "bg-card-bg text-text-muted"
-            }`}
-          >
-            <Hammer className="h-[15px] w-[15px]" />1×
-          </button>
-          <button
-            onClick={() => commit({ hammer: 1 })}
-            className={`flex items-center gap-1 border-l border-card-border px-2.5 py-1.5 text-[13px] font-medium ${
-              hammer === 1 ? "bg-primary text-on-dark" : "bg-card-bg text-text-muted"
-            }`}
-          >
-            <Hammer className="h-[15px] w-[15px]" />2×
-          </button>
-        </div>
+        {/* Hammer — 1× = double, 2× = quadruple. Each toggles; neither = none. */}
+        <button
+          onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
+          style={hammer === 1 ? { background: HAMMER, borderColor: HAMMER } : undefined}
+          className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium ${
+            hammer === 1 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+          }`}
+        >
+          <Hammer className="h-[15px] w-[15px]" />1×
+        </button>
+        <button
+          onClick={() => commit({ hammer: hammer === 2 ? 0 : 2 })}
+          style={hammer === 2 ? { background: HAMMER, borderColor: HAMMER } : undefined}
+          className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium ${
+            hammer === 2 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+          }`}
+        >
+          <Hammer className="h-[15px] w-[15px]" />2×
+        </button>
 
         {/* Forfeit (Field / Wolf) */}
         <button
           onClick={() => commit({ forfeit: forfeit === "B" ? undefined : "B" })}
+          style={forfeit === "B" ? { background: FORFEIT, borderColor: FORFEIT } : undefined}
           className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium ${
-            forfeit === "B"
-              ? "border-alert bg-alert text-on-dark"
-              : "border-card-border bg-card-bg text-text-muted"
+            forfeit === "B" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
           }`}
         >
           <Flag className="h-[15px] w-[15px]" />Field
         </button>
         <button
           onClick={() => commit({ forfeit: forfeit === "A" ? undefined : "A" })}
+          style={forfeit === "A" ? { background: FORFEIT, borderColor: FORFEIT } : undefined}
           className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium ${
-            forfeit === "A"
-              ? "border-alert bg-alert text-on-dark"
-              : "border-card-border bg-card-bg text-text-muted"
+            forfeit === "A" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
           }`}
         >
           <Flag className="h-[15px] w-[15px]" />Wolf
