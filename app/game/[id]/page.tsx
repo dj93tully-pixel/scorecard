@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { computeRound } from "@/lib/wolf";
 import { useGame } from "@/lib/useGame";
@@ -23,6 +23,18 @@ export default function GamePage() {
   const { game, round, loading, error, upsertEntry } = useGame(id);
   const { setHeader } = useHeader();
   const [tab, setTab] = useState<"scores" | "card">("scores");
+
+  // Remember each tab's own scroll position so switching tabs starts at that
+  // tab's top by default, but returning to a tab you'd scrolled restores it.
+  const scrollByTab = useRef<Record<string, number>>({ scores: 0, card: 0 });
+  function switchTab(next: "scores" | "card") {
+    if (next === tab) return;
+    scrollByTab.current[tab] = window.scrollY; // save the outgoing tab
+    setTab(next);
+  }
+  useLayoutEffect(() => {
+    window.scrollTo(0, scrollByTab.current[tab] ?? 0); // restore the incoming tab
+  }, [tab]);
 
   const computation = useMemo(() => (round ? computeRound(round) : null), [round]);
   const ticker = useMemo(
@@ -73,7 +85,7 @@ export default function GamePage() {
         <PillTabs
           tabs={TABS}
           activeId={tab}
-          onChange={(t) => setTab(t as "scores" | "card")}
+          onChange={(t) => switchTab(t as "scores" | "card")}
           ariaLabel="Game views"
         />
       </div>
