@@ -9,7 +9,6 @@ import { CSSProperties, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Round, RoundComputation, Player } from "@/lib/wolf";
 import { formatMoney, formatToPar } from "@/lib/storage";
-import { PopBurst } from "./PopBurst";
 
 const INK = "#16181D";
 const MUTED = "#8A90A0";
@@ -239,17 +238,22 @@ function PlayerNine({
     <div style={{ display: "flex", alignItems: "stretch", gap: "3px" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={gridStyle}>
-          {nums.map((n) =>
-            mode === "scores" && popsOf(n) > 0 ? (
-              <PopBurst key={n} size={15}>
-                <span style={numStyle}>{n}</span>
-              </PopBurst>
-            ) : (
-              <span key={n} style={numStyle}>
+          {nums.map((n) => {
+            // Holes where this player gets a handicap stroke: blue + bold.
+            const hasPop = mode === "scores" && popsOf(n) > 0;
+            return (
+              <span
+                key={n}
+                style={
+                  hasPop
+                    ? { fontSize: "8px", color: PRIMARY, fontWeight: 700 }
+                    : numStyle
+                }
+              >
                 {n}
               </span>
-            )
-          )}
+            );
+          })}
         </div>
         {mode === "scores" && (
           <div
