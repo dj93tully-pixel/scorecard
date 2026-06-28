@@ -62,10 +62,11 @@ export function computeSkins(round: Round): GameResult {
       });
     } else {
       carry += 1;
+      // Skins riding to the next hole: one skin's value per carried hole.
       holeResults.push({
         hole: h.number,
         decided: false,
-        detail: `Tie at net ${best} — carries (${carry})`,
+        detail: `Push — $${value * carry} carries`,
         deltas,
       });
     }

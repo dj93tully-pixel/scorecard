@@ -61,7 +61,7 @@ export function computeVegas(round: Round): GameResult {
 
     let detail: string;
     if (diff === 0) {
-      detail = `Push · ${numA}`;
+      detail = "Push";
     } else {
       const pts = Math.abs(diff);
       const amt = pts * pointValue * hammerMult;

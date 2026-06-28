@@ -82,7 +82,7 @@ export function computeSixes(round: Round): GameResult {
         ? `${tB.map(name).join("/")} win · forfeit`
         : `${tB.map(name).join("/")} win · ${bB} vs ${bA}`;
     } else {
-      detail = `Push at ${bA}`;
+      detail = "Push";
     }
 
     if (hammerMult !== 1) for (const id of ids) deltas[id] *= hammerMult;

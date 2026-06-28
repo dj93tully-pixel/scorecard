@@ -81,8 +81,12 @@ export function computeBestBall(round: Round): GameResult {
       carried = 0;
       detail = forfeit ? "Team B wins · forfeit" : `Team B wins · ${bB} vs ${bA}`;
     } else {
-      if (settings.carryover) carried = fieldApplied;
-      detail = `Push at ${bA}${settings.carryover ? " — carries" : ""}`;
+      if (settings.carryover) {
+        carried = fieldApplied;
+        detail = `Push — $${carried} carries`;
+      } else {
+        detail = "Push";
+      }
     }
 
     if (hammerMult !== 1) for (const id of ids) deltas[id] *= hammerMult;
