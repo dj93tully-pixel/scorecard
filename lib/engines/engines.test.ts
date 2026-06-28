@@ -196,6 +196,101 @@ describe("vegas", () => {
 
 // ── Six-Six-Six ──────────────────────────────────────────────────────────
 
+// ── Hammer & forfeit ────────────────────────────────────────────────────────
+
+describe("hammer & forfeit", () => {
+  it("skins: hammer doubles the hole payout", () => {
+    const round = makeRound(
+      "skins",
+      scratch(["a", "b", "c", "d"]),
+      [
+        {
+          hole: 1,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 3, b: 4, c: 5, d: 5 },
+          hammer: 1,
+        },
+      ],
+      { skinValue: 2 }
+    );
+    const { ledger } = computeSkins(round);
+    expect(ledger.a).toBe(12); // 6 × 2 (hammer)
+    expect(ledger.b).toBe(-4);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("vegas: hammer doubles the point money", () => {
+    const round = makeRound(
+      "vegas",
+      scratch(["a", "b", "c", "d"]),
+      [
+        {
+          hole: 18,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 4, b: 5, c: 4, d: 6 },
+          hammer: 1,
+        },
+      ],
+      { pointValue: 1, birdieFlip: true, teams: { a: "A", b: "A", c: "B", d: "B" } }
+    );
+    expect(computeVegas(round).ledger.a).toBe(2); // 1 pt × 2 (hammer)
+  });
+
+  it("best ball: forfeit forces the other team to win (no scores needed)", () => {
+    const round = makeRound(
+      "bestball",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 18, wolfId: "", mode: "2v2", grossScores: {}, forfeit: "A" }],
+      { stake: 5, teams: { a: "A", b: "A", c: "B", d: "B" } }
+    );
+    const { ledger } = computeBestBall(round);
+    expect(ledger.c).toBe(5); // team B wins by team A's concession
+    expect(ledger.d).toBe(5);
+    expect(ledger.a).toBe(-5);
+    expect(ledger.b).toBe(-5);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("best ball: hammer doubles a normal hole win", () => {
+    const round = makeRound(
+      "bestball",
+      scratch(["a", "b", "c", "d"]),
+      [
+        {
+          hole: 18,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 4, b: 5, c: 5, d: 6 },
+          hammer: 1,
+        },
+      ],
+      { stake: 5, teams: { a: "A", b: "A", c: "B", d: "B" } }
+    );
+    const { ledger } = computeBestBall(round);
+    expect(ledger.a).toBe(10);
+    expect(ledger.c).toBe(-10);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("six-six-six: forfeit decides the segment hole", () => {
+    const round = makeRound(
+      "sixes",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 1, wolfId: "", mode: "2v2", grossScores: {}, forfeit: "B" }],
+      { stake: 5 }
+    );
+    const { ledger } = computeSixes(round);
+    // Segment 1: A=a,b vs B=c,d. B concedes → a,b win.
+    expect(ledger.a).toBe(5);
+    expect(ledger.b).toBe(5);
+    expect(ledger.c).toBe(-5);
+    expect(ledger.d).toBe(-5);
+    expect(sum(ledger)).toBe(0);
+  });
+});
+
 describe("six-six-six", () => {
   it("partners rotate by segment (AB|CD then AC|BD)", () => {
     const round = makeRound(

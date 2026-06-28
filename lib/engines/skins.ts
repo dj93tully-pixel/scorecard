@@ -40,11 +40,15 @@ export function computeSkins(round: Round): GameResult {
     const best = Math.min(...ids.map((id) => net[id]));
     const winners = ids.filter((id) => net[id] === best);
 
+    // Hammer multiplies the money in play on the hole (1→1×, 1→2×, 2→4×).
+    const hammerMult = 2 ** Math.max(0, Math.floor(e!.hammer ?? 0));
+
     if (winners.length === 1) {
       const w = winners[0];
       const skins = carry + 1;
       for (const id of ids) {
-        deltas[id] = id === w ? value * skins * (ids.length - 1) : -value * skins;
+        const raw = id === w ? value * skins * (ids.length - 1) : -value * skins;
+        deltas[id] = raw * hammerMult;
         ledger[id] += deltas[id];
       }
       skinsWon[w] += skins;

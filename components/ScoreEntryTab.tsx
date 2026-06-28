@@ -6,10 +6,13 @@
 
 "use client";
 
+import { Hammer, Flag } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
-import { computeGame, gameTypeMeta, teamTag } from "@/lib/gametypes";
+import { computeGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
+
+const HAMMER_COLOR = "#7C3AED"; // vibrant purple, matches the Wolf Scores tab
 
 function HoleCard({
   round,
@@ -29,13 +32,22 @@ function HoleCard({
   const par = courseHole?.par ?? null;
   const existing = round.entries.find((e) => e.hole === hole);
   const grossScores = existing?.grossScores ?? {};
+  const hammer = existing?.hammer ?? 0;
+  const forfeit = existing?.forfeit;
 
   const base: HoleEntry = {
     hole,
     wolfId: "",
     mode: "2v2",
     grossScores,
+    hammer,
+    forfeit,
   };
+  const commit = (patch: Partial<HoleEntry>) => upsertEntry(hole, patch, base);
+
+  // Forfeit (one side concedes) only makes sense for the two-team match games.
+  const gt = gameTypeOf(round);
+  const forfeitable = gt === "bestball" || gt === "sixes";
 
   return (
     <div
@@ -43,10 +55,58 @@ function HoleCard({
       style={{ scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)" }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
-      <div className="mb-2 leading-tight">
-        <div className="text-lg font-extrabold">Hole {hole}</div>
-        <div className="text-xs text-text-muted">
-          Par {par ?? "–"} · Hcp {courseHole?.strokeIndex ?? "–"}
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="leading-tight">
+          <div className="text-lg font-extrabold">Hole {hole}</div>
+          <div className="text-xs text-text-muted">
+            Par {par ?? "–"} · Hcp {courseHole?.strokeIndex ?? "–"}
+          </div>
+        </div>
+
+        {/* Hammer (2×/4×) + forfeit (concede) toggles. */}
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <button
+            onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
+            aria-label="Hammer — double the hole"
+            style={hammer === 1 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
+            className={`flex items-center rounded-lg border px-2 py-1.5 ${
+              hammer === 1 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            }`}
+          >
+            <Hammer className="h-[15px] w-[15px]" />
+          </button>
+          <button
+            onClick={() => commit({ hammer: hammer === 2 ? 0 : 2 })}
+            aria-label="Double hammer — quadruple the hole"
+            style={hammer === 2 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
+            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
+              hammer === 2 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            }`}
+          >
+            <Hammer className="h-[15px] w-[15px]" />
+            <Hammer className="h-[15px] w-[15px]" />
+          </button>
+          {forfeitable &&
+            (["A", "B"] as const).map((side) => (
+              <button
+                key={side}
+                onClick={() => commit({ forfeit: forfeit === side ? undefined : side })}
+                aria-label={`Team ${side} forfeits`}
+                style={
+                  forfeit === side
+                    ? { background: TEAM_COLORS[side], borderColor: TEAM_COLORS[side] }
+                    : undefined
+                }
+                className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+                  forfeit === side
+                    ? "text-on-dark"
+                    : "border-card-border bg-card-bg text-text-muted"
+                }`}
+              >
+                <Flag className="h-[15px] w-[15px]" />
+                {side}
+              </button>
+            ))}
         </div>
       </div>
 

@@ -35,43 +35,59 @@ export function computeBestBall(round: Round): GameResult {
     const deltas: Record<PlayerId, number> = {};
     for (const id of ids) deltas[id] = 0;
 
+    const forfeit = e?.forfeit; // "A" = team A concedes, "B" = team B concedes
     const allScored = !!e && ids.every((id) => typeof e.grossScores[id] === "number");
-    if (!allScored || A.length === 0 || B.length === 0) {
+    // A forfeit decides the hole even before every score is in.
+    const decidable = !!e && (allScored || forfeit === "A" || forfeit === "B");
+    if (!decidable || A.length === 0 || B.length === 0) {
       holeResults.push({ hole: h.number, decided: false, detail: "—", deltas });
       continue;
     }
 
-    const net: Record<PlayerId, number> = {};
-    for (const id of ids) net[id] = e!.grossScores[id]! - (pops[id]?.[h.number] ?? 0);
-    const bA = bestNet(A, net)!;
-    const bB = bestNet(B, net)!;
+    let bA: number | null = null;
+    let bB: number | null = null;
+    if (allScored) {
+      const net: Record<PlayerId, number> = {};
+      for (const id of ids) net[id] = e!.grossScores[id]! - (pops[id]?.[h.number] ?? 0);
+      bA = bestNet(A, net);
+      bB = bestNet(B, net);
+    }
     const fieldApplied = fieldStake + carried;
     const wolfApplied = wolfStake + carried;
+    const hammerMult = 2 ** Math.max(0, Math.floor(e!.hammer ?? 0));
+
+    let winner: "A" | "B" | "push";
+    if (forfeit === "A") winner = "B";
+    else if (forfeit === "B") winner = "A";
+    else if (bA! < bB!) winner = "A";
+    else if (bB! < bA!) winner = "B";
+    else winner = "push";
 
     let detail: string;
-    if (bA < bB) {
+    if (winner === "A") {
       const pot = fieldApplied * B.length;
       const share = pot / A.length;
       for (const id of A) deltas[id] = share;
       for (const id of B) deltas[id] = -fieldApplied;
       holesA += 1;
       carried = 0;
-      detail = `Team A wins · ${bA} vs ${bB}`;
-    } else if (bB < bA) {
+      detail = forfeit ? "Team A wins · forfeit" : `Team A wins · ${bA} vs ${bB}`;
+    } else if (winner === "B") {
       const pot = wolfApplied * A.length;
       const share = pot / B.length;
       for (const id of B) deltas[id] = share;
       for (const id of A) deltas[id] = -wolfApplied;
       holesB += 1;
       carried = 0;
-      detail = `Team B wins · ${bB} vs ${bA}`;
+      detail = forfeit ? "Team B wins · forfeit" : `Team B wins · ${bB} vs ${bA}`;
     } else {
       if (settings.carryover) carried = fieldApplied;
       detail = `Push at ${bA}${settings.carryover ? " — carries" : ""}`;
     }
 
+    if (hammerMult !== 1) for (const id of ids) deltas[id] *= hammerMult;
     for (const id of ids) ledger[id] += deltas[id];
-    holeResults.push({ hole: h.number, decided: bA !== bB, detail, deltas });
+    holeResults.push({ hole: h.number, decided: winner !== "push", detail, deltas });
   }
 
   const up = holesA - holesB;

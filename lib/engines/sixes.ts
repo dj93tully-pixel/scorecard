@@ -42,37 +42,52 @@ export function computeSixes(round: Round): GameResult {
     for (const id of ids) deltas[id] = 0;
 
     const [tA, tB] = teamsForIndex(i);
+    const forfeit = e?.forfeit; // "A" = tA concedes, "B" = tB concedes
     const allScored = !!e && ids.every((id) => typeof e.grossScores[id] === "number");
-    if (!allScored || order.length < 4) {
+    const decidable = !!e && (allScored || forfeit === "A" || forfeit === "B");
+    if (!decidable || order.length < 4) {
       holeResults.push({ hole: h.number, decided: false, detail: "—", deltas });
       return;
     }
 
     const net = (id: PlayerId) => e!.grossScores[id]! - (pops[id]?.[h.number] ?? 0);
-    const bA = Math.min(...tA.map(net));
-    const bB = Math.min(...tB.map(net));
+    const bA = allScored ? Math.min(...tA.map(net)) : null;
+    const bB = allScored ? Math.min(...tB.map(net)) : null;
+    const hammerMult = 2 ** Math.max(0, Math.floor(e!.hammer ?? 0));
+
+    let winner: "A" | "B" | "push";
+    if (forfeit === "A") winner = "B";
+    else if (forfeit === "B") winner = "A";
+    else if (bA! < bB!) winner = "A";
+    else if (bB! < bA!) winner = "B";
+    else winner = "push";
 
     let detail: string;
-    if (bA < bB) {
+    if (winner === "A") {
       for (const id of tA) {
         deltas[id] = stake;
         holesWon[id] += 1;
       }
       for (const id of tB) deltas[id] = -stake;
-      detail = `${tA.map(name).join("/")} win · ${bA} vs ${bB}`;
-    } else if (bB < bA) {
+      detail = forfeit
+        ? `${tA.map(name).join("/")} win · forfeit`
+        : `${tA.map(name).join("/")} win · ${bA} vs ${bB}`;
+    } else if (winner === "B") {
       for (const id of tB) {
         deltas[id] = stake;
         holesWon[id] += 1;
       }
       for (const id of tA) deltas[id] = -stake;
-      detail = `${tB.map(name).join("/")} win · ${bB} vs ${bA}`;
+      detail = forfeit
+        ? `${tB.map(name).join("/")} win · forfeit`
+        : `${tB.map(name).join("/")} win · ${bB} vs ${bA}`;
     } else {
       detail = `Push at ${bA}`;
     }
 
+    if (hammerMult !== 1) for (const id of ids) deltas[id] *= hammerMult;
     for (const id of ids) ledger[id] += deltas[id];
-    holeResults.push({ hole: h.number, decided: bA !== bB, detail, deltas });
+    holeResults.push({ hole: h.number, decided: winner !== "push", detail, deltas });
   });
 
   const stats: Record<PlayerId, Record<string, number>> = {};

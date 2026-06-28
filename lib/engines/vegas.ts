@@ -56,12 +56,15 @@ export function computeVegas(round: Round): GameResult {
     const numB = teamNumber(bNets[0], bNets[1], flip && birdieA);
     const diff = numA - numB;
 
+    // Hammer multiplies the money in play (0→1×, 1→2×, 2→4×).
+    const hammerMult = 2 ** Math.max(0, Math.floor(e!.hammer ?? 0));
+
     let detail: string;
     if (diff === 0) {
       detail = `Push · ${numA}`;
     } else {
       const pts = Math.abs(diff);
-      const amt = pts * pointValue;
+      const amt = pts * pointValue * hammerMult;
       if (diff < 0) {
         for (const id of A) {
           deltas[id] = amt;
