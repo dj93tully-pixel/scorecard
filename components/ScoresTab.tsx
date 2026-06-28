@@ -311,11 +311,17 @@ export function ScoresTab({
   const ready = round.players.length >= 3 && round.course.holes.length > 0;
 
   // Jump to a hole's card. The card carries scroll-margin-top so it lands just
-  // below the sticky tab bar rather than under it.
-  const goToHole = (n: number) =>
+  // below the sticky tab bar rather than under it. Hole 1 is the first card, so
+  // jump all the way to the top instead — revealing the Scores/course header.
+  const goToHole = (n: number) => {
+    if (n === 1) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     document
       .getElementById(`hole-${n}`)
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   if (!ready) {
     return (
