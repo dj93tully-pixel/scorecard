@@ -7,17 +7,20 @@
 "use client";
 
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
-import { gameTypeMeta, teamTag } from "@/lib/gametypes";
+import { computeGame, gameTypeMeta, teamTag } from "@/lib/gametypes";
+import { GameHoleResult } from "@/lib/engines/types";
 
 function HoleCard({
   round,
   pops,
   hole,
+  note,
   upsertEntry,
 }: {
   round: Round;
   pops: Record<string, Record<number, number>>;
   hole: number;
+  note?: GameHoleResult;
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
   const { players, course } = round;
@@ -96,6 +99,17 @@ function HoleCard({
           );
         })}
       </div>
+
+      {/* Result note — who won the hole, or push/carry (like the Wolf Scores tab). */}
+      {note && note.detail !== "—" && (
+        <div
+          className={`mt-2 text-right text-sm ${
+            note.decided ? "font-bold text-text-primary" : "text-text-muted"
+          }`}
+        >
+          {note.detail}
+        </div>
+      )}
     </div>
   );
 }
@@ -131,6 +145,9 @@ export function ScoreEntryTab({
   }
 
   const pops = computePops(round.players, round.course, round.settings.handicapMode);
+  const resultByHole = new Map(
+    computeGame(round).holeResults.map((r) => [r.hole, r])
+  );
 
   return (
     <div className="space-y-3">
@@ -162,6 +179,7 @@ export function ScoreEntryTab({
           round={round}
           pops={pops}
           hole={h.number}
+          note={resultByHole.get(h.number)}
           upsertEntry={upsertEntry}
         />
       ))}

@@ -8,9 +8,8 @@ import { useHeader } from "@/lib/header-context";
 import { liveSummary, genericSummary } from "@/lib/live";
 import { computeGame, gameTypeOf } from "@/lib/gametypes";
 import { ScoresTab } from "@/components/ScoresTab";
-import { CardTab } from "@/components/CardTab";
+import { CardTab, CardComputation } from "@/components/CardTab";
 import { ScoreEntryTab } from "@/components/ScoreEntryTab";
-import { StandingsView } from "@/components/StandingsView";
 import { PillTabs, PillTab } from "@/components/PillTabs";
 
 export default function GamePage() {
@@ -52,9 +51,16 @@ export default function GamePage() {
     return null;
   }, [round, isWolf, computation, gameResult]);
 
+  // Both engines feed the same Card view (standings + ledger + scorecard).
+  const cardComp: CardComputation | null = isWolf
+    ? computation
+    : gameResult
+      ? { ledger: gameResult.ledger, pops: gameResult.pops, results: gameResult.holeResults }
+      : null;
+
   const tabs: PillTab[] = [
     { id: "scores", label: "Scores" },
-    { id: "card", label: isWolf ? "Card" : "Standings" },
+    { id: "card", label: "Card" },
   ];
 
   // Drive the global header: game name + back + ticker. Editing lives only in
@@ -111,12 +117,7 @@ export default function GamePage() {
           ) : (
             <ScoreEntryTab round={round} upsertEntry={upsertEntry} />
           ))}
-        {tab === "card" &&
-          (isWolf && computation ? (
-            <CardTab round={round} computation={computation} />
-          ) : (
-            <StandingsView round={round} />
-          ))}
+        {tab === "card" && cardComp && <CardTab round={round} computation={cardComp} />}
       </div>
     </div>
   );

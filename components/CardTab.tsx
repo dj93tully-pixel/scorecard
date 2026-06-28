@@ -7,8 +7,16 @@
 
 import { CSSProperties, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { Round, RoundComputation, Player } from "@/lib/wolf";
+import { Round, Player } from "@/lib/wolf";
 import { formatMoney, formatToPar } from "@/lib/storage";
+
+// Minimal shape the Card view needs — satisfied by both Wolf's RoundComputation
+// and the generic GameResult, so this one component serves every game type.
+export interface CardComputation {
+  ledger: Record<string, number>;
+  pops: Record<string, Record<number, number>>;
+  results: { hole: number; deltas: Record<string, number> }[];
+}
 
 const INK = "#16181D";
 const MUTED = "#8A90A0";
@@ -74,7 +82,7 @@ function BigNine({
   net = false,
 }: {
   round: Round;
-  computation: RoundComputation;
+  computation: CardComputation;
   holes: number[];
   title: string;
   mode: "scores" | "money";
@@ -215,7 +223,7 @@ function PlayerNine({
   mode,
 }: {
   round: Round;
-  computation: RoundComputation;
+  computation: CardComputation;
   player: Player;
   from: number;
   label: string;
@@ -337,7 +345,7 @@ function LedgerCard({
   rankIndex,
 }: {
   round: Round;
-  computation: RoundComputation;
+  computation: CardComputation;
   player: Player;
   rankIndex: number; // 0-based; tied players share the same index
 }) {
@@ -429,7 +437,7 @@ export function CardTab({
   computation,
 }: {
   round: Round;
-  computation: RoundComputation;
+  computation: CardComputation;
 }) {
   const front = Array.from({ length: 9 }, (_, i) => i + 1);
   const back = Array.from({ length: 9 }, (_, i) => i + 10);
