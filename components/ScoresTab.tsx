@@ -337,8 +337,8 @@ export function ScoresTab({
       {/* Quick hole jumper: one thin row, scrolls sideways, pinned below the
           tab bar so it stays reachable while scrolling the holes. */}
       <div
-        className="sticky z-10 flex gap-1 overflow-x-auto rounded-lg border border-primary/30 bg-primary/10 px-1.5 py-1.5"
-        style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
+        className="sticky z-10 flex gap-1 overflow-x-auto rounded-lg border border-primary/30 px-1.5 py-1.5"
+        style={{ top: "calc(var(--header-h, 88px) + 3.4rem)", background: "#E7F0FF" }}
       >
         {round.course.holes.map((h) => (
           <button
