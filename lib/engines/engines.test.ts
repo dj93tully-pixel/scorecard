@@ -75,7 +75,7 @@ describe("skins", () => {
         { hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 4, c: 4, d: 4 } }, // tie → carry
         { hole: 2, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 4, d: 4 } }, // a wins 2
       ],
-      { skinValue: 2 }
+      { skinValue: 2, carryover: true }
     );
     const { ledger, stats } = computeSkins(round);
     expect(stats.a.skins).toBe(2);
@@ -195,6 +195,60 @@ describe("vegas", () => {
 });
 
 // ── Six-Six-Six ──────────────────────────────────────────────────────────
+
+// ── Carryover ────────────────────────────────────────────────────────────────
+
+describe("carryover option", () => {
+  it("skins: with carryover off, a tied hole is dead (no carry)", () => {
+    const round = makeRound(
+      "skins",
+      scratch(["a", "b", "c", "d"]),
+      [
+        { hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 4, c: 4, d: 4 } }, // dead tie
+        { hole: 2, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 4, d: 4 } }, // a wins 1
+      ],
+      { skinValue: 2, carryover: false }
+    );
+    const { ledger, stats } = computeSkins(round);
+    expect(stats.a.skins).toBe(1); // not 2 — the tie didn't carry
+    expect(ledger.a).toBe(6);
+    expect(ledger.b).toBe(-2);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("six-six-six: a push carries within a segment", () => {
+    const round = makeRound(
+      "sixes",
+      scratch(["a", "b", "c", "d"]),
+      [
+        { hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 5, c: 4, d: 5 } }, // push
+        { hole: 2, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 5, c: 5, d: 6 } }, // A wins 5+5
+      ],
+      { stake: 5, carryover: true }
+    );
+    const { ledger } = computeSixes(round);
+    expect(ledger.a).toBe(10); // carried stake doubled the hole
+    expect(ledger.c).toBe(-10);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("six-six-six: a carry dies when partners rotate (segment boundary)", () => {
+    const round = makeRound(
+      "sixes",
+      scratch(["a", "b", "c", "d"]),
+      [
+        { hole: 6, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 5, c: 4, d: 5 } }, // push, last of seg 1
+        { hole: 7, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 5, c: 5, d: 5 } }, // seg 2: a,c vs b,d
+      ],
+      { stake: 5, carryover: true }
+    );
+    const { ledger } = computeSixes(round);
+    expect(ledger.a).toBe(5); // not 10 — the carry was voided at the rotation
+    expect(ledger.c).toBe(5);
+    expect(ledger.b).toBe(-5);
+    expect(sum(ledger)).toBe(0);
+  });
+});
 
 // ── Hammer & forfeit ────────────────────────────────────────────────────────
 

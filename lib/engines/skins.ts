@@ -60,7 +60,7 @@ export function computeSkins(round: Round): GameResult {
         detail: `${name} wins ${skins} skin${skins > 1 ? "s" : ""} · net ${best}`,
         deltas,
       });
-    } else {
+    } else if (settings.carryover) {
       carry += 1;
       // Skins riding to the next hole: one skin's value per carried hole.
       holeResults.push({
@@ -69,6 +69,9 @@ export function computeSkins(round: Round): GameResult {
         detail: `Push — $${value * carry} carries`,
         deltas,
       });
+    } else {
+      // No carryover: a tied hole's skin is dead, nobody wins it.
+      holeResults.push({ hole: h.number, decided: false, detail: "Push", deltas });
     }
   }
 

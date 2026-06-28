@@ -26,21 +26,26 @@ export function computeSixes(round: Round): GameResult {
 
   const name = (id: PlayerId) =>
     players.find((p) => p.id === id)?.name?.split(" ")[0] || "?";
-  const teamsForIndex = (i: number): [PlayerId[], PlayerId[]] => {
+  const segOf = (i: number) => {
     const third = total / 3;
-    const seg = i < third ? 0 : i < 2 * third ? 1 : 2;
+    return i < third ? 0 : i < 2 * third ? 1 : 2;
+  };
+  const teamsForIndex = (i: number): [PlayerId[], PlayerId[]] => {
+    const seg = segOf(i);
     if (seg === 0) return [[p0, p1], [p2, p3]];
     if (seg === 1) return [[p0, p2], [p1, p3]];
     return [[p0, p3], [p1, p2]];
   };
 
   const holeResults: GameHoleResult[] = [];
+  let carried = 0; // pushed stake riding forward — only within the same segment
 
   course.holes.forEach((h, i) => {
     const e = entryByHole.get(h.number);
     const deltas: Record<PlayerId, number> = {};
     for (const id of ids) deltas[id] = 0;
 
+    const seg = segOf(i);
     const [tA, tB] = teamsForIndex(i);
     const forfeit = e?.forfeit; // "A" = tA concedes, "B" = tB concedes
     const allScored = !!e && ids.every((id) => typeof e.grossScores[id] === "number");
@@ -54,6 +59,7 @@ export function computeSixes(round: Round): GameResult {
     const bA = allScored ? Math.min(...tA.map(net)) : null;
     const bB = allScored ? Math.min(...tB.map(net)) : null;
     const hammerMult = 2 ** Math.max(0, Math.floor(e!.hammer ?? 0));
+    const stakeApplied = stake + carried;
 
     let winner: "A" | "B" | "push";
     if (forfeit === "A") winner = "B";
@@ -65,24 +71,34 @@ export function computeSixes(round: Round): GameResult {
     let detail: string;
     if (winner === "A") {
       for (const id of tA) {
-        deltas[id] = stake;
+        deltas[id] = stakeApplied;
         holesWon[id] += 1;
       }
-      for (const id of tB) deltas[id] = -stake;
+      for (const id of tB) deltas[id] = -stakeApplied;
+      carried = 0;
       detail = forfeit
         ? `${tA.map(name).join("/")} win · forfeit`
         : `${tA.map(name).join("/")} win · ${bA} vs ${bB}`;
     } else if (winner === "B") {
       for (const id of tB) {
-        deltas[id] = stake;
+        deltas[id] = stakeApplied;
         holesWon[id] += 1;
       }
-      for (const id of tA) deltas[id] = -stake;
+      for (const id of tA) deltas[id] = -stakeApplied;
+      carried = 0;
       detail = forfeit
         ? `${tB.map(name).join("/")} win · forfeit`
         : `${tB.map(name).join("/")} win · ${bB} vs ${bA}`;
     } else {
-      detail = "Push";
+      // Carry only within the same segment — when partners rotate, the carry dies.
+      const nextSameSegment = i + 1 < total && segOf(i + 1) === seg;
+      if (settings.carryover && nextSameSegment) {
+        carried = stakeApplied;
+        detail = `Push — $${carried} carries`;
+      } else {
+        carried = 0;
+        detail = "Push";
+      }
     }
 
     if (hammerMult !== 1) for (const id of ids) deltas[id] *= hammerMult;

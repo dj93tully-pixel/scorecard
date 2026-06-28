@@ -530,7 +530,7 @@ export function SetupTab({
               </Field>
             </>
           )}
-          {(isWolf || gameType === "skins" || gameType === "bestball") && (
+          {gameType !== "vegas" && (
             <Field label="Carryover ties">
               <input
                 type="checkbox"
