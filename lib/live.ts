@@ -5,6 +5,8 @@
 import { Round, RoundComputation, defaultWolfForHole } from "./wolf";
 import { formatMoney } from "./storage";
 import { suggestForHole } from "./caddie";
+import { gameTypeMeta } from "./gametypes";
+import type { GameResult } from "./engines/types";
 import type { TickerData } from "./header-context";
 
 export function liveSummary(round: Round, computation: RoundComputation): TickerData {
@@ -46,6 +48,44 @@ export function liveSummary(round: Round, computation: RoundComputation): Ticker
     const suggestion = suggestForHole(round, computation, currentHole);
     if (suggestion) meta.push(`Magic: ${suggestion.label}`);
   }
+
+  return {
+    live: playedCount > 0 && !isFinal,
+    primary: isFinal ? "Final" : `Hole ${currentHole}`,
+    meta: meta.join("  ·  ") || undefined,
+  };
+}
+
+/**
+ * Ticker for the non-Wolf game types. Shows the current hole + the money leader,
+ * derived from the engine's GameResult (no Wolf-specific logic).
+ */
+export function genericSummary(round: Round, result: GameResult): TickerData {
+  const { players, course } = round;
+  const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
+  const allScored = (hole: number) => {
+    const e = entryByHole.get(hole);
+    return !!e && players.every((p) => typeof e.grossScores[p.id] === "number");
+  };
+
+  const playedCount = course.holes.filter((h) => allScored(h.number)).length;
+  const next = course.holes.find((h) => !allScored(h.number));
+  const isFinal = !next && course.holes.length > 0;
+  const currentHole = next?.number ?? course.holes.length;
+
+  let leader = players[0];
+  let best = -Infinity;
+  for (const p of players) {
+    const v = result.ledger[p.id] ?? 0;
+    if (v > best) {
+      best = v;
+      leader = p;
+    }
+  }
+  const anyMoney = players.some((p) => (result.ledger[p.id] ?? 0) !== 0);
+
+  const meta: string[] = [gameTypeMeta(round).label];
+  if (anyMoney && leader) meta.push(`Lead: ${leader.name || "—"} ${formatMoney(best)}`);
 
   return {
     live: playedCount > 0 && !isFinal,

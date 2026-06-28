@@ -14,6 +14,7 @@ import {
   strokeIndexIssues,
 } from "@/lib/storage";
 import { CourseImport } from "./CourseImport";
+import { gameTypeMeta, TEAM_COLORS } from "@/lib/gametypes";
 
 function Field({
   label,
@@ -45,6 +46,12 @@ export function SetupTab({
   const isDirect = settings.handicapMode === "direct";
   // "New Course" is the blank default — treat anything else as a real course.
   const hasCourse = course.name.trim() !== "" && course.name !== "New Course";
+
+  const meta = gameTypeMeta(round);
+  const gameType = round.gameType ?? "wolf";
+  const isWolf = gameType === "wolf";
+  const playerCountOk =
+    players.length >= meta.players.min && players.length <= meta.players.max;
 
   // Select the contents of a number field on focus so typing replaces the
   // existing digit instead of appending to it (e.g. 1 → 3, not 13).
@@ -82,14 +89,14 @@ export function SetupTab({
     }));
   }
   function addPlayer() {
-    if (players.length >= 5) return;
+    if (players.length >= meta.players.max) return;
     updateRound((r) => {
       const p = makePlayer(`Player ${r.players.length + 1}`, 0);
       return { ...r, players: [...r.players, p], teeOrder: [...r.teeOrder, p.id] };
     });
   }
   function removePlayer(id: string) {
-    if (players.length <= 3) return;
+    if (players.length <= meta.players.min) return;
     updateRound((r) => ({
       ...r,
       players: r.players.filter((p) => p.id !== id),
@@ -105,6 +112,13 @@ export function SetupTab({
       [order[i], order[j]] = [order[j], order[i]];
       return { ...r, teeOrder: order };
     });
+  }
+
+  function setTeam(id: string, team: "A" | "B") {
+    updateRound((r) => ({
+      ...r,
+      settings: { ...r.settings, teams: { ...(r.settings.teams ?? {}), [id]: team } },
+    }));
   }
 
   // ── Settings ──
@@ -128,7 +142,12 @@ export function SetupTab({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold">Round Setup</h2>
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-xl font-bold">Round Setup</h2>
+        <span className="rounded-full bg-pill-bg px-2.5 py-0.5 text-xs font-bold text-pill-text">
+          {meta.label}
+        </span>
+      </div>
 
       {/* Course */}
       <section className="rounded-xl border border-card-border bg-card-bg p-4">
@@ -259,8 +278,26 @@ export function SetupTab({
       <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-bold">Players</h3>
-          <span className="text-xs text-text-muted">{players.length} / 5</span>
+          <span
+            className={`text-xs font-semibold ${
+              playerCountOk ? "text-text-muted" : "text-negative"
+            }`}
+          >
+            {players.length} /{" "}
+            {meta.players.min === meta.players.max
+              ? meta.players.max
+              : `${meta.players.min}–${meta.players.max}`}
+          </span>
         </div>
+        {!playerCountOk && (
+          <p className="mb-2 rounded-lg bg-tint-caution px-3 py-2 text-xs font-semibold text-text-primary">
+            {meta.label} needs{" "}
+            {meta.players.min === meta.players.max
+              ? `exactly ${meta.players.max}`
+              : `${meta.players.min}–${meta.players.max}`}{" "}
+            players.
+          </p>
+        )}
 
         {/* Handicap / Pops toggle */}
         <div className="mb-3 flex rounded-lg bg-page-bg p-1 text-sm font-semibold">
@@ -344,7 +381,7 @@ export function SetupTab({
         <div className="mt-3 flex gap-2">
           <button
             onClick={addPlayer}
-            disabled={players.length >= 5}
+            disabled={players.length >= meta.players.max}
             className="flex-1 rounded-lg border border-dashed border-card-border py-2 text-sm font-semibold text-accent-on-light disabled:opacity-40"
           >
             + Add player
@@ -354,70 +391,155 @@ export function SetupTab({
               const last = orderedPlayers[orderedPlayers.length - 1];
               if (last) removePlayer(last.id);
             }}
-            disabled={players.length <= 3}
+            disabled={players.length <= meta.players.min}
             className="rounded-lg border border-dashed border-card-border px-4 py-2 text-sm font-semibold text-text-muted disabled:opacity-40"
           >
             − Remove
           </button>
         </div>
         <p className="mt-2 text-xs text-text-faint">
-          List order is the tee order — the wolf rotates down this list each hole
-          (override on any hole in Scores).
+          {isWolf
+            ? "List order is the tee order — the wolf rotates down this list each hole (override on any hole in Scores)."
+            : meta.rotatesTeams
+              ? "List order sets the rotating partnerships (1&2 v 3&4, then 1&3 v 2&4, then 1&4 v 2&3)."
+              : "List order is the playing order."}
         </p>
       </section>
+
+      {/* Teams (Best Ball / Vegas) */}
+      {meta.hasTeams && (
+        <section className="rounded-xl border border-card-border bg-card-bg p-4">
+          <h3 className="mb-1 font-bold">Teams</h3>
+          <p className="mb-3 text-xs text-text-muted">
+            Assign each player to team A or B.
+          </p>
+          <div className="space-y-2">
+            {orderedPlayers.map((p) => {
+              const team = settings.teams?.[p.id] ?? "A";
+              return (
+                <div key={p.id} className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {p.name || "Unnamed"}
+                  </span>
+                  <div className="flex overflow-hidden rounded-lg border border-card-border">
+                    {(["A", "B"] as const).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setTeam(p.id, t)}
+                        className="px-4 py-1.5 text-sm font-bold"
+                        style={
+                          team === t
+                            ? { background: TEAM_COLORS[t], color: "#fff" }
+                            : { color: "#8A90A0" }
+                        }
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Money & rules */}
       <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <h3 className="mb-1 font-bold">Money &amp; rules</h3>
         <div className="divide-y divide-divider">
-          <Field label="Stake — field $/hole">
-            <input
-              type="number"
-              min={0}
-              value={settings.stake}
-              onFocus={selectOnFocus}
-              onChange={(e) => setSetting("stake", parseFloat(e.target.value) || 0)}
-              className={numberInput}
-            />
-          </Field>
-          <Field label="Wolf team $/hole (0 = same)">
-            <input
-              type="number"
-              min={0}
-              value={settings.wolfStake ?? 0}
-              onFocus={selectOnFocus}
-              onChange={(e) => setSetting("wolfStake", parseFloat(e.target.value) || 0)}
-              className={numberInput}
-            />
-          </Field>
-          <Field label="Lone wolf multiplier">
-            <input
-              type="number"
-              min={1}
-              value={settings.loneMult}
-              onFocus={selectOnFocus}
-              onChange={(e) => setSetting("loneMult", parseFloat(e.target.value) || 1)}
-              className={numberInput}
-            />
-          </Field>
-          <Field label="Blind wolf multiplier">
-            <input
-              type="number"
-              min={1}
-              value={settings.blindMult}
-              onFocus={selectOnFocus}
-              onChange={(e) => setSetting("blindMult", parseFloat(e.target.value) || 1)}
-              className={numberInput}
-            />
-          </Field>
-          <Field label="Carryover ties">
-            <input
-              type="checkbox"
-              checked={settings.carryover}
-              onChange={(e) => setSetting("carryover", e.target.checked)}
-              className="h-6 w-6 accent-[#354CA1]"
-            />
-          </Field>
+          {(isWolf || gameType === "bestball" || gameType === "sixes") && (
+            <Field label="Stake — $/hole">
+              <input
+                type="number"
+                min={0}
+                value={settings.stake}
+                onFocus={selectOnFocus}
+                onChange={(e) => setSetting("stake", parseFloat(e.target.value) || 0)}
+                className={numberInput}
+              />
+            </Field>
+          )}
+          {gameType === "skins" && (
+            <Field label="Skin value — $">
+              <input
+                type="number"
+                min={0}
+                value={settings.skinValue ?? 5}
+                onFocus={selectOnFocus}
+                onChange={(e) => setSetting("skinValue", parseFloat(e.target.value) || 0)}
+                className={numberInput}
+              />
+            </Field>
+          )}
+          {gameType === "vegas" && (
+            <>
+              <Field label="Point value — $">
+                <input
+                  type="number"
+                  min={0}
+                  value={settings.pointValue ?? 1}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => setSetting("pointValue", parseFloat(e.target.value) || 0)}
+                  className={numberInput}
+                />
+              </Field>
+              <Field label="Birdie flips opponent">
+                <input
+                  type="checkbox"
+                  checked={settings.birdieFlip ?? true}
+                  onChange={(e) => setSetting("birdieFlip", e.target.checked)}
+                  className="h-6 w-6 accent-[#354CA1]"
+                />
+              </Field>
+            </>
+          )}
+          {(isWolf || gameType === "bestball") && (
+            <Field label={isWolf ? "Wolf team $/hole (0 = same)" : "Team A $/hole (0 = same)"}>
+              <input
+                type="number"
+                min={0}
+                value={settings.wolfStake ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => setSetting("wolfStake", parseFloat(e.target.value) || 0)}
+                className={numberInput}
+              />
+            </Field>
+          )}
+          {isWolf && (
+            <>
+              <Field label="Lone wolf multiplier">
+                <input
+                  type="number"
+                  min={1}
+                  value={settings.loneMult}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => setSetting("loneMult", parseFloat(e.target.value) || 1)}
+                  className={numberInput}
+                />
+              </Field>
+              <Field label="Blind wolf multiplier">
+                <input
+                  type="number"
+                  min={1}
+                  value={settings.blindMult}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => setSetting("blindMult", parseFloat(e.target.value) || 1)}
+                  className={numberInput}
+                />
+              </Field>
+            </>
+          )}
+          {(isWolf || gameType === "skins" || gameType === "bestball") && (
+            <Field label="Carryover ties">
+              <input
+                type="checkbox"
+                checked={settings.carryover}
+                onChange={(e) => setSetting("carryover", e.target.checked)}
+                className="h-6 w-6 accent-[#354CA1]"
+              />
+            </Field>
+          )}
           {!isDirect && (
             <Field label="Handicap mode">
               <select

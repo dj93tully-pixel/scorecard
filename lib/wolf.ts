@@ -45,9 +45,24 @@ export interface RoundSettings {
   blindEnabled: boolean;
   carryover: boolean; // ties push; if true, roll stake into next hole
   handicapMode: HandicapMode;
+
+  // ── Fields for the non-Wolf game types (all optional; ignored by Wolf) ──
+  /** Team assignment for Best Ball / Vegas: playerId → "A" | "B". */
+  teams?: Record<PlayerId, "A" | "B">;
+  /** Skins: value of one skin, contributed by each player. */
+  skinValue?: number;
+  /** Vegas: dollars per point of the team-number difference. */
+  pointValue?: number;
+  /** Vegas: opponent birdie flips your team number high-digit-first. */
+  birdieFlip?: boolean;
 }
 
 export type WolfMode = "2v2" | "lone" | "blind";
+
+// Which money game a round is. "wolf" is the original engine; the others live in
+// lib/engines/* and are dispatched via lib/gametypes.ts. All non-wolf types use
+// only each hole's gross_scores as input (teams live in settings / are derived).
+export type GameTypeId = "wolf" | "skins" | "bestball" | "vegas" | "sixes";
 
 export interface HoleEntry {
   hole: number; // 1..18
@@ -70,6 +85,8 @@ export interface Round {
   teeOrder: PlayerId[];
   settings: RoundSettings;
   entries: HoleEntry[];
+  /** Which money game this is. Defaults to "wolf" when absent (legacy rows). */
+  gameType?: GameTypeId;
 }
 
 export const DEFAULT_SETTINGS: RoundSettings = {

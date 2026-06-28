@@ -3,13 +3,23 @@
 // engine's Round, and exposes CRUD + realtime helpers. No engine math here.
 
 import { supabase } from "./supabase";
-import { Round, HoleEntry, Course, Player, RoundSettings, DEFAULT_SETTINGS } from "./wolf";
+import {
+  Round,
+  HoleEntry,
+  Course,
+  Player,
+  RoundSettings,
+  GameTypeId,
+  DEFAULT_SETTINGS,
+} from "./wolf";
 import { blankCourse, defaultPlayers } from "./storage";
+import { GAME_TYPES } from "./gametypes";
 
 export interface GameSummary {
   id: string;
   name: string;
   courseName: string;
+  gameType: GameTypeId;
   createdAt: string;
   completed: boolean;
   published: boolean;
@@ -30,6 +40,7 @@ interface GameRow {
   players: Player[];
   tee_order: string[];
   settings: RoundSettings;
+  game_type: GameTypeId | null;
   created_at: string;
   completed: boolean;
   published: boolean;
@@ -65,6 +76,7 @@ function rowsToRound(game: GameRow, entries: EntryRow[]): Round {
     teeOrder: game.tee_order,
     settings: { ...DEFAULT_SETTINGS, ...game.settings },
     entries: entries.map(rowToEntry).sort((a, b) => a.hole - b.hole),
+    gameType: game.game_type ?? "wolf",
   };
 }
 
@@ -73,13 +85,14 @@ function rowsToRound(game: GameRow, entries: EntryRow[]): Round {
 export async function listGames(): Promise<GameSummary[]> {
   const { data, error } = await supabase
     .from("games")
-    .select("id, name, created_at, completed, published, courseName:course->>name")
+    .select("id, name, game_type, created_at, completed, published, courseName:course->>name")
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((g) => ({
     id: g.id,
     name: g.name,
     courseName: (g.courseName as string) ?? "",
+    gameType: ((g.game_type as GameTypeId) ?? "wolf"),
     createdAt: g.created_at,
     completed: Boolean(g.completed),
     published: Boolean(g.published),
@@ -105,16 +118,28 @@ export async function getGame(id: string): Promise<Game | null> {
 
 // ── Writes ─────────────────────────────────────────────────────────────────
 
-export async function createGame(name: string): Promise<string> {
+export async function createGame(
+  name: string,
+  gameType: GameTypeId = "wolf"
+): Promise<string> {
+  const meta = GAME_TYPES[gameType];
   const players = defaultPlayers();
+  const settings: RoundSettings = { ...DEFAULT_SETTINGS, ...meta.defaultSettings };
+  // Seed a balanced default team split for the team games (A,B,A,B…).
+  if (meta.hasTeams) {
+    settings.teams = Object.fromEntries(
+      players.map((p, i) => [p.id, i % 2 === 0 ? "A" : "B"])
+    );
+  }
   const { data, error } = await supabase
     .from("games")
     .insert({
-      name: name.trim() || "New game",
+      name: name.trim() || `New ${meta.label} game`,
+      game_type: gameType,
       course: blankCourse(),
       players,
       tee_order: players.map((p) => p.id),
-      settings: { ...DEFAULT_SETTINGS },
+      settings,
     })
     .select("id")
     .single();

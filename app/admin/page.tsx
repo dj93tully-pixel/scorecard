@@ -13,6 +13,8 @@ import { supabaseConfigured } from "@/lib/supabase";
 import { useHeader } from "@/lib/header-context";
 import { AdminGameEditor } from "@/components/AdminGameEditor";
 import { PillTabs, PillTab } from "@/components/PillTabs";
+import { GAME_TYPES, GAME_TYPE_LIST } from "@/lib/gametypes";
+import { GameTypeId } from "@/lib/wolf";
 
 const TABS: PillTab[] = [
   { id: "active", label: "Active" },
@@ -24,8 +26,19 @@ export default function AdminPage() {
   const { setHeader } = useHeader();
   const [games, setGames] = useState<GameSummary[] | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   const [tab, setTab] = useState<"active" | "completed">("active");
   const [error, setError] = useState<string | null>(null);
+
+  async function startGame(type: GameTypeId) {
+    try {
+      const id = await createGame("", type);
+      setPicking(false);
+      setEditingId(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create game.");
+    }
+  }
 
   function refresh() {
     listGames()
@@ -45,26 +58,20 @@ export default function AdminPage() {
   // Header: New-game button (creates a draft and opens its editor). Hidden while editing.
   useEffect(() => {
     setHeader({
-      title: editingId ? "Edit game" : "Admin",
+      title: editingId ? "Edit game" : picking ? "New game" : "Admin",
       backHref: "/",
-      rightButton: editingId
-        ? undefined
-        : {
-            label: "New game",
-            icon: <Plus className="h-4 w-4" />,
-            primary: true,
-            onClick: async () => {
-              try {
-                const id = await createGame("");
-                setEditingId(id);
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Could not create game.");
-              }
+      rightButton:
+        editingId || picking
+          ? undefined
+          : {
+              label: "New game",
+              icon: <Plus className="h-4 w-4" />,
+              primary: true,
+              onClick: () => setPicking(true),
             },
-          },
     });
     return () => setHeader({});
-  }, [editingId, setHeader]);
+  }, [editingId, picking, setHeader]);
 
   if (!supabaseConfigured) {
     return (
@@ -83,6 +90,43 @@ export default function AdminPage() {
           refresh();
         }}
       />
+    );
+  }
+
+  if (picking) {
+    return (
+      <div className="mt-4 animate-fade-in space-y-3">
+        <button
+          onClick={() => setPicking(false)}
+          className="text-sm font-semibold text-accent-on-light"
+        >
+          ‹ All games
+        </button>
+        <h2 className="text-xl font-bold">Pick a game</h2>
+        {error && (
+          <p className="rounded-lg bg-tint-bad px-3 py-2 text-sm text-negative">{error}</p>
+        )}
+        <ul className="space-y-2">
+          {GAME_TYPE_LIST.map((t) => (
+            <li key={t.id}>
+              <button
+                onClick={() => startGame(t.id)}
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-card-border bg-card-bg px-4 py-3 text-left"
+              >
+                <span className="min-w-0">
+                  <span className="block font-bold">{t.label}</span>
+                  <span className="mt-0.5 block text-xs text-text-muted">{t.blurb}</span>
+                </span>
+                <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-text-muted">
+                  {t.players.min === t.players.max
+                    ? `${t.players.max}p`
+                    : `${t.players.min}–${t.players.max}p`}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     );
   }
 
@@ -108,6 +152,7 @@ export default function AdminPage() {
             <span className="block truncate font-semibold">{g.name}</span>
             <span className="mt-0.5 inline-flex items-center gap-2 text-xs text-text-muted">
               <span className={`rounded-full px-2 py-0.5 font-bold ${chip}`}>{status}</span>
+              <span className="font-semibold">{GAME_TYPES[g.gameType].label}</span>
               {new Date(g.createdAt).toLocaleDateString(undefined, {
                 month: "short",
                 day: "numeric",

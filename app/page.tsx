@@ -6,6 +6,7 @@ import { Settings, ChevronRight } from "lucide-react";
 import { GameSummary, listGames, subscribeGamesList } from "@/lib/games";
 import { supabaseConfigured } from "@/lib/supabase";
 import { useHeader } from "@/lib/header-context";
+import { GAME_TYPES } from "@/lib/gametypes";
 
 export default function Home() {
   const router = useRouter();
@@ -68,6 +69,9 @@ export default function Home() {
                 <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-alert ring-pulse" />
               )}
               <span className="truncate">{g.name}</span>
+              <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-text-muted">
+                {GAME_TYPES[g.gameType].label}
+              </span>
             </span>
             {g.courseName && (
               <span className="mt-1 block truncate text-sm text-text-muted">

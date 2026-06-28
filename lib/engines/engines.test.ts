@@ -1,0 +1,221 @@
+import { describe, it, expect } from "vitest";
+import {
+  Course,
+  Player,
+  Round,
+  RoundSettings,
+  DEFAULT_SETTINGS,
+} from "../wolf";
+import { computeSkins } from "./skins";
+import { computeBestBall } from "./bestball";
+import { computeVegas } from "./vegas";
+import { computeSixes } from "./sixes";
+
+// ── Fixtures ────────────────────────────────────────────────────────────────
+
+function makeCourse(): Course {
+  return {
+    name: "Test Links",
+    holes: Array.from({ length: 18 }, (_, i) => ({
+      number: i + 1,
+      par: 4,
+      strokeIndex: i + 1,
+    })),
+  };
+}
+
+/** Scratch players so net === gross and pops are 0 everywhere. */
+function scratch(ids: string[]): Player[] {
+  return ids.map((id) => ({ id, name: id.toUpperCase(), handicap: 0 }));
+}
+
+function makeRound(
+  gameType: Round["gameType"],
+  players: Player[],
+  entries: Round["entries"],
+  settings: Partial<RoundSettings> = {}
+): Round {
+  return {
+    course: makeCourse(),
+    players,
+    teeOrder: players.map((p) => p.id),
+    settings: { ...DEFAULT_SETTINGS, ...settings },
+    entries,
+    gameType,
+  };
+}
+
+const sum = (l: Record<string, number>) =>
+  Object.values(l).reduce((a, b) => a + b, 0);
+
+// ── Skins ─────────────────────────────────────────────────────────────────
+
+describe("skins", () => {
+  it("lone low net wins the hole; zero-sum", () => {
+    const round = makeRound(
+      "skins",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 5, d: 5 } }],
+      { skinValue: 2 }
+    );
+    const { ledger, stats } = computeSkins(round);
+    expect(ledger.a).toBe(6); // 2 × 1 skin × 3 opponents
+    expect(ledger.b).toBe(-2);
+    expect(ledger.c).toBe(-2);
+    expect(ledger.d).toBe(-2);
+    expect(stats.a.skins).toBe(1);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("ties carry the skins to the next decided hole", () => {
+    const round = makeRound(
+      "skins",
+      scratch(["a", "b", "c", "d"]),
+      [
+        { hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 4, c: 4, d: 4 } }, // tie → carry
+        { hole: 2, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 4, d: 4 } }, // a wins 2
+      ],
+      { skinValue: 2 }
+    );
+    const { ledger, stats } = computeSkins(round);
+    expect(stats.a.skins).toBe(2);
+    expect(ledger.a).toBe(12); // 2 × 2 skins × 3 opponents
+    expect(ledger.b).toBe(-4);
+    expect(sum(ledger)).toBe(0);
+  });
+});
+
+// ── Best Ball ──────────────────────────────────────────────────────────────
+
+describe("best ball", () => {
+  it("2v2: team best net wins the hole", () => {
+    const round = makeRound(
+      "bestball",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 18, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 5, c: 5, d: 6 } }],
+      { stake: 5, teams: { a: "A", b: "A", c: "B", d: "B" } }
+    );
+    const { ledger } = computeBestBall(round);
+    expect(ledger.a).toBe(5);
+    expect(ledger.b).toBe(5);
+    expect(ledger.c).toBe(-5);
+    expect(ledger.d).toBe(-5);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("uneven 2v3 stays zero-sum with a separate team stake", () => {
+    const teams = { a: "A", b: "A", c: "B", d: "B", e: "B" } as const;
+    // Team A wins: field $2 each (×3 = 6) split among 2 → +3 each.
+    const winA = makeRound(
+      "bestball",
+      scratch(["a", "b", "c", "d", "e"]),
+      [
+        {
+          hole: 18,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 4, b: 5, c: 5, d: 5, e: 5 },
+        },
+      ],
+      { stake: 2, wolfStake: 3, teams: { ...teams } }
+    );
+    const a = computeBestBall(winA).ledger;
+    expect(a.a).toBe(3);
+    expect(a.b).toBe(3);
+    expect(a.c).toBe(-2);
+    expect(a.d).toBe(-2);
+    expect(a.e).toBe(-2);
+    expect(sum(a)).toBe(0);
+
+    // Team B wins: wolf $3 each (×2 = 6) split among 3 → +2 each.
+    const winB = makeRound(
+      "bestball",
+      scratch(["a", "b", "c", "d", "e"]),
+      [
+        {
+          hole: 18,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 5, b: 5, c: 4, d: 5, e: 5 },
+        },
+      ],
+      { stake: 2, wolfStake: 3, teams: { ...teams } }
+    );
+    const b = computeBestBall(winB).ledger;
+    expect(b.c).toBe(2);
+    expect(b.d).toBe(2);
+    expect(b.e).toBe(2);
+    expect(b.a).toBe(-3);
+    expect(b.b).toBe(-3);
+    expect(sum(b)).toBe(0);
+  });
+});
+
+// ── Vegas ────────────────────────────────────────────────────────────────
+
+describe("vegas", () => {
+  const teams = { a: "A", b: "A", c: "B", d: "B" } as const;
+
+  it("low-digit-first numbers; difference × value, zero-sum", () => {
+    const round = makeRound(
+      "vegas",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 18, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 5, c: 4, d: 6 } }],
+      { pointValue: 1, birdieFlip: true, teams: { ...teams } }
+    );
+    // A = 45, B = 46 → A wins by 1.
+    const { ledger } = computeVegas(round);
+    expect(ledger.a).toBe(1);
+    expect(ledger.b).toBe(1);
+    expect(ledger.c).toBe(-1);
+    expect(ledger.d).toBe(-1);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("opponent birdie flips your number high-first", () => {
+    // A birdies (3). With flip on, B's 4&5 becomes 54 instead of 45.
+    const flip = makeRound(
+      "vegas",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 4, d: 5 } }],
+      { pointValue: 1, birdieFlip: true, teams: { ...teams } }
+    );
+    // A = 34, B = 54 → A wins by 20.
+    expect(computeVegas(flip).ledger.a).toBe(20);
+
+    const noFlip = makeRound(
+      "vegas",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 4, d: 5 } }],
+      { pointValue: 1, birdieFlip: false, teams: { ...teams } }
+    );
+    // A = 34, B = 45 → A wins by 11.
+    expect(computeVegas(noFlip).ledger.a).toBe(11);
+  });
+});
+
+// ── Six-Six-Six ──────────────────────────────────────────────────────────
+
+describe("six-six-six", () => {
+  it("partners rotate by segment (AB|CD then AC|BD)", () => {
+    const round = makeRound(
+      "sixes",
+      scratch(["a", "b", "c", "d"]),
+      [
+        // Segment 1 (holes 1-6): A,B vs C,D — AB win.
+        { hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 5, c: 5, d: 6 } },
+        // Segment 2 (holes 7-12): A,C vs B,D — AC win.
+        { hole: 7, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 5, c: 5, d: 5 } },
+      ],
+      { stake: 5 }
+    );
+    const { ledger, stats } = computeSixes(round);
+    // a partnered b (win) then c (win): +10. b won once, lost once: 0.
+    expect(ledger.a).toBe(10);
+    expect(ledger.b).toBe(0);
+    expect(ledger.c).toBe(0);
+    expect(ledger.d).toBe(-10);
+    expect(stats.a.holesWon).toBe(2);
+    expect(sum(ledger)).toBe(0);
+  });
+});

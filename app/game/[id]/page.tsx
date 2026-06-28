@@ -5,15 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { computeRound } from "@/lib/wolf";
 import { useGame } from "@/lib/useGame";
 import { useHeader } from "@/lib/header-context";
-import { liveSummary } from "@/lib/live";
+import { liveSummary, genericSummary } from "@/lib/live";
+import { computeGame, gameTypeOf } from "@/lib/gametypes";
 import { ScoresTab } from "@/components/ScoresTab";
 import { CardTab } from "@/components/CardTab";
+import { ScoreEntryTab } from "@/components/ScoreEntryTab";
+import { StandingsView } from "@/components/StandingsView";
 import { PillTabs, PillTab } from "@/components/PillTabs";
-
-const TABS: PillTab[] = [
-  { id: "scores", label: "Scores" },
-  { id: "card", label: "Card" },
-];
 
 export default function GamePage() {
   const router = useRouter();
@@ -36,11 +34,28 @@ export default function GamePage() {
     window.scrollTo(0, scrollByTab.current[tab] ?? 0); // restore the incoming tab
   }, [tab]);
 
-  const computation = useMemo(() => (round ? computeRound(round) : null), [round]);
-  const ticker = useMemo(
-    () => (round && computation ? liveSummary(round, computation) : null),
-    [round, computation]
+  const isWolf = round ? gameTypeOf(round) === "wolf" : true;
+  // Wolf uses its own engine + bespoke tabs; the other types share the generic
+  // ScoreEntryTab / StandingsView driven by computeGame.
+  const computation = useMemo(
+    () => (round && isWolf ? computeRound(round) : null),
+    [round, isWolf]
   );
+  const gameResult = useMemo(
+    () => (round && !isWolf ? computeGame(round) : null),
+    [round, isWolf]
+  );
+  const ticker = useMemo(() => {
+    if (!round) return null;
+    if (isWolf && computation) return liveSummary(round, computation);
+    if (!isWolf && gameResult) return genericSummary(round, gameResult);
+    return null;
+  }, [round, isWolf, computation, gameResult]);
+
+  const tabs: PillTab[] = [
+    { id: "scores", label: "Scores" },
+    { id: "card", label: isWolf ? "Card" : "Standings" },
+  ];
 
   // Drive the global header: game name + back + ticker. Editing lives only in
   // the Admin section (reached from the main page), not here.
@@ -62,7 +77,7 @@ export default function GamePage() {
       </div>
     );
   }
-  if (error || !game || !round || !computation) {
+  if (error || !game || !round) {
     return (
       <div className="mt-6 space-y-4 text-center">
         <p className="text-text-muted">{error ?? "Game not found."}</p>
@@ -83,17 +98,25 @@ export default function GamePage() {
         style={{ top: "var(--header-h, 88px)" }}
       >
         <PillTabs
-          tabs={TABS}
+          tabs={tabs}
           activeId={tab}
           onChange={(t) => switchTab(t as "scores" | "card")}
           ariaLabel="Game views"
         />
       </div>
       <div key={tab} className="animate-fade-in">
-        {tab === "scores" && (
-          <ScoresTab round={round} computation={computation} upsertEntry={upsertEntry} />
-        )}
-        {tab === "card" && <CardTab round={round} computation={computation} />}
+        {tab === "scores" &&
+          (isWolf && computation ? (
+            <ScoresTab round={round} computation={computation} upsertEntry={upsertEntry} />
+          ) : (
+            <ScoreEntryTab round={round} upsertEntry={upsertEntry} />
+          ))}
+        {tab === "card" &&
+          (isWolf && computation ? (
+            <CardTab round={round} computation={computation} />
+          ) : (
+            <StandingsView round={round} />
+          ))}
       </div>
     </div>
   );
