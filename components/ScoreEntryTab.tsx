@@ -9,6 +9,7 @@
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame, gameTypeMeta, teamTag } from "@/lib/gametypes";
 import { GameHoleResult } from "@/lib/engines/types";
+import { formatMoney } from "@/lib/storage";
 
 function HoleCard({
   round,
@@ -100,16 +101,21 @@ function HoleCard({
         })}
       </div>
 
-      {/* Result note — who won the hole, or push/carry (like the Wolf Scores tab). */}
-      {note && note.detail !== "—" && (
-        <div
-          className={`mt-2 text-right text-sm ${
-            note.decided ? "font-bold text-text-primary" : "text-text-muted"
-          }`}
-        >
-          {note.detail}
-        </div>
-      )}
+      {/* Result note — the money each winner takes on the hole, or push/carry. */}
+      {(() => {
+        if (!note || note.detail === "—") return null;
+        const winners = players.filter((p) => (note.deltas[p.id] ?? 0) > 0);
+        if (winners.length > 0) {
+          return (
+            <div className="mt-2 text-right text-sm font-bold text-positive">
+              {winners
+                .map((p) => `${(p.name || "?").split(" ")[0]} ${formatMoney(note.deltas[p.id] ?? 0)}`)
+                .join(", ")}
+            </div>
+          );
+        }
+        return <div className="mt-2 text-right text-sm text-text-muted">{note.detail}</div>;
+      })()}
     </div>
   );
 }
