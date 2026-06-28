@@ -73,7 +73,7 @@ function HoleBox({
   return (
     <div
       id={`hole-${hole}`}
-      style={{ scrollMarginTop: "calc(var(--header-h, 88px) + 3.75rem)" }}
+      style={{ scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)" }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
       {/* Header */}
@@ -328,14 +328,18 @@ export function ScoresTab({
 
   return (
     <div className="space-y-3">
-      {/* Quick hole jumper: two rows of 9 (1–9, 10–18). */}
-      <div className="grid grid-cols-9 gap-1 rounded-xl border border-primary/30 bg-primary/10 p-2">
+      {/* Quick hole jumper: one thin row, scrolls sideways, pinned below the
+          tab bar so it stays reachable while scrolling the holes. */}
+      <div
+        className="sticky z-10 flex gap-1 overflow-x-auto rounded-lg border border-primary/30 bg-primary/10 px-1.5 py-1.5"
+        style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
+      >
         {round.course.holes.map((h) => (
           <button
             key={h.number}
             onClick={() => goToHole(h.number)}
             aria-label={`Go to hole ${h.number}`}
-            className="aspect-square rounded-md border border-primary/30 bg-card-bg text-xs font-semibold tabular-nums text-primary active:bg-primary active:text-on-dark"
+            className="h-7 w-7 shrink-0 rounded-md border border-primary/30 bg-card-bg text-xs font-semibold tabular-nums text-primary active:bg-primary active:text-on-dark"
           >
             {h.number}
           </button>
