@@ -1,5 +1,5 @@
 // components/fieldhammer/FieldHammerScores.tsx
-// Sledgehammer hole play, wired to the shared game (Supabase via upsertEntry).
+// Hammerskin hole play, wired to the shared game (Supabase via upsertEntry).
 // Round-robin skins: a single hole-level hammer (×2) / double hammer (×4) at the
 // top of each hole, plus a per-player forfeit flag to the left of each score.
 // The engine settles the pairings.
@@ -204,7 +204,7 @@ export function FieldHammerScores({
       </div>
 
       <div className="flex items-baseline justify-between">
-        <h2 className="text-xl font-bold">Sledgehammer</h2>
+        <h2 className="text-xl font-bold">Hammerskin</h2>
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
 

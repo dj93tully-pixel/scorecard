@@ -108,7 +108,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
   },
   fieldhammer: {
     id: "fieldhammer",
-    label: "Sledgehammer",
+    label: "Hammerskin",
     blurb: "Round-robin skins; tap hammer (×2), double (×4), or forfeit per player.",
     players: { min: 3, max: 6 },
     hasTeams: false,

@@ -1,5 +1,5 @@
 // lib/fieldHammer.ts
-// Pure settlement engine for "Sledgehammer" (game-type id "fieldhammer"):
+// Pure settlement engine for "Hammerskin" (game-type id "fieldhammer"):
 // individual round-robin skins where every unordered pair has a 1-v-1 bet each
 // hole (low net wins the base stake).
 //
