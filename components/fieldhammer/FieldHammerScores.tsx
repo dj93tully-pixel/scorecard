@@ -12,7 +12,6 @@ import { computeBaseGame } from "@/lib/gametypes";
 import { combinedHoleResults, pressedHoles } from "@/lib/engines/press";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
-import { CrossHammer } from "../CrossHammer";
 
 const HAMMER_COLOR = "#7C3AED"; // purple
 const FORFEIT_COLOR = "#06B6A4"; // teal
@@ -119,11 +118,12 @@ function HoleCard({
             onClick={() => setHammer(2)}
             aria-label="Double hammer — quadruple the hole"
             style={hammer === 2 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
-            className={`flex items-center rounded-lg border px-2 py-1.5 ${
+            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
               hammer === 2 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
-            <CrossHammer className="h-[15px] w-[15px]" />
+            <Hammer className="h-[15px] w-[15px]" />
+            <Hammer className="h-[15px] w-[15px]" />
           </button>
         </div>
       </div>

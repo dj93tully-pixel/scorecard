@@ -11,7 +11,6 @@ import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { combinedHoleResults, pressedHoles } from "@/lib/engines/press";
 import { holeHighlight } from "@/lib/holeHighlight";
-import { CrossHammer } from "./CrossHammer";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
 
@@ -147,11 +146,12 @@ function HoleCard({
                 onClick={() => commit({ hammer: hammer === 2 ? 0 : 2 })}
                 aria-label="Double hammer — quadruple the hole"
                 style={hammer === 2 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
-                className={`flex items-center rounded-lg border px-2 py-1.5 ${
+                className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
                   hammer === 2 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
                 }`}
               >
-                <CrossHammer className="h-[15px] w-[15px]" />
+                <Hammer className="h-[15px] w-[15px]" />
+                <Hammer className="h-[15px] w-[15px]" />
               </button>
             </>
           )}
