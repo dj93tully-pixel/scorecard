@@ -166,6 +166,101 @@ export function settleRound(input: RoundInput): RoundResult {
   return { ledger, holeResults };
 }
 
+// ── Live pairing state + hammer state machine (pure) ─────────────────────────
+// The UI stores this richer per-pairing state on each hole entry; settlement only
+// reads { doublings, fold } (see toPairStates).
+
+export interface FHPairLive {
+  doublings: number;
+  fold?: { folder: PlayerId; settleStake: number };
+  lastHammerer?: PlayerId; // who last hammered this pairing (alternation rule)
+  pending?: PlayerId; // a hammer awaiting the opponent's accept/fold
+}
+
+export type LivePairings = Record<PairKey, FHPairLive>;
+
+const livePair = (pairings: LivePairings, key: PairKey): FHPairLive =>
+  pairings[key] ?? { doublings: 0 };
+
+/** Strip live UI state down to what the engine settles. */
+export function toPairStates(pairings: LivePairings): Record<PairKey, PairState> {
+  const out: Record<PairKey, PairState> = {};
+  for (const [k, v] of Object.entries(pairings)) {
+    const ps: PairState = { doublings: v.doublings };
+    if (v.fold) ps.fold = v.fold;
+    out[k] = ps;
+  }
+  return out;
+}
+
+/** Propose a hammer on every eligible pairing the hammerer is in. */
+export function applyHammerField(
+  pairings: LivePairings,
+  ids: PlayerId[],
+  hammerer: PlayerId,
+  linesCap: number
+): LivePairings {
+  const next = { ...pairings };
+  for (const opp of ids) {
+    if (opp === hammerer) continue;
+    const key = pairKey(hammerer, opp);
+    const st = livePair(next, key);
+    if (st.fold || st.pending) continue;
+    if (st.doublings >= linesCap) continue;
+    if (st.lastHammerer === hammerer) continue; // no two in a row
+    next[key] = { ...st, pending: hammerer };
+  }
+  return next;
+}
+
+/** The non-pending player accepts or folds a pending hammer on a pairing. */
+export function applyRespond(
+  pairings: LivePairings,
+  key: PairKey,
+  action: "accept" | "fold",
+  baseStake: number
+): LivePairings {
+  const st = livePair(pairings, key);
+  if (!st.pending) return pairings;
+  const [a, b] = unpair(key);
+  const responder = st.pending === a ? b : a;
+  const next = { ...pairings };
+  if (action === "accept") {
+    next[key] = { doublings: st.doublings + 1, lastHammerer: st.pending };
+  } else {
+    next[key] = {
+      doublings: st.doublings,
+      lastHammerer: st.lastHammerer,
+      fold: { folder: responder, settleStake: baseStake * 2 ** st.doublings },
+    };
+  }
+  return next;
+}
+
+/** An acceptor re-raises a pairing (becomes the new pending hammerer). */
+export function applyHammerBack(
+  pairings: LivePairings,
+  key: PairKey,
+  hammerer: PlayerId,
+  linesCap: number
+): LivePairings {
+  const st = livePair(pairings, key);
+  if (st.fold || st.pending) return pairings;
+  if (st.doublings >= linesCap) return pairings;
+  if (st.lastHammerer === hammerer) return pairings; // alternation
+  return { ...pairings, [key]: { ...st, pending: hammerer } };
+}
+
+/** Withdraw an un-answered pending hammer. */
+export function applyCancel(pairings: LivePairings, key: PairKey): LivePairings {
+  const st = livePair(pairings, key);
+  if (!st.pending) return pairings;
+  return {
+    ...pairings,
+    [key]: { doublings: st.doublings, lastHammerer: st.lastHammerer },
+  };
+}
+
 // ── Settle up (minimal transactions) ─────────────────────────────────────────
 
 export interface Transaction {

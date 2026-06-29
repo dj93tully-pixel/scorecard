@@ -100,25 +100,6 @@ export default function Home() {
         <p className="text-sm text-text-muted">Tap a game to score it.</p>
       </div>
 
-      {/* Field Hammer — a local-first format (no backend). */}
-      <button
-        onClick={() => router.push("/field-hammer")}
-        className="flex w-full items-center justify-between gap-2 overflow-hidden rounded-xl border border-l-4 border-card-border border-l-alert bg-card-bg px-4 py-4 text-left"
-      >
-        <span className="min-w-0">
-          <span className="flex items-center gap-2 font-semibold">
-            <span className="truncate">Field Hammer</span>
-            <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-text-muted">
-              Local
-            </span>
-          </span>
-          <span className="mt-1 block truncate text-sm text-text-muted">
-            Round-robin skins + hammer the field
-          </span>
-        </span>
-        <ChevronRight className="h-5 w-5 shrink-0 text-chevron" />
-      </button>
-
       {error && (
         <p className="rounded-lg bg-tint-bad px-3 py-2 text-sm text-negative">{error}</p>
       )}

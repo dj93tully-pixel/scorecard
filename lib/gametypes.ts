@@ -12,6 +12,7 @@ import { computeVegas } from "./engines/vegas";
 import { computeSixes } from "./engines/sixes";
 import { computeStroke } from "./engines/strokeplay";
 import { computeElevens } from "./engines/elevens";
+import { computeFieldHammer } from "./engines/fieldhammer";
 import { splitTeams } from "./engines/teams";
 
 export interface StatColumn {
@@ -105,6 +106,16 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     statColumns: [{ key: "picks", label: "Picks", kind: "number" }],
     defaultSettings: { stake: 1 },
   },
+  fieldhammer: {
+    id: "fieldhammer",
+    label: "Field Hammer",
+    blurb: "Round-robin skins; hammer the field — each opponent accepts or folds.",
+    players: { min: 3, max: 6 },
+    hasTeams: false,
+    rotatesTeams: false,
+    statColumns: [],
+    defaultSettings: { stake: 5, linesCap: 2, carryover: false },
+  },
 };
 
 export const GAME_TYPE_LIST: GameTypeMeta[] = [
@@ -115,6 +126,7 @@ export const GAME_TYPE_LIST: GameTypeMeta[] = [
   GAME_TYPES.sixes,
   GAME_TYPES.stroke,
   GAME_TYPES.elevens,
+  GAME_TYPES.fieldhammer,
 ];
 
 export function gameTypeOf(round: Round): GameTypeId {
@@ -139,6 +151,8 @@ export function computeGame(round: Round): GameResult {
       return computeStroke(round);
     case "elevens":
       return computeElevens(round);
+    case "fieldhammer":
+      return computeFieldHammer(round);
     default:
       return { ledger: {}, pops: {}, holeResults: [], stats: {} };
   }
