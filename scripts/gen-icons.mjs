@@ -1,17 +1,22 @@
 // scripts/gen-icons.mjs
-// Rasterizes the header wolf mark (with eyes + snout) into PWA / home-screen
-// PNG icons. Run with `node scripts/gen-icons.mjs` whenever the mark changes.
+// Rasterizes the Lunchball bitten-ball mark into PWA / home-screen PNG icons.
+// Run with `node scripts/gen-icons.mjs` whenever the mark changes.
 
 import sharp from "sharp";
 import { mkdirSync } from "node:fs";
 
-// Mirrors components/WolfLogo.tsx on a full dark square (platforms round corners).
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512">
-  <rect width="64" height="64" fill="#0C0C0E"/>
-  <path d="M12 8 L20 22 L14 34 C12 44 20 56 32 56 C44 56 52 44 50 34 L44 22 L52 8 L40 16 L24 16 L12 8 Z" fill="#6BA0FF"/>
-  <circle cx="25" cy="30" r="2.6" fill="#0A0E1C"/>
-  <circle cx="39" cy="30" r="2.6" fill="#0A0E1C"/>
-  <path d="M28 40 L32 46 L36 40 Z" fill="#0A0E1C" opacity="0.85"/>
+// Mirrors public/lunchball-mark.svg — a rounded blue tile (safe padding built in,
+// so it works as both the maskable app icon and the favicon).
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+  <rect x="4" y="4" width="92" height="92" rx="22" fill="#354CA1"/>
+  <circle cx="48" cy="53" r="31" fill="#FFFFFF"/>
+  <circle cx="74" cy="31" r="15" fill="#354CA1"/>
+  <circle cx="40" cy="47" r="2.7" fill="#D5DAE2"/>
+  <circle cx="53" cy="49" r="2.7" fill="#D5DAE2"/>
+  <circle cx="46" cy="59" r="2.7" fill="#D5DAE2"/>
+  <circle cx="58" cy="61" r="2.7" fill="#D5DAE2"/>
+  <circle cx="38" cy="63" r="2.7" fill="#D5DAE2"/>
+  <circle cx="60" cy="48" r="2.7" fill="#D5DAE2"/>
 </svg>`;
 
 mkdirSync("public", { recursive: true });
