@@ -506,19 +506,22 @@ export function CardTab({
         <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" net={net} />
         <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" net={net} />
         {/* Totals listed as part of the scorecard: name · total · +/- · money */}
-        <Totals round={round} computation={computation} />
+        <Totals round={round} computation={computation} net={net} />
       </section>
     </div>
   );
 }
 
-// Per-player totals listed below the scorecard: name · total strokes · +/- · $.
+// Per-player totals listed below the scorecard: name · money · +/- · total.
+// `net` follows the scorecard's gross/net toggle so the total + to-par match it.
 function Totals({
   round,
   computation,
+  net,
 }: {
   round: Round;
   computation: CardComputation;
+  net: boolean;
 }) {
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
   const rows = round.players
@@ -528,8 +531,9 @@ function Totals({
       for (const e of round.entries) {
         const g = e.grossScores[p.id];
         if (typeof g === "number") {
-          total += g;
-          toPar = (toPar ?? 0) + g - (parByHole.get(e.hole) ?? g);
+          const score = net ? g - (computation.pops[p.id]?.[e.hole] ?? 0) : g;
+          total += score;
+          toPar = (toPar ?? 0) + score - (parByHole.get(e.hole) ?? score);
         }
       }
       return { p, total, toPar, money: computation.ledger[p.id] ?? 0 };
@@ -551,17 +555,17 @@ function Totals({
             {p.name || "Unnamed"}
           </span>
           <div className="flex items-center gap-4 text-xs tabular-nums">
-            <span className="w-10 text-right font-bold" style={{ color: INK }}>
-              {total || "–"}
-            </span>
-            <span className="w-10 text-right font-bold" style={{ color: PRIMARY }}>
-              {toPar === null ? "–" : formatToPar(toPar)}
-            </span>
             <span
               className="w-16 text-right font-bold"
               style={{ color: money > 0 ? POS : money < 0 ? NEG : MUTED }}
             >
               {formatMoney(money)}
+            </span>
+            <span className="w-10 text-right font-bold" style={{ color: PRIMARY }}>
+              {toPar === null ? "–" : formatToPar(toPar)}
+            </span>
+            <span className="w-10 text-right font-bold" style={{ color: INK }}>
+              {total || "–"}
             </span>
           </div>
         </div>
