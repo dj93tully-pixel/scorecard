@@ -153,6 +153,34 @@ export function gameTypeMeta(round: Round): GameTypeMeta {
   return GAME_TYPES[gameTypeOf(round)];
 }
 
+/**
+ * The RAW per-hole engine for a game, WITHOUT presses — used to decompose a
+ * round into its base bet and (by re-running over the pressed holes) its press
+ * bets for the Card tab's original / press / total views.
+ */
+export function computeBaseGame(round: Round): GameResult {
+  switch (gameTypeOf(round)) {
+    case "skins":
+      return computeSkins(round);
+    case "bestball":
+      return computeBestBall(round);
+    case "vegas":
+      return computeVegas(round);
+    case "sixes":
+      return computeSixes(round);
+    case "stroke":
+      return computeStroke(round);
+    case "fieldhammer":
+      return computeFieldHammer(round);
+    case "elevens":
+      return computeElevens(round);
+    case "nassau":
+      return computeNassau(round);
+    default:
+      return { ledger: {}, pops: {}, holeResults: [], stats: {} };
+  }
+}
+
 /** Compute a non-Wolf game. (Wolf uses computeRound from lib/wolf directly.) */
 export function computeGame(round: Round): GameResult {
   switch (gameTypeOf(round)) {

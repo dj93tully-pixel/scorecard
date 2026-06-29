@@ -10,7 +10,6 @@ import { ChevronDown } from "lucide-react";
 import { Round, Player } from "@/lib/wolf";
 import { gameTypeOf } from "@/lib/gametypes";
 import { formatMoney, formatToPar } from "@/lib/storage";
-import { PressTriple, PressTable, hasAnyPress } from "./PressBreakdown";
 
 // Minimal shape the Card view needs — satisfied by both Wolf's RoundComputation
 // and the generic GameResult, so this one component serves every game type.
@@ -28,6 +27,14 @@ export interface CardComputation {
   // Per-player engine stats (e.g. Nassau front/back/overall money). Optional so
   // Wolf's RoundComputation still satisfies the shape.
   stats?: Record<string, Record<string, number | string>>;
+}
+
+// When a round has presses, the Card tab splits into three money views — the
+// original bet, the press bets, and their total — each a full CardComputation.
+export interface PressViews {
+  original: CardComputation;
+  press: CardComputation;
+  total: CardComputation;
 }
 
 const INK = "#16181D";
@@ -418,12 +425,14 @@ function LedgerCard({
   player,
   rankIndex,
   scoreNet,
+  bet,
 }: {
   round: Round;
   computation: CardComputation;
   player: Player;
   rankIndex: number; // 0-based; tied players share the same index
   scoreNet: boolean; // shared gross/net toggle (next to the Standings header)
+  bet: "total" | "press" | "original"; // which money view is active
 }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"scores" | "money">("scores");
@@ -448,10 +457,9 @@ function LedgerCard({
   const scoresOnly = isElevens || isNassau;
   // 11s: net-to-par over the player's chosen holes, shown as a blue badge.
   const chosen = isElevens ? elevenChosen(round, computation, player.id) : null;
-  // Nassau: this player's front / back / overall money (from engine stats).
-  const nassau = isNassau ? computation.stats?.[player.id] : undefined;
-  // Original / press / total breakdown whenever a press is in play (or Nassau).
-  const showPress = isNassau || hasAnyPress(round);
+  // Nassau: this player's front / back / overall money (from engine stats). The
+  // segments describe the original bet, so hide them on the press view.
+  const nassau = isNassau && bet !== "press" ? computation.stats?.[player.id] : undefined;
 
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -517,38 +525,33 @@ function LedgerCard({
             {!scoresOnly && <span className="text-[10px] text-text-faint">swipe ←→</span>}
           </div>
 
-          {/* Money breakdown: Nassau's front/back/overall, then original/press/total. */}
-          {showPress && (
-            <div className="mb-2 space-y-2">
-              {isNassau && nassau && (
-                <div className="grid grid-cols-3 gap-2">
-                  {([
-                    ["Front", "front"],
-                    ["Back", "back"],
-                    ["Overall", "overall"],
-                  ] as const).map(([label, key]) => {
-                    const v = Number(nassau[key] ?? 0);
-                    return (
-                      <div
-                        key={key}
-                        className="rounded-lg bg-card-bg px-2 py-1.5 text-center"
-                        style={{ border: `1px solid ${HAIRLINE}` }}
-                      >
-                        <div className="text-[9px] font-bold uppercase tracking-wide text-text-faint">
-                          {label}
-                        </div>
-                        <div
-                          className="font-serif text-sm font-bold tabular-nums"
-                          style={{ color: v > 0 ? POS : v < 0 ? NEG : MUTED }}
-                        >
-                          {formatMoney(v)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              <PressTriple stats={computation.stats} pid={player.id} />
+          {/* Nassau: front / back / overall money of the original bet. */}
+          {isNassau && nassau && (
+            <div className="mb-2 grid grid-cols-3 gap-2">
+              {([
+                ["Front", "front"],
+                ["Back", "back"],
+                ["Overall", "overall"],
+              ] as const).map(([label, key]) => {
+                const v = Number(nassau[key] ?? 0);
+                return (
+                  <div
+                    key={key}
+                    className="rounded-lg bg-card-bg px-2 py-1.5 text-center"
+                    style={{ border: `1px solid ${HAIRLINE}` }}
+                  >
+                    <div className="text-[9px] font-bold uppercase tracking-wide text-text-faint">
+                      {label}
+                    </div>
+                    <div
+                      className="font-serif text-sm font-bold tabular-nums"
+                      style={{ color: v > 0 ? POS : v < 0 ? NEG : MUTED }}
+                    >
+                      {formatMoney(v)}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -567,9 +570,11 @@ function LedgerCard({
 export function CardTab({
   round,
   computation,
+  views,
 }: {
   round: Round;
   computation: CardComputation;
+  views?: PressViews;
 }) {
   const front = Array.from({ length: 9 }, (_, i) => i + 1);
   const back = Array.from({ length: 9 }, (_, i) => i + 10);
@@ -578,16 +583,39 @@ export function CardTab({
   // Shared gross/net toggle for the standings dropdowns — flipping it in any one
   // player's scorecard updates the blue +/- on every standings row.
   const [scoreNet, setScoreNet] = useState(false);
+  // When there are presses, switch the whole card between the original bet, the
+  // press bets, and their total. Without presses there's just the one view.
+  const [bet, setBet] = useState<"total" | "press" | "original">("total");
+  const active = views ? views[bet] : computation;
+
   const standings = [...round.players].sort(
-    (a, b) => (computation.ledger[b.id] ?? 0) - (computation.ledger[a.id] ?? 0)
+    (a, b) => (active.ledger[b.id] ?? 0) - (active.ledger[a.id] ?? 0)
   );
   // 11s and Nassau are total/segment games — money isn't a per-hole thing, so
-  // skip the by-hole Ledger grid (standings + totals/breakdown carry the money).
+  // skip the by-hole Ledger grid (standings + totals carry the money).
   const gt = gameTypeOf(round);
   const showLedger = gt !== "elevens" && gt !== "nassau";
 
   return (
     <div className="space-y-6">
+      {/* Original / press / total — each a full card view of that bet. */}
+      {views && (
+        <div className="flex gap-1 rounded-full bg-divider p-1 text-sm font-semibold">
+          {(["total", "press", "original"] as const).map((b) => (
+            <button
+              key={b}
+              onClick={() => setBet(b)}
+              style={bet === b ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
+              className={`flex-1 rounded-full py-1.5 capitalize transition ${
+                bet === b ? "bg-white text-accent-on-light" : "text-text-faint"
+              }`}
+            >
+              {b}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Standings → tap a player to drop down their full scorecard */}
       <section className="space-y-2">
         <div className="flex items-center gap-3">
@@ -595,19 +623,20 @@ export function CardTab({
           <GrossNetToggle net={scoreNet} onChange={setScoreNet} />
         </div>
         {standings.map((p) => {
-          const m = computation.ledger[p.id] ?? 0;
+          const m = active.ledger[p.id] ?? 0;
           // Tie-aware rank: 1 + number of players strictly ahead.
           const rankIndex = standings.filter(
-            (q) => (computation.ledger[q.id] ?? 0) > m
+            (q) => (active.ledger[q.id] ?? 0) > m
           ).length;
           return (
             <LedgerCard
               key={p.id}
               round={round}
-              computation={computation}
+              computation={active}
               player={p}
               rankIndex={rankIndex}
               scoreNet={scoreNet}
+              bet={bet}
             />
           );
         })}
@@ -617,8 +646,8 @@ export function CardTab({
       {showLedger && (
         <section className="space-y-3">
           <h2 className="text-xl font-bold">Ledger</h2>
-          <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" />
-          <BigNine round={round} computation={computation} holes={back} title="Back" mode="money" />
+          <BigNine round={round} computation={active} holes={front} title="Front" mode="money" />
+          <BigNine round={round} computation={active} holes={back} title="Back" mode="money" />
         </section>
       )}
 
@@ -628,19 +657,11 @@ export function CardTab({
           <h2 className="text-xl font-bold">Scorecard</h2>
           <GrossNetToggle net={net} onChange={(n) => setScoreView(n ? "net" : "gross")} />
         </div>
-        <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" net={net} />
-        <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" net={net} />
+        <BigNine round={round} computation={active} holes={front} title="Front" mode="scores" net={net} />
+        <BigNine round={round} computation={active} holes={back} title="Back" mode="scores" net={net} />
         {/* Totals listed as part of the scorecard: name · total · +/- · money */}
-        <Totals round={round} computation={computation} net={net} />
+        <Totals round={round} computation={active} net={net} />
       </section>
-
-      {/* Original / press / total money — shown once any press is in play. */}
-      {(gt === "nassau" || hasAnyPress(round)) && (
-        <section className="space-y-3">
-          <h2 className="text-xl font-bold">Money — original / press / total</h2>
-          <PressTable round={round} stats={computation.stats} />
-        </section>
-      )}
     </div>
   );
 }

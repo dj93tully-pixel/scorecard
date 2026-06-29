@@ -16,6 +16,11 @@ import { GameResult } from "./types";
 
 export type PressScope = "seg" | "full";
 
+/** Whether any press has been called in the round. */
+export function hasAnyPress(round: Round): boolean {
+  return round.entries.some((e) => e.pressSeg || e.pressFull);
+}
+
 /** Hole numbers a press started on `hole` with `scope` covers. */
 export function pressRange(round: Round, hole: number, scope: PressScope): number[] {
   const nums = round.course.holes.map((h) => h.number).sort((a, b) => a - b);
@@ -88,6 +93,66 @@ export function withPresses(
     stats[id] = { ...(base.stats[id] ?? {}), original, press: press[id] ?? 0 };
   }
   return { ledger, pops: base.pops, holeResults: base.holeResults, stats };
+}
+
+// Per-hole ledger shape both the GameResult engines and Wolf's computeRound can
+// be adapted to, so presses can be decomposed for any game.
+export interface RunResult {
+  ledger: Record<PlayerId, number>;
+  holeResults: {
+    hole: number;
+    deltas: Record<PlayerId, number>;
+    detail?: string;
+    decided?: boolean;
+  }[];
+}
+
+/**
+ * Split a round into its base bet and its press bets — each as a ledger + the
+ * per-hole money — by re-running `run` over each press's holes. The press's
+ * money lands only on the holes it covers (from where it started to where it
+ * ends), so the Card tab can show original / press / total as separate views.
+ */
+export function decomposePresses(
+  round: Round,
+  run: (r: Round) => RunResult
+): { base: RunResult; press: RunResult } {
+  const ids = round.players.map((p) => p.id);
+  const base = run(round);
+
+  const pressLedger: Record<PlayerId, number> = {};
+  for (const id of ids) pressLedger[id] = 0;
+  const pressByHole = new Map<number, Record<PlayerId, number>>();
+
+  for (const e of round.entries) {
+    for (const scope of pressScopesOf(e)) {
+      const holes = new Set(pressRange(round, e.hole, scope));
+      if (holes.size === 0) continue;
+      const sub: Round = {
+        ...round,
+        entries: round.entries.filter((x) => holes.has(x.hole)),
+      };
+      const r = run(sub);
+      for (const id of ids) pressLedger[id] += r.ledger[id] ?? 0;
+      for (const hr of r.holeResults) {
+        if (!holes.has(hr.hole)) continue;
+        const acc =
+          pressByHole.get(hr.hole) ??
+          Object.fromEntries(ids.map((id) => [id, 0]));
+        for (const id of ids) acc[id] = (acc[id] ?? 0) + (hr.deltas[id] ?? 0);
+        pressByHole.set(hr.hole, acc);
+      }
+    }
+  }
+
+  const pressHoleResults = round.course.holes.map((h) => {
+    const deltas =
+      pressByHole.get(h.number) ?? Object.fromEntries(ids.map((id) => [id, 0]));
+    const anyMoney = ids.some((id) => (deltas[id] ?? 0) !== 0);
+    return { hole: h.number, deltas, decided: anyMoney, detail: "" };
+  });
+
+  return { base, press: { ledger: pressLedger, holeResults: pressHoleResults } };
 }
 
 export interface PressSplit {

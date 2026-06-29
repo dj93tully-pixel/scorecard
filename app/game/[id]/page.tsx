@@ -2,14 +2,19 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { computeRound } from "@/lib/wolf";
+import { Round, computeRound } from "@/lib/wolf";
 import { useGame } from "@/lib/useGame";
 import { useHeader } from "@/lib/header-context";
 import { liveSummary, genericSummary } from "@/lib/live";
-import { computeGame, gameTypeOf } from "@/lib/gametypes";
-import { computePressMoney } from "@/lib/engines/press";
+import { computeGame, computeBaseGame, gameTypeOf } from "@/lib/gametypes";
+import {
+  computePressMoney,
+  decomposePresses,
+  hasAnyPress,
+  RunResult,
+} from "@/lib/engines/press";
 import { ScoresTab } from "@/components/ScoresTab";
-import { CardTab, CardComputation } from "@/components/CardTab";
+import { CardTab, CardComputation, PressViews } from "@/components/CardTab";
 import { ScoreEntryTab } from "@/components/ScoreEntryTab";
 import { FieldHammerScores } from "@/components/fieldhammer/FieldHammerScores";
 import { PillTabs, PillTab } from "@/components/PillTabs";
@@ -98,6 +103,94 @@ export default function GamePage() {
     return null;
   }, [isWolf, computation, gameResult, round]);
 
+  // Once a press is in play, split the Card tab into original / press / total
+  // money views (same card format, different ledger). null = no presses.
+  const cardViews: PressViews | undefined = useMemo(() => {
+    if (!round || !hasAnyPress(round)) return undefined;
+    const gt = gameTypeOf(round);
+    if (gt === "elevens") return undefined;
+    const ids = round.players.map((p) => p.id);
+
+    const makeViews = (
+      base: RunResult,
+      press: RunResult,
+      pops: Record<string, Record<number, number>>,
+      stats?: Record<string, Record<string, number | string>>
+    ): PressViews => {
+      const totalLedger: Record<string, number> = {};
+      for (const pid of ids)
+        totalLedger[pid] = (base.ledger[pid] ?? 0) + (press.ledger[pid] ?? 0);
+      const pressByHole = new Map(press.holeResults.map((r) => [r.hole, r.deltas]));
+      const totalResults = base.holeResults.map((hr) => {
+        const pr = pressByHole.get(hr.hole) ?? {};
+        const deltas: Record<string, number> = {};
+        for (const pid of ids) deltas[pid] = (hr.deltas[pid] ?? 0) + (pr[pid] ?? 0);
+        return {
+          hole: hr.hole,
+          deltas,
+          decided: ids.some((pid) => deltas[pid] !== 0),
+          detail: hr.detail,
+        };
+      });
+      return {
+        original: { ledger: base.ledger, pops, results: base.holeResults, stats },
+        press: { ledger: press.ledger, pops, results: press.holeResults, stats },
+        total: { ledger: totalLedger, pops, results: totalResults, stats },
+      };
+    };
+
+    // Nassau settles its own presses; split via its stats (no per-hole money).
+    if (gt === "nassau" && gameResult) {
+      const zeroHoles = round.course.holes.map((h) => ({
+        hole: h.number,
+        deltas: Object.fromEntries(ids.map((id) => [id, 0])),
+        decided: false,
+        detail: "",
+      }));
+      const ledgerFrom = (key: string) =>
+        Object.fromEntries(
+          ids.map((id) => [id, Number(gameResult.stats[id]?.[key] ?? 0)])
+        );
+      const pops = gameResult.pops;
+      const stats = gameResult.stats;
+      return {
+        original: { ledger: ledgerFrom("original"), pops, results: zeroHoles, stats },
+        press: { ledger: ledgerFrom("press"), pops, results: zeroHoles, stats },
+        total: { ledger: gameResult.ledger, pops, results: zeroHoles, stats },
+      };
+    }
+
+    // Wolf: re-run computeRound over each press's holes.
+    if (isWolf && computation) {
+      const run = (r: Round): RunResult => {
+        const c = computeRound(r);
+        return {
+          ledger: c.ledger,
+          holeResults: c.results.map((rr) => ({
+            hole: rr.hole,
+            deltas: rr.deltas,
+            decided: rr.winner !== "push",
+            detail: rr.winner !== "push" ? "" : "Push",
+          })),
+        };
+      };
+      const { base, press } = decomposePresses(round, run);
+      return makeViews(base, press, computation.pops);
+    }
+
+    // Other per-hole games: re-run the raw engine over each press's holes.
+    if (gameResult) {
+      const run = (r: Round): RunResult => {
+        const g = computeBaseGame(r);
+        return { ledger: g.ledger, holeResults: g.holeResults };
+      };
+      const { base, press } = decomposePresses(round, run);
+      return makeViews(base, press, gameResult.pops, gameResult.stats);
+    }
+
+    return undefined;
+  }, [round, isWolf, computation, gameResult]);
+
   const tabs: PillTab[] = [
     { id: "scores", label: "Scores" },
     { id: "card", label: "Card" },
@@ -159,7 +252,9 @@ export default function GamePage() {
           ) : (
             <ScoreEntryTab round={round} upsertEntry={upsertEntry} />
           ))}
-        {tab === "card" && cardComp && <CardTab round={round} computation={cardComp} />}
+        {tab === "card" && cardComp && (
+          <CardTab round={round} computation={cardComp} views={cardViews} />
+        )}
       </div>
     </div>
   );

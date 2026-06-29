@@ -8,15 +8,12 @@ import { Round } from "@/lib/wolf";
 import { formatMoney } from "@/lib/storage";
 import { pressSplit } from "@/lib/engines/press";
 
+export { hasAnyPress } from "@/lib/engines/press";
+
 type Stats = Record<string, Record<string, number | string>> | undefined;
 
 const moneyColor = (v: number) =>
   v > 0 ? "text-positive" : v < 0 ? "text-negative" : "text-text-muted";
-
-/** Whether any press has been called in the round. */
-export function hasAnyPress(round: Round): boolean {
-  return round.entries.some((e) => e.pressSeg || e.pressFull);
-}
 
 // Three chips — Original / Press / Total — for one player.
 export function PressTriple({ stats, pid }: { stats: Stats; pid: string }) {
