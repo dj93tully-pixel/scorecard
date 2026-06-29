@@ -655,6 +655,50 @@ describe("hammer & forfeit", () => {
     expect(sum(ledger)).toBe(0);
   });
 
+  it("skins: a hammered tie carries the hammered value only when hammerCarry is on", () => {
+    const entries = [
+      { hole: 1, wolfId: "", mode: "2v2" as const, grossScores: { a: 4, b: 4 }, hammer: 1 }, // hammered tie
+      { hole: 2, wolfId: "", mode: "2v2" as const, grossScores: { a: 3, b: 4 } }, // a wins
+    ];
+    const off = computeSkins(
+      makeRound("skins", scratch(["a", "b"]), entries, { skinValue: 5, carryover: true })
+    );
+    expect(off.ledger.a).toBe(10); // carried base $5 + hole 2 $5
+
+    const on = computeSkins(
+      makeRound("skins", scratch(["a", "b"]), entries, {
+        skinValue: 5,
+        carryover: true,
+        hammerCarry: true,
+      })
+    );
+    expect(on.ledger.a).toBe(15); // carried hammered $10 + hole 2 $5
+    expect(sum(on.ledger)).toBe(0);
+  });
+
+  it("best ball: a hammered push carries the hammered value only when hammerCarry is on", () => {
+    const teams = { a: "A", b: "A", c: "B", d: "B" } as const;
+    const entries = [
+      { hole: 17, wolfId: "", mode: "2v2" as const, grossScores: { a: 4, b: 5, c: 4, d: 5 }, hammer: 1 }, // push, hammered
+      { hole: 18, wolfId: "", mode: "2v2" as const, grossScores: { a: 4, b: 5, c: 6, d: 6 } }, // A wins
+    ];
+    const off = computeBestBall(
+      makeRound("bestball", scratch(["a", "b", "c", "d"]), entries, { stake: 5, carryover: true, teams: { ...teams } })
+    );
+    expect(off.ledger.a).toBe(10); // hole 18 stake 5 + carried base 5
+
+    const on = computeBestBall(
+      makeRound("bestball", scratch(["a", "b", "c", "d"]), entries, {
+        stake: 5,
+        carryover: true,
+        hammerCarry: true,
+        teams: { ...teams },
+      })
+    );
+    expect(on.ledger.a).toBe(15); // hole 18 stake 5 + carried hammered 10
+    expect(sum(on.ledger)).toBe(0);
+  });
+
   it("six-six-six: forfeit decides the segment hole", () => {
     const round = makeRound(
       "sixes",

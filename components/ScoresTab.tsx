@@ -102,16 +102,18 @@ function HoleBox({
           >
             <Zap className="h-[15px] w-[15px]" />9
           </button>
-          <button
-            onClick={() => commit({ pressFull: !pressFull })}
-            aria-label="Press — new bet on the rest of the round"
-            style={pressFull ? { background: PRESS, borderColor: PRESS } : undefined}
-            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
-              pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-            }`}
-          >
-            <Zap className="h-[15px] w-[15px]" />18
-          </button>
+          {hole <= 9 && (
+            <button
+              onClick={() => commit({ pressFull: !pressFull })}
+              aria-label="Press — new bet on the rest of the round"
+              style={pressFull ? { background: PRESS, borderColor: PRESS } : undefined}
+              className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+                pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+              }`}
+            >
+              <Zap className="h-[15px] w-[15px]" />18
+            </button>
+          )}
           <button
             onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
             aria-label="Hammer — double the hole"

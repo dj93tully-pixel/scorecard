@@ -82,7 +82,8 @@ export function computeBestBall(round: Round): GameResult {
       detail = forfeit ? "Team B wins · forfeit" : `Team B wins · ${bB} vs ${bA}`;
     } else {
       if (settings.carryover) {
-        carried = fieldApplied;
+        // Carry the hammered value only when hammerCarry is on; else the base.
+        carried = fieldApplied * (settings.hammerCarry ? hammerMult : 1);
         detail = `Push — $${carried} carries`;
       } else {
         detail = "Push";

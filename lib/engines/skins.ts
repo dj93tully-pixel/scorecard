@@ -22,7 +22,8 @@ export function computeSkins(round: Round): GameResult {
   }
 
   const holeResults: GameHoleResult[] = [];
-  let carry = 0; // tied holes accumulated, waiting to be won
+  let carryUnit = 0; // dollars per opponent riding forward from tied holes
+  let carryCount = 0; // number of carried skins (for the skins-won stat)
 
   for (const h of course.holes) {
     const e = entryByHole.get(h.number);
@@ -40,19 +41,21 @@ export function computeSkins(round: Round): GameResult {
     const best = Math.min(...ids.map((id) => net[id]));
     const winners = ids.filter((id) => net[id] === best);
 
-    // Hammer multiplies the money in play on the hole (1→1×, 1→2×, 2→4×).
+    // Hammer multiplies the money in play on the hole (0→1×, 1→2×, 2→4×).
     const hammerMult = 2 ** Math.max(0, Math.floor(e!.hammer ?? 0));
 
     if (winners.length === 1) {
       const w = winners[0];
-      const skins = carry + 1;
+      const skins = carryCount + 1;
+      // The winning hole's hammer applies to the whole pot (carried + this hole).
+      const unit = (carryUnit + value) * hammerMult;
       for (const id of ids) {
-        const raw = id === w ? value * skins * (ids.length - 1) : -value * skins;
-        deltas[id] = raw * hammerMult;
+        deltas[id] = id === w ? unit * (ids.length - 1) : -unit;
         ledger[id] += deltas[id];
       }
       skinsWon[w] += skins;
-      carry = 0;
+      carryUnit = 0;
+      carryCount = 0;
       const name = players.find((p) => p.id === w)?.name || "—";
       holeResults.push({
         hole: h.number,
@@ -61,12 +64,13 @@ export function computeSkins(round: Round): GameResult {
         deltas,
       });
     } else if (settings.carryover) {
-      carry += 1;
-      // Skins riding to the next hole: one skin's value per carried hole.
+      carryCount += 1;
+      // This hole's value rides forward — hammered only when hammerCarry is on.
+      carryUnit += value * (settings.hammerCarry ? hammerMult : 1);
       holeResults.push({
         hole: h.number,
         decided: false,
-        detail: `Push — $${value * carry} carries`,
+        detail: `Push — $${carryUnit} carries`,
         deltas,
       });
     } else {

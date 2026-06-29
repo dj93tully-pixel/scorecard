@@ -3,7 +3,6 @@
 // computed ledger. Reads values only — no engine math.
 
 import { Round, RoundComputation, defaultWolfForHole } from "./wolf";
-import { formatMoney } from "./storage";
 import { suggestForHole } from "./caddie";
 import { gameTypeMeta } from "./gametypes";
 import type { GameResult } from "./engines/types";
@@ -41,7 +40,7 @@ export function liveSummary(round: Round, computation: RoundComputation): Ticker
 
   const meta: string[] = [];
   if (!isFinal && wolf) meta.push(`Wolf: ${wolf.name || "—"}`);
-  if (anyMoney && leader) meta.push(`Lead: ${leader.name || "—"} ${formatMoney(best)}`);
+  if (anyMoney && leader) meta.push(`Lead: ${leader.name || "—"}`);
 
   // Caddie suggestion for the hole currently up (right of the leader).
   if (!isFinal) {
@@ -85,7 +84,7 @@ export function genericSummary(round: Round, result: GameResult): TickerData {
   const anyMoney = players.some((p) => (result.ledger[p.id] ?? 0) !== 0);
 
   const meta: string[] = [gameTypeMeta(round).label];
-  if (anyMoney && leader) meta.push(`Lead: ${leader.name || "—"} ${formatMoney(best)}`);
+  if (anyMoney && leader) meta.push(`Lead: ${leader.name || "—"}`);
 
   return {
     live: playedCount > 0 && !isFinal,

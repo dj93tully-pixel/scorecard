@@ -45,6 +45,13 @@ export interface RoundSettings {
   blindEnabled: boolean;
   carryover: boolean; // ties push; if true, roll stake into next hole
   /**
+   * When a HAMMERED hole pushes and carries, whether the carried amount includes
+   * the hammer multiplier (the doubled value rolls forward) or just the base
+   * stake. Defaults to false (carry the base stake only). Applies to Wolf, Skins,
+   * Best Ball, and Six-Six-Six.
+   */
+  hammerCarry?: boolean;
+  /**
    * Whether a PRESS bet carries its ties (rolls a pushed hole into the press's
    * next hole), independent of the base bet's `carryover`. Defaults to true.
    */
@@ -135,6 +142,7 @@ export const DEFAULT_SETTINGS: RoundSettings = {
   blindMult: 2,
   blindEnabled: true,
   carryover: false,
+  hammerCarry: false,
   pressCarryover: true,
   handicapMode: "offLow",
 };
@@ -391,16 +399,18 @@ export function computeRound(round: Round): RoundComputation {
     let carriedToNext = 0;
     if (winner === "push") {
       if (settings.carryover) {
-        // Roll the whole accumulated pot forward. A lone/blind wolf doubles (or
+        // Roll the accumulated pot forward. A lone/blind wolf doubles (or
         // blind-multiplies) the bet, so a pushed lone hole carries that larger
-        // amount, not just the base field stake.
+        // amount. The HAMMER only rolls forward when hammerCarry is on; otherwise
+        // just the (un-hammered) base + prior carry carries.
         const lbMult =
           entry.mode === "blind"
             ? settings.blindMult
             : entry.mode === "lone"
               ? settings.loneMult
               : 1;
-        carriedToNext = stakeApplied * lbMult;
+        const carryBase = settings.hammerCarry ? stakeApplied : settings.stake + carried;
+        carriedToNext = carryBase * lbMult;
       }
       // If carryover is off, the push simply voids this hole's stake.
     }

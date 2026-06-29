@@ -582,6 +582,20 @@ export function SetupTab({
             gameType !== "elevens" &&
             gameType !== "fieldhammer" &&
             gameType !== "nassau" && (
+            <Field label="Carry hammered value">
+              <input
+                type="checkbox"
+                checked={settings.hammerCarry ?? false}
+                onChange={(e) => setSetting("hammerCarry", e.target.checked)}
+                className="h-6 w-6 accent-[#354CA1]"
+              />
+            </Field>
+          )}
+          {gameType !== "vegas" &&
+            gameType !== "stroke" &&
+            gameType !== "elevens" &&
+            gameType !== "fieldhammer" &&
+            gameType !== "nassau" && (
             <Field label="Press carryover ties">
               <input
                 type="checkbox"

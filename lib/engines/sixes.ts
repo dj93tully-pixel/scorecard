@@ -93,7 +93,8 @@ export function computeSixes(round: Round): GameResult {
       // Carry only within the same segment — when partners rotate, the carry dies.
       const nextSameSegment = i + 1 < total && segOf(i + 1) === seg;
       if (settings.carryover && nextSameSegment) {
-        carried = stakeApplied;
+        // Carry the hammered value only when hammerCarry is on; else the base.
+        carried = stakeApplied * (settings.hammerCarry ? hammerMult : 1);
         detail = `Push — $${carried} carries`;
       } else {
         carried = 0;

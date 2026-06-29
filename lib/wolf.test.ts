@@ -408,7 +408,7 @@ describe("money — hammer", () => {
     expect(ledgerSum(ledger)).toBe(0);
   });
 
-  it("rolls the hammered (doubled) value into the next hole on a push", () => {
+  it("rolls the hammered (doubled) value into the next hole when hammerCarry is on", () => {
     const round = makeRound(
       [
         {
@@ -427,7 +427,7 @@ describe("money — hammer", () => {
           grossScores: { a: 4, b: 4, c: 6, d: 6 }, // team A wins
         },
       ],
-      { carryover: true, stake: 5 }
+      { carryover: true, stake: 5, hammerCarry: true }
     );
     const { results, ledger } = computeRound(round);
     expect(results[0].winner).toBe("push");
@@ -436,6 +436,32 @@ describe("money — hammer", () => {
     expect(ledger.a).toBe(15);
     expect(ledger.c).toBe(-15);
     expect(ledgerSum(ledger)).toBe(0);
+  });
+
+  it("by default a hammered push carries only the base stake (hammerCarry off)", () => {
+    const round = makeRound(
+      [
+        {
+          hole: 17,
+          wolfId: "a",
+          mode: "2v2",
+          partnerId: "b",
+          grossScores: { a: 4, b: 9, c: 4, d: 9 }, // push, hammered
+          hammer: 1,
+        },
+        {
+          hole: 18,
+          wolfId: "a",
+          mode: "2v2",
+          partnerId: "b",
+          grossScores: { a: 4, b: 4, c: 6, d: 6 }, // team A wins
+        },
+      ],
+      { carryover: true, stake: 5 } // hammerCarry defaults to false
+    );
+    const { results } = computeRound(round);
+    expect(results[0].carriedToNext).toBe(5); // base only, hammer not carried
+    expect(results[1].stakeApplied).toBe(10); // base 5 + carried 5
   });
 });
 

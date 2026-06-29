@@ -106,8 +106,9 @@ function HoleCard({
                 <Zap className="h-[15px] w-[15px]" />
                 {segLabel}
               </button>
-              {/* Six-Six-Six rotates partners every 6, so it only presses the six. */}
-              {gt !== "sixes" && (
+              {/* Six-Six-Six only presses the six; on the back nine "rest of 18"
+                  equals "rest of this nine", so the 18 button is hidden there. */}
+              {gt !== "sixes" && hole <= 9 && (
                 <button
                   onClick={() => commit({ pressFull: !pressFull })}
                   aria-label="Press — new bet on the rest of the round"

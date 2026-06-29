@@ -85,16 +85,18 @@ function HoleCard({
           >
             <Zap className="h-[15px] w-[15px]" />9
           </button>
-          <button
-            onClick={() => upsertEntry(hole, { pressFull: !pressFull }, base)}
-            aria-label="Press — new bet on the rest of the round"
-            style={pressFull ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
-            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
-              pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-            }`}
-          >
-            <Zap className="h-[15px] w-[15px]" />18
-          </button>
+          {hole <= 9 && (
+            <button
+              onClick={() => upsertEntry(hole, { pressFull: !pressFull }, base)}
+              aria-label="Press — new bet on the rest of the round"
+              style={pressFull ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
+              className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+                pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+              }`}
+            >
+              <Zap className="h-[15px] w-[15px]" />18
+            </button>
+          )}
           <button
             onClick={() => setHammer(1)}
             aria-label="Hammer — double the hole"
