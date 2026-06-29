@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { TigerLogo } from "./TigerLogo";
+import { WolfLogo } from "./WolfLogo";
 import { useHeader } from "@/lib/header-context";
 
 // Ticker meta text — continuously scrolls in one direction, but only when it's
@@ -88,10 +88,10 @@ export function Header() {
       className="safe-top sticky top-0 z-30 bg-header-bg text-on-dark"
     >
       <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-2">
-        <TigerLogo className="h-7 w-7 shrink-0" />
+        <WolfLogo className="h-7 w-7 shrink-0 text-accent-on-dark" />
         <div className="min-w-0 flex-1 leading-tight">
           <h1 className="truncate text-lg font-bold uppercase tracking-[0.18em]">
-            {config.title || "TIGER"}
+            {config.title || "WOLF"}
           </h1>
         </div>
         <div className="flex shrink-0 items-center gap-2">

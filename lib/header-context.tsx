@@ -29,7 +29,7 @@ export interface HeaderButton {
 }
 
 export interface HeaderConfig {
-  /** Secondary line under the brand — e.g. the current game name. */
+  /** Secondary line under "WOLF" — e.g. the current game name. */
   title?: string;
   /** If set, show a back button on the left of the right cluster. */
   backHref?: string;
