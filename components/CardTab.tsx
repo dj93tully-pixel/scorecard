@@ -6,10 +6,10 @@
 "use client";
 
 import { CSSProperties, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Zap } from "lucide-react";
 import { Round, Player } from "@/lib/wolf";
 import { gameTypeOf } from "@/lib/gametypes";
-import { pressedHoles } from "@/lib/engines/press";
+import { pressedHoles, PressEntry } from "@/lib/engines/press";
 import { formatMoney, formatToPar } from "@/lib/storage";
 import { MoneyTrend } from "./MoneyTrend";
 
@@ -559,11 +559,13 @@ export function CardTab({
   computation,
   views,
   trend,
+  presses,
 }: {
   round: Round;
   computation: CardComputation;
   views?: PressViews;
   trend?: Record<string, number>[]; // money after each played hole (trendline)
+  presses?: PressEntry[]; // per-press breakdown (shown in the Press view)
 }) {
   const front = Array.from({ length: 9 }, (_, i) => i + 1);
   const back = Array.from({ length: 9 }, (_, i) => i + 10);
@@ -613,6 +615,47 @@ export function CardTab({
             ))}
           </div>
         </div>
+      )}
+
+      {/* Press view: one line per press (range, stack count, who's up). */}
+      {bet === "press" && presses && presses.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-xl font-bold">Presses</h2>
+          <div className="overflow-hidden rounded-xl border border-card-border bg-card-bg">
+            {presses.map((pr, i) => {
+              const last = pr.holes[pr.holes.length - 1];
+              const scopeNum = pr.scope === "full" ? 18 : gt === "sixes" ? 6 : 9;
+              const winners = round.players.filter((p) => (pr.ledger[p.id] ?? 0) > 0);
+              return (
+                <div
+                  key={i}
+                  className={`flex items-center gap-2 px-3 py-2 text-sm ${
+                    i > 0 ? "border-t border-divider" : ""
+                  }`}
+                >
+                  <span className="inline-flex shrink-0 items-center gap-0.5 font-bold" style={{ color: "#E8590C" }}>
+                    <Zap className="h-[14px] w-[14px]" />
+                    {scopeNum}
+                    {pr.count > 1 && `×${pr.count}`}
+                  </span>
+                  <span className="min-w-0 flex-1 text-text-muted tabular-nums">
+                    holes {pr.holes[0]}–{last}
+                  </span>
+                  <span
+                    className="shrink-0 text-right font-bold tabular-nums"
+                    style={{ color: winners.length ? POS : MUTED }}
+                  >
+                    {winners.length
+                      ? winners
+                          .map((p) => `${(p.name || "?").split(" ")[0]} ${formatMoney(pr.ledger[p.id] ?? 0)}`)
+                          .join(", ")
+                      : "Push"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {/* Standings → tap a player to drop down their full scorecard */}

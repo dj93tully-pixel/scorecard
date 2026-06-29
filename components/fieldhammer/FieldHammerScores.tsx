@@ -9,27 +9,29 @@
 import { Hammer, Flag, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame } from "@/lib/gametypes";
-import { combinedHoleResults, pressedHoles } from "@/lib/engines/press";
+import { combinedHoleResults, pressCountByHole } from "@/lib/engines/press";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
 
 const HAMMER_COLOR = "#7C3AED"; // purple
 const FORFEIT_COLOR = "#06B6A4"; // teal
 const PRESS_COLOR = "#E8590C"; // burnt orange
+// Tap cycles a press count 0 → 1 → 2 → 3 → 0 (so tapping also removes it).
+const cyclePress = (n: number) => (n >= 3 ? 0 : n + 1);
 
 function HoleCard({
   round,
   pops,
   hole,
   deltas,
-  pressed,
+  pressCount,
   upsertEntry,
 }: {
   round: Round;
   pops: Record<string, Record<number, number>>;
   hole: number;
   deltas: Record<string, number>;
-  pressed?: boolean; // this hole is covered by a press (highlight it)
+  pressCount?: number; // how many presses cover this hole (highlight + ⚡×N badge)
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
   const { players, course } = round;
@@ -38,8 +40,8 @@ function HoleCard({
   const grossScores = existing?.grossScores ?? {};
   const fhActions = existing?.fhActions ?? {};
   const hammer = existing?.hammer ?? 0;
-  const pressSeg = existing?.pressSeg ?? false;
-  const pressFull = existing?.pressFull ?? false;
+  const pressSeg = existing?.pressSeg ?? 0;
+  const pressFull = existing?.pressFull ?? 0;
   const base: HoleEntry = {
     hole,
     wolfId: "",
@@ -69,39 +71,49 @@ function HoleCard({
       id={`hole-${hole}`}
       style={{
         scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)",
-        ...holeHighlight(!!pressed, hammer > 0),
+        ...holeHighlight((pressCount ?? 0) > 0, hammer > 0),
       }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
       {/* Header: hole + hole-level hammer / double hammer. */}
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="leading-tight">
-          <div className="text-lg font-extrabold">Hole {hole}</div>
+          <div className="flex items-center gap-1.5 text-lg font-extrabold">
+            Hole {hole}
+            {(pressCount ?? 0) > 0 && (
+              <span
+                className="inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[10px] font-bold text-on-dark"
+                style={{ background: PRESS_COLOR }}
+              >
+                <Zap className="h-3 w-3" />×{pressCount}
+              </span>
+            )}
+          </div>
           <div className="text-xs text-text-muted">
             Par {courseHole?.par ?? "–"} · Hcp {courseHole?.strokeIndex ?? "–"}
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           <button
-            onClick={() => upsertEntry(hole, { pressSeg: !pressSeg }, base)}
+            onClick={() => upsertEntry(hole, { pressSeg: cyclePress(pressSeg) }, base)}
             aria-label="Press — new bet on the rest of this nine"
-            style={pressSeg ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
+            style={pressSeg > 0 ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
             className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
-              pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+              pressSeg > 0 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
-            <Zap className="h-[15px] w-[15px]" />9
+            <Zap className="h-[15px] w-[15px]" />9{pressSeg > 1 && `×${pressSeg}`}
           </button>
           {hole <= 9 && (
             <button
-              onClick={() => upsertEntry(hole, { pressFull: !pressFull }, base)}
+              onClick={() => upsertEntry(hole, { pressFull: cyclePress(pressFull) }, base)}
               aria-label="Press — new bet on the rest of the round"
-              style={pressFull ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
+              style={pressFull > 0 ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
               className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
-                pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                pressFull > 0 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
               }`}
             >
-              <Zap className="h-[15px] w-[15px]" />18
+              <Zap className="h-[15px] w-[15px]" />18{pressFull > 1 && `×${pressFull}`}
             </button>
           )}
           <button
@@ -228,7 +240,7 @@ export function FieldHammerScores({
     return { ledger: g.ledger, holeResults: g.holeResults };
   });
   const deltasByHole = new Map(combined.map((r) => [r.hole, r.deltas]));
-  const pressCover = pressedHoles(round);
+  const pressCounts = pressCountByHole(round);
 
   return (
     <div className="space-y-3">
@@ -260,7 +272,7 @@ export function FieldHammerScores({
           pops={pops}
           hole={h.number}
           deltas={deltasByHole.get(h.number) ?? {}}
-          pressed={pressCover.has(h.number)}
+          pressCount={pressCounts.get(h.number) ?? 0}
           upsertEntry={upsertEntry}
         />
       ))}

@@ -18,15 +18,28 @@ export type PressScope = "seg" | "full";
 
 /** Whether any press has been called in the round. */
 export function hasAnyPress(round: Round): boolean {
-  return round.entries.some((e) => e.pressSeg || e.pressFull);
+  return round.entries.some((e) => (e.pressSeg ?? 0) > 0 || (e.pressFull ?? 0) > 0);
 }
 
 /** The set of holes covered by ANY press (the union of every press's range). */
 export function pressedHoles(round: Round): Set<number> {
   const out = new Set<number>();
   for (const e of round.entries) {
-    for (const scope of pressScopesOf(e)) {
+    for (const { scope } of pressScopesOf(e)) {
       for (const h of pressRange(round, e.hole, scope)) out.add(h);
+    }
+  }
+  return out;
+}
+
+/** How many presses cover each hole (summed counts) — for the ⚡×N badge. */
+export function pressCountByHole(round: Round): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const e of round.entries) {
+    for (const { scope, count } of pressScopesOf(e)) {
+      for (const h of pressRange(round, e.hole, scope)) {
+        out.set(h, (out.get(h) ?? 0) + count);
+      }
     }
   }
   return out;
@@ -47,14 +60,14 @@ export function pressRange(round: Round, hole: number, scope: PressScope): numbe
   return nums.filter((n) => n >= hole && n <= end);
 }
 
-/** The press scopes flagged on a hole entry. */
+/** The press scopes flagged on a hole entry, with how many of each (stacked). */
 export function pressScopesOf(e: {
-  pressSeg?: boolean;
-  pressFull?: boolean;
-}): PressScope[] {
-  const out: PressScope[] = [];
-  if (e.pressSeg) out.push("seg");
-  if (e.pressFull) out.push("full");
+  pressSeg?: number;
+  pressFull?: number;
+}): { scope: PressScope; count: number }[] {
+  const out: { scope: PressScope; count: number }[] = [];
+  if ((e.pressSeg ?? 0) > 0) out.push({ scope: "seg", count: e.pressSeg! });
+  if ((e.pressFull ?? 0) > 0) out.push({ scope: "full", count: e.pressFull! });
   return out;
 }
 
@@ -63,7 +76,7 @@ export function pressScopesOf(e: {
  * carries (or not) on the `pressCarryover` setting — independent of the base
  * bet's carryover.
  */
-function pressSubRound(round: Round, holes: Set<number>): Round {
+export function pressSubRound(round: Round, holes: Set<number>): Round {
   return {
     ...round,
     settings: {
@@ -86,11 +99,11 @@ export function computePressMoney(
   const out: Record<PlayerId, number> = {};
   for (const p of round.players) out[p.id] = 0;
   for (const e of round.entries) {
-    for (const scope of pressScopesOf(e)) {
+    for (const { scope, count } of pressScopesOf(e)) {
       const holes = new Set(pressRange(round, e.hole, scope));
       if (holes.size === 0) continue;
       const l = computeLedger(pressSubRound(round, holes));
-      for (const p of round.players) out[p.id] += l[p.id] ?? 0;
+      for (const p of round.players) out[p.id] += (l[p.id] ?? 0) * count;
     }
   }
   return out;
@@ -148,17 +161,17 @@ export function decomposePresses(
   const pressByHole = new Map<number, Record<PlayerId, number>>();
 
   for (const e of round.entries) {
-    for (const scope of pressScopesOf(e)) {
+    for (const { scope, count } of pressScopesOf(e)) {
       const holes = new Set(pressRange(round, e.hole, scope));
       if (holes.size === 0) continue;
       const r = run(pressSubRound(round, holes));
-      for (const id of ids) pressLedger[id] += r.ledger[id] ?? 0;
+      for (const id of ids) pressLedger[id] += (r.ledger[id] ?? 0) * count;
       for (const hr of r.holeResults) {
         if (!holes.has(hr.hole)) continue;
         const acc =
           pressByHole.get(hr.hole) ??
           Object.fromEntries(ids.map((id) => [id, 0]));
-        for (const id of ids) acc[id] = (acc[id] ?? 0) + (hr.deltas[id] ?? 0);
+        for (const id of ids) acc[id] = (acc[id] ?? 0) + (hr.deltas[id] ?? 0) * count;
         pressByHole.set(hr.hole, acc);
       }
     }
@@ -191,6 +204,36 @@ export function combinedHoleResults(
     if (pr) for (const id of Object.keys(pr)) deltas[id] = (deltas[id] ?? 0) + (pr[id] ?? 0);
     return { hole: hr.hole, deltas, detail: hr.detail ?? "", decided: hr.decided ?? false };
   });
+}
+
+export interface PressEntry {
+  hole: number; // where the press was started
+  scope: PressScope;
+  count: number; // stacked copies
+  holes: number[]; // the holes it covers
+  ledger: Record<PlayerId, number>; // its money (× count), zero-sum
+}
+
+/**
+ * Every press as its own line item (for the Card tab's per-press breakdown).
+ * `single(holes)` settles ONE copy of a press over those holes; listPresses
+ * multiplies by the stacked count.
+ */
+export function listPresses(
+  round: Round,
+  single: (holes: Set<number>) => Record<PlayerId, number>
+): PressEntry[] {
+  const out: PressEntry[] = [];
+  for (const e of round.entries) {
+    for (const { scope, count } of pressScopesOf(e)) {
+      const list = pressRange(round, e.hole, scope);
+      const base = single(new Set(list));
+      const ledger: Record<PlayerId, number> = {};
+      for (const p of round.players) ledger[p.id] = (base[p.id] ?? 0) * count;
+      out.push({ hole: e.hole, scope, count, holes: list, ledger });
+    }
+  }
+  return out;
 }
 
 export interface PressSplit {

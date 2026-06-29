@@ -9,14 +9,16 @@
 import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
-import { combinedHoleResults, pressedHoles } from "@/lib/engines/press";
+import { combinedHoleResults, pressCountByHole } from "@/lib/engines/press";
 import { holeHighlight } from "@/lib/holeHighlight";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
 
 const HAMMER_COLOR = "#7C3AED"; // vibrant purple, matches the Wolf Scores tab
 const PICK_COLOR = "#2BC081"; // green check for an 11s hole the player is counting
-const PRESS_COLOR = "#E8590C"; // burnt orange for a live Nassau press
+const PRESS_COLOR = "#E8590C"; // burnt orange for a live press
+// Tap cycles a press count 0 → 1 → 2 → 3 → 0 (so tapping also removes it).
+const cyclePress = (n: number) => (n >= 3 ? 0 : n + 1);
 
 function HoleCard({
   round,
@@ -24,7 +26,7 @@ function HoleCard({
   hole,
   note,
   pickCounts,
-  pressed,
+  pressCount,
   upsertEntry,
 }: {
   round: Round;
@@ -32,7 +34,7 @@ function HoleCard({
   hole: number;
   note?: GameHoleResult;
   pickCounts?: Record<string, number>; // 11s: each player's running picks (of 11)
-  pressed?: boolean; // this hole is covered by a press (highlight it)
+  pressCount?: number; // how many presses cover this hole (highlight + ⚡×N badge)
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
   const { players, course } = round;
@@ -43,8 +45,8 @@ function HoleCard({
   const hammer = existing?.hammer ?? 0;
   const forfeit = existing?.forfeit;
   const elevenPicks = existing?.elevenPicks ?? {};
-  const pressSeg = existing?.pressSeg ?? false;
-  const pressFull = existing?.pressFull ?? false;
+  const pressSeg = existing?.pressSeg ?? 0;
+  const pressFull = existing?.pressFull ?? 0;
 
   const base: HoleEntry = {
     hole,
@@ -86,13 +88,23 @@ function HoleCard({
       id={`hole-${hole}`}
       style={{
         scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)",
-        ...holeHighlight(!!pressed, hammer > 0),
+        ...holeHighlight((pressCount ?? 0) > 0, hammer > 0),
       }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="leading-tight">
-          <div className="text-lg font-extrabold">Hole {hole}</div>
+          <div className="flex items-center gap-1.5 text-lg font-extrabold">
+            Hole {hole}
+            {(pressCount ?? 0) > 0 && (
+              <span
+                className="inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[10px] font-bold text-on-dark"
+                style={{ background: PRESS_COLOR }}
+              >
+                <Zap className="h-3 w-3" />×{pressCount}
+              </span>
+            )}
+          </div>
           <div className="text-xs text-text-muted">
             Par {par ?? "–"} · Hcp {courseHole?.strokeIndex ?? "–"}
           </div>
@@ -103,29 +115,31 @@ function HoleCard({
           {canPress && (
             <>
               <button
-                onClick={() => commit({ pressSeg: !pressSeg })}
+                onClick={() => commit({ pressSeg: cyclePress(pressSeg) })}
                 aria-label={`Press — new bet on the rest of this ${segLabel === "6" ? "six" : "nine"}`}
-                style={pressSeg ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
+                style={pressSeg > 0 ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
                 className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
-                  pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                  pressSeg > 0 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
                 }`}
               >
                 <Zap className="h-[15px] w-[15px]" />
                 {segLabel}
+                {pressSeg > 1 && `×${pressSeg}`}
               </button>
               {/* Six-Six-Six only presses the six; on the back nine "rest of 18"
                   equals "rest of this nine", so the 18 button is hidden there. */}
               {gt !== "sixes" && hole <= 9 && (
                 <button
-                  onClick={() => commit({ pressFull: !pressFull })}
+                  onClick={() => commit({ pressFull: cyclePress(pressFull) })}
                   aria-label="Press — new bet on the rest of the round"
-                  style={pressFull ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
+                  style={pressFull > 0 ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
                   className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
-                    pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                    pressFull > 0 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
                   }`}
                 >
                   <Zap className="h-[15px] w-[15px]" />
                   18
+                  {pressFull > 1 && `×${pressFull}`}
                 </button>
               )}
             </>
@@ -324,8 +338,8 @@ export function ScoreEntryTab({
     return { ledger: g.ledger, holeResults: g.holeResults };
   });
   const resultByHole = new Map(combined.map((r) => [r.hole, r]));
-  // Holes any press covers — highlighted, not just the hole it was tapped on.
-  const pressCover = pressedHoles(round);
+  // How many presses cover each hole — highlight + ⚡×N badge across the range.
+  const pressCounts = pressCountByHole(round);
   const isElevens = gameTypeOf(round) === "elevens";
 
   // 11s: each player's running number of declared (checked) holes, of 11.
@@ -369,7 +383,7 @@ export function ScoreEntryTab({
           hole={h.number}
           note={resultByHole.get(h.number)}
           pickCounts={pickCounts}
-          pressed={pressCover.has(h.number)}
+          pressCount={pressCounts.get(h.number) ?? 0}
           upsertEntry={upsertEntry}
         />
       ))}

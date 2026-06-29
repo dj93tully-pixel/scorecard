@@ -58,11 +58,18 @@ interface EntryRow {
   meta: {
     elevenPicks?: HoleEntry["elevenPicks"];
     fhActions?: HoleEntry["fhActions"];
-    pressSeg?: HoleEntry["pressSeg"];
-    pressFull?: HoleEntry["pressFull"];
+    // Press counts. Older rows stored these as booleans → coerced to 0/1.
+    pressSeg?: number | boolean;
+    pressFull?: number | boolean;
     /** Legacy: the original Nassau single-press flag (→ pressSeg). */
     nassauPress?: boolean;
   } | null;
+}
+
+/** Coerce a stored press value (number or legacy boolean) to a count. */
+function pressCount(v: number | boolean | undefined): number {
+  if (typeof v === "number") return v > 0 ? Math.floor(v) : 0;
+  return v ? 1 : 0;
 }
 
 function rowToEntry(r: EntryRow): HoleEntry {
@@ -76,8 +83,8 @@ function rowToEntry(r: EntryRow): HoleEntry {
     forfeit: r.forfeit ?? undefined,
     elevenPicks: r.meta?.elevenPicks ?? undefined,
     fhActions: r.meta?.fhActions ?? undefined,
-    pressSeg: r.meta?.pressSeg ?? r.meta?.nassauPress ?? undefined,
-    pressFull: r.meta?.pressFull ?? undefined,
+    pressSeg: pressCount(r.meta?.pressSeg ?? r.meta?.nassauPress),
+    pressFull: pressCount(r.meta?.pressFull),
   };
 }
 
@@ -220,8 +227,8 @@ export async function saveEntry(gameId: string, entry: HoleEntry): Promise<void>
       meta: {
         elevenPicks: entry.elevenPicks ?? {},
         fhActions: entry.fhActions ?? {},
-        pressSeg: entry.pressSeg ?? false,
-        pressFull: entry.pressFull ?? false,
+        pressSeg: entry.pressSeg ?? 0,
+        pressFull: entry.pressFull ?? 0,
       },
       updated_at: new Date().toISOString(),
     },

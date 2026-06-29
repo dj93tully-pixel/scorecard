@@ -115,14 +115,15 @@ export interface HoleEntry {
    */
   fhActions?: Record<PlayerId, import("./fieldHammer").FHAction>;
   /**
-   * Press flags (all games except 11s). A press opens a fresh same-stake bet,
+   * Press COUNTS (all games except 11s). A press opens a fresh same-stake bet,
    * settled by this game's own rules, over the remaining holes — `pressSeg`
    * covers the rest of this hole's segment (the nine, or the six in Six-Six-Six)
-   * and `pressFull` covers the rest of the round (through 18). Presses stack
-   * (one of each per hole). Persisted in game_entries.meta.
+   * and `pressFull` covers the rest of the round (through 18). Each is a COUNT:
+   * tapping the button cycles 0→1→2→3→0, so N stacks N copies of the bet (double
+   * press, triple press…). Persisted in game_entries.meta.
    */
-  pressSeg?: boolean;
-  pressFull?: boolean;
+  pressSeg?: number;
+  pressFull?: number;
 }
 
 export interface Round {
