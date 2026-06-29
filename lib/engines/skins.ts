@@ -3,16 +3,11 @@
 // value; the lone lowest net wins the hole. Ties carry the skins forward.
 //
 // Per-player hammers (entry.skinActions):
-//   "hammer"  — accepted a hammer: if this player loses the hole they pay ×2.
-//   "double"  — double hammer: if this player loses they pay ×4.
-//   "forfeit" — conceded: pays the single bet and is out of contention (can't
-//               win, which can break a tie and hand the skin to the next-lowest).
-//
-// On a PUSH (the contenders tie), each forfeiter still owes their single bet —
-// that money is held in the carry pot and paid to whoever wins the carry. To
-// keep every settled hole exactly zero-sum, those forfeiter debts are deferred
-// and applied on the hole the pot is finally won (an unwon pot at round end is
-// simply void). With no actions set this is identical to plain Skins.
+//   "hammer"  — accepted a hammer: if this player loses the hole they pay DOUBLE.
+//   "forfeit" — conceded: pays the single bet and is out of contention (can't win,
+//               which can also break a tie and hand the skin to the next-lowest).
+// The winner collects exactly the sum of what the losers pay, so every decided
+// hole is zero-sum. With no actions set this is identical to plain Skins.
 
 import { Round, PlayerId, computePops } from "../wolf";
 import { GameResult, GameHoleResult } from "./types";
@@ -32,8 +27,7 @@ export function computeSkins(round: Round): GameResult {
   }
 
   const holeResults: GameHoleResult[] = [];
-  let carry = 0; // tied holes (skins) waiting to be won
-  let deferred: Record<PlayerId, number> = {}; // forfeiter debts riding the pot
+  let carry = 0; // tied holes accumulated, waiting to be won
 
   for (const h of course.holes) {
     const e = entryByHole.get(h.number);
@@ -42,9 +36,7 @@ export function computeSkins(round: Round): GameResult {
 
     const actions = e?.skinActions ?? {};
     const forfeited = (id: PlayerId) => actions[id] === "forfeit";
-    // Loss multiplier when a non-winner pays: double 4×, hammer 2×, else 1×.
-    const multOf = (id: PlayerId) =>
-      actions[id] === "double" ? 4 : actions[id] === "hammer" ? 2 : 1;
+    const accepted = (id: PlayerId) => actions[id] === "hammer";
 
     // Only non-forfeited players need a score to settle (forfeiters conceded).
     const contenders = ids.filter((id) => !forfeited(id));
@@ -63,26 +55,18 @@ export function computeSkins(round: Round): GameResult {
     if (winners.length === 1) {
       const w = winners[0];
       const skins = carry + 1;
+      // Each non-winner pays the skin value × skins, doubled if they accepted.
       let pot = 0;
-      // Current-hole non-winners pay value × skins × their multiplier.
       for (const id of ids) {
         if (id === w) continue;
-        const owed = value * skins * multOf(id);
-        deltas[id] -= owed;
+        const owed = value * skins * (accepted(id) ? 2 : 1);
+        deltas[id] = -owed;
         pot += owed;
       }
-      // Forfeiter debts carried from earlier pushed holes come due now.
-      let deferredTotal = 0;
-      for (const id of Object.keys(deferred)) {
-        deltas[id] -= deferred[id];
-        deferredTotal += deferred[id];
-      }
-      deltas[w] += pot + deferredTotal;
-
+      deltas[w] = pot;
       for (const id of ids) ledger[id] += deltas[id];
       skinsWon[w] += skins;
       carry = 0;
-      deferred = {};
       const name = players.find((p) => p.id === w)?.name?.split(" ")[0] || "—";
       holeResults.push({
         hole: h.number,
@@ -91,22 +75,14 @@ export function computeSkins(round: Round): GameResult {
         deltas,
       });
     } else if (settings.carryover) {
-      // Push: the skin carries, and each forfeiter's single bet joins the pot.
       carry += 1;
-      for (const id of ids) {
-        if (forfeited(id)) deferred[id] = (deferred[id] ?? 0) + value;
-      }
-      const potNow =
-        value * carry + Object.values(deferred).reduce((s, v) => s + v, 0);
-      // No money moves on the hole itself (forfeiter debts are deferred).
       holeResults.push({
         hole: h.number,
         decided: false,
-        detail: `Push — $${potNow} carries`,
+        detail: `Push — $${value * carry} carries`,
         deltas,
       });
     } else {
-      // No carryover: a tied hole is dead (forfeiter concessions void too).
       holeResults.push({ hole: h.number, decided: false, detail: "Push", deltas });
     }
   }

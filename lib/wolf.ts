@@ -84,13 +84,11 @@ export interface HoleEntry {
    */
   forfeit?: "A" | "B";
   /**
-   * Skins only: per-player hammer choice, persisted in game_entries.meta.
-   *   "hammer" — accepted a hammer: this player's loss on the hole doubles (×2).
-   *   "double" — double hammer: this player's loss quadruples (×4).
-   *   "forfeit" — conceded: pays the single bet and is out of contention. On a
-   *               pushed hole the single bet rolls into the carry pot.
+   * Skins only: per-player hammer choice. "hammer" = accepted a hammer (this
+   * player's loss on the hole doubles); "forfeit" = conceded (pays the single
+   * bet and is out of contention for the skin). Persisted in game_entries.meta.
    */
-  skinActions?: Record<PlayerId, "hammer" | "double" | "forfeit">;
+  skinActions?: Record<PlayerId, "hammer" | "forfeit">;
 }
 
 export interface Round {
