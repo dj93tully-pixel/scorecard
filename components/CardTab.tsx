@@ -414,7 +414,6 @@ function LedgerCard({
   player,
   rankIndex,
   scoreNet,
-  setScoreNet,
 }: {
   round: Round;
   computation: CardComputation;
