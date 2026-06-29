@@ -17,15 +17,47 @@
 // on that hole. Presses stack. Settlement is symmetric match play over the
 // pressed holes, so the bet only needs to know it exists, not who called it.
 //
-// Every bet is +stake / −stake / push, so the ledger stays zero-sum. Money is a
-// per-segment thing, so holeResults carry no per-hole deltas — the standings and
-// the per-player Front/Back/Overall breakdown carry the money instead.
+// Money is tracked in two buckets so the UI can show original vs press:
+//   • base.{front,back,overall} — the three original bets
+//   • press                     — every press bet combined
+// stats exposes those plus `original` (the 3 base bets) so the standings, the
+// Totals row, and the Scores-tab summary can all show original / press / total.
+// Every bet is +stake / −stake / push, so the ledger stays zero-sum. holeResults
+// carry no per-hole deltas (money is per-segment, not per-hole).
 
 import { Round, PlayerId, computePops } from "../wolf";
 import { GameResult, GameHoleResult } from "./types";
 import { splitTeams } from "./teams";
 
 type SegKey = "front" | "back" | "overall";
+
+export interface NassauMoney {
+  front: number;
+  back: number;
+  overall: number;
+  original: number; // the three base bets combined
+  press: number; // every press bet combined
+  total: number; // original + press (== this player's ledger)
+}
+
+/** Pull a player's Nassau money split out of a GameResult's stats. */
+export function nassauMoney(
+  stats: Record<string, Record<string, number | string>> | undefined,
+  pid: string
+): NassauMoney {
+  const s = stats?.[pid] ?? {};
+  const num = (k: string) => Number(s[k] ?? 0);
+  const original = num("original");
+  const press = num("press");
+  return {
+    front: num("front"),
+    back: num("back"),
+    overall: num("overall"),
+    original,
+    press,
+    total: original + press,
+  };
+}
 
 export function computeNassau(round: Round): GameResult {
   const { players, course, settings } = round;
@@ -37,17 +69,14 @@ export function computeNassau(round: Round): GameResult {
   const holeNums = course.holes.map((h) => h.number);
   const frontNums = holeNums.filter((n) => n <= 9);
   const backNums = holeNums.filter((n) => n >= 10);
-  const segHoles: Record<SegKey, number[]> = {
-    front: frontNums,
-    back: backNums,
-    overall: holeNums,
-  };
 
   const ledger: Record<PlayerId, number> = {};
-  const seg: Record<PlayerId, Record<SegKey, number>> = {};
+  const base: Record<PlayerId, Record<SegKey, number>> = {};
+  const press: Record<PlayerId, number> = {};
   for (const id of ids) {
     ledger[id] = 0;
-    seg[id] = { front: 0, back: 0, overall: 0 };
+    base[id] = { front: 0, back: 0, overall: 0 };
+    press[id] = 0;
   }
 
   const netOn = (id: PlayerId, hole: number): number | null => {
@@ -58,11 +87,16 @@ export function computeNassau(round: Round): GameResult {
   const format = settings.nassauFormat ?? "teams";
 
   if (format === "robin") {
-    // Everyone vs everyone: each pair plays all three bets.
+    // Everyone vs everyone: each pair plays all three (base) bets.
     for (let i = 0; i < ids.length; i++) {
       for (let j = i + 1; j < ids.length; j++) {
         const a = ids[i];
         const b = ids[j];
+        const segHoles: Record<SegKey, number[]> = {
+          front: frontNums,
+          back: backNums,
+          overall: holeNums,
+        };
         for (const key of ["front", "back", "overall"] as SegKey[]) {
           if (segHoles[key].length === 0) continue;
           let aWon = 0;
@@ -79,8 +113,8 @@ export function computeNassau(round: Round): GameResult {
           const loser = aWon > bWon ? b : a;
           ledger[winner] += stake;
           ledger[loser] -= stake;
-          seg[winner][key] += stake;
-          seg[loser][key] -= stake;
+          base[winner][key] += stake;
+          base[loser][key] -= stake;
         }
       }
     }
@@ -96,9 +130,12 @@ export function computeNassau(round: Round): GameResult {
       };
 
       // Settle one match-play bet over `holeList`; winning side splits +stake,
-      // losing side splits −stake; the money also tallies under `key` for the
-      // Front/Back/Overall breakdown.
-      const settleBet = (holeList: number[], key: SegKey) => {
+      // losing side splits −stake. `apply(id, amount)` buckets the money (base
+      // segment or press) for the breakdown; the ledger is updated here.
+      const settleBet = (
+        holeList: number[],
+        apply: (id: PlayerId, amount: number) => void
+      ) => {
         let aWon = 0;
         let bWon = 0;
         for (const n of holeList) {
@@ -112,28 +149,29 @@ export function computeNassau(round: Round): GameResult {
         const win = aWon > bWon ? A : B;
         const lose = aWon > bWon ? B : A;
         for (const id of win) {
-          ledger[id] += stake / win.length;
-          seg[id][key] += stake / win.length;
+          const amt = stake / win.length;
+          ledger[id] += amt;
+          apply(id, amt);
         }
         for (const id of lose) {
-          ledger[id] -= stake / lose.length;
-          seg[id][key] -= stake / lose.length;
+          const amt = -stake / lose.length;
+          ledger[id] += amt;
+          apply(id, amt);
         }
       };
 
       // The three base bets.
-      settleBet(frontNums, "front");
-      settleBet(backNums, "back");
-      settleBet(holeNums, "overall");
+      settleBet(frontNums, (id, amt) => (base[id].front += amt));
+      settleBet(backNums, (id, amt) => (base[id].back += amt));
+      settleBet(holeNums, (id, amt) => (base[id].overall += amt));
 
       // Presses: each flagged hole opens a fresh bet over the remaining holes of
-      // that hole's segment (front or back), tallied under that segment.
+      // that hole's nine, all bucketed into `press`.
       for (const n of holeNums) {
         if (!entryByHole.get(n)?.nassauPress) continue;
         const inFront = n <= 9;
-        const key: SegKey = inFront ? "front" : "back";
         const pressHoles = (inFront ? frontNums : backNums).filter((h) => h >= n);
-        settleBet(pressHoles, key);
+        settleBet(pressHoles, (id, amt) => (press[id] += amt));
       }
     }
   }
@@ -147,10 +185,13 @@ export function computeNassau(round: Round): GameResult {
 
   const stats: Record<PlayerId, Record<string, number>> = {};
   for (const id of ids) {
+    const original = base[id].front + base[id].back + base[id].overall;
     stats[id] = {
-      front: seg[id].front,
-      back: seg[id].back,
-      overall: seg[id].overall,
+      front: base[id].front,
+      back: base[id].back,
+      overall: base[id].overall,
+      original,
+      press: press[id],
     };
   }
   return { ledger, pops, holeResults, stats };

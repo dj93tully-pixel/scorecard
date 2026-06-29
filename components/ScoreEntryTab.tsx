@@ -9,6 +9,7 @@
 import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
+import { NassauTable } from "./nassau/NassauBreakdown";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
 
@@ -293,6 +294,7 @@ export function ScoreEntryTab({
   const result = computeGame(round);
   const resultByHole = new Map(result.holeResults.map((r) => [r.hole, r]));
   const isElevens = gameTypeOf(round) === "elevens";
+  const isNassau = gameTypeOf(round) === "nassau";
 
   // 11s: each player's running number of declared (checked) holes, of 11.
   const pickCounts: Record<string, number> = {};
@@ -326,6 +328,9 @@ export function ScoreEntryTab({
         <h2 className="text-xl font-bold">{meta.label}</h2>
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
+
+      {/* Nassau: live money — who's up / down on the original bets and presses. */}
+      {isNassau && <NassauTable round={round} stats={result.stats} />}
 
       {round.course.holes.map((h) => (
         <HoleCard

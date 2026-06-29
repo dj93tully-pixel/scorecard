@@ -448,6 +448,8 @@ describe("nassau", () => {
       makeRound("nassau", scratch(["a", "b"]), make(true), opts)
     );
     expect(withPress.ledger.a).toBe(-2);
+    expect(withPress.stats.a.original).toBe(-4); // back −2 + overall −2
+    expect(withPress.stats.a.press).toBe(2); // press won back
     expect(sum(withPress.ledger)).toBe(0);
   });
 });

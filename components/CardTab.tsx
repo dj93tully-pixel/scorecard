@@ -10,6 +10,7 @@ import { ChevronDown } from "lucide-react";
 import { Round, Player } from "@/lib/wolf";
 import { gameTypeOf } from "@/lib/gametypes";
 import { formatMoney, formatToPar } from "@/lib/storage";
+import { NassauTriple, NassauTable } from "./nassau/NassauBreakdown";
 
 // Minimal shape the Card view needs — satisfied by both Wolf's RoundComputation
 // and the generic GameResult, so this one component serves every game type.
@@ -514,33 +515,36 @@ function LedgerCard({
             {!scoresOnly && <span className="text-[10px] text-text-faint">swipe ←→</span>}
           </div>
 
-          {/* Nassau: front / back / overall money breakdown. */}
+          {/* Nassau: per-bet money — front/back/overall, then original/press/total. */}
           {isNassau && nassau && (
-            <div className="mb-2 grid grid-cols-3 gap-2">
-              {([
-                ["Front", "front"],
-                ["Back", "back"],
-                ["Overall", "overall"],
-              ] as const).map(([label, key]) => {
-                const v = Number(nassau[key] ?? 0);
-                return (
-                  <div
-                    key={key}
-                    className="rounded-lg bg-card-bg px-2 py-1.5 text-center"
-                    style={{ border: `1px solid ${HAIRLINE}` }}
-                  >
-                    <div className="text-[9px] font-bold uppercase tracking-wide text-text-faint">
-                      {label}
-                    </div>
+            <div className="mb-2 space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  ["Front", "front"],
+                  ["Back", "back"],
+                  ["Overall", "overall"],
+                ] as const).map(([label, key]) => {
+                  const v = Number(nassau[key] ?? 0);
+                  return (
                     <div
-                      className="font-serif text-sm font-bold tabular-nums"
-                      style={{ color: v > 0 ? POS : v < 0 ? NEG : MUTED }}
+                      key={key}
+                      className="rounded-lg bg-card-bg px-2 py-1.5 text-center"
+                      style={{ border: `1px solid ${HAIRLINE}` }}
                     >
-                      {formatMoney(v)}
+                      <div className="text-[9px] font-bold uppercase tracking-wide text-text-faint">
+                        {label}
+                      </div>
+                      <div
+                        className="font-serif text-sm font-bold tabular-nums"
+                        style={{ color: v > 0 ? POS : v < 0 ? NEG : MUTED }}
+                      >
+                        {formatMoney(v)}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <NassauTriple stats={computation.stats} pid={player.id} />
             </div>
           )}
 
@@ -625,6 +629,14 @@ export function CardTab({
         {/* Totals listed as part of the scorecard: name · total · +/- · money */}
         <Totals round={round} computation={computation} net={net} />
       </section>
+
+      {/* Nassau: original / press / total money for every player. */}
+      {gt === "nassau" && (
+        <section className="space-y-3">
+          <h2 className="text-xl font-bold">Money — original / press / total</h2>
+          <NassauTable round={round} stats={computation.stats} />
+        </section>
+      )}
     </div>
   );
 }
