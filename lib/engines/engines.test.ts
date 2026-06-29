@@ -492,6 +492,35 @@ describe("press", () => {
     expect(r.ledger.b).toBe(-2);
     expect(sum(r.ledger)).toBe(0);
   });
+
+  it("a press carries its own ties per pressCarryover, independent of the base", () => {
+    // Skins press on hole 14 (covers 14–18): hole 14 ties, a wins 15, rest tie.
+    const entries = [14, 15, 16, 17, 18].map((h) => ({
+      hole: h,
+      wolfId: "",
+      mode: "2v2" as const,
+      grossScores: h === 14 ? { a: 4, b: 4 } : h === 15 ? { a: 3, b: 4 } : { a: 4, b: 4 },
+      ...(h === 14 ? { pressSeg: true } : {}),
+    }));
+    // Base carryover OFF (tie is dead → base is just hole 15's one skin).
+    const on = makeRound("skins", scratch(["a", "b"]), entries, {
+      skinValue: 5,
+      carryover: false,
+      pressCarryover: true,
+    });
+    const ron = withPresses(on, computeSkins);
+    expect(ron.stats.a.original).toBe(5); // base: hole 15 only
+    expect(ron.stats.a.press).toBe(10); // press: hole 14 tie carries → 2 skins on 15
+    expect(ron.ledger.a).toBe(15);
+
+    // Press carryover OFF → the pressed tie is dead too (one skin).
+    const off = makeRound("skins", scratch(["a", "b"]), entries, {
+      skinValue: 5,
+      carryover: false,
+      pressCarryover: false,
+    });
+    expect(withPresses(off, computeSkins).stats.a.press).toBe(5);
+  });
 });
 
 // ── Carryover ────────────────────────────────────────────────────────────────

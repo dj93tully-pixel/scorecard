@@ -44,6 +44,11 @@ export interface RoundSettings {
   blindMult: number; // default 2
   blindEnabled: boolean;
   carryover: boolean; // ties push; if true, roll stake into next hole
+  /**
+   * Whether a PRESS bet carries its ties (rolls a pushed hole into the press's
+   * next hole), independent of the base bet's `carryover`. Defaults to true.
+   */
+  pressCarryover?: boolean;
   handicapMode: HandicapMode;
 
   // ── Fields for the non-Wolf game types (all optional; ignored by Wolf) ──
@@ -130,6 +135,7 @@ export const DEFAULT_SETTINGS: RoundSettings = {
   blindMult: 2,
   blindEnabled: true,
   carryover: false,
+  pressCarryover: true,
   handicapMode: "offLow",
 };
 

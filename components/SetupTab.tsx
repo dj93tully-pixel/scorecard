@@ -577,6 +577,20 @@ export function SetupTab({
               />
             </Field>
           )}
+          {gameType !== "vegas" &&
+            gameType !== "stroke" &&
+            gameType !== "elevens" &&
+            gameType !== "fieldhammer" &&
+            gameType !== "nassau" && (
+            <Field label="Press carryover ties">
+              <input
+                type="checkbox"
+                checked={settings.pressCarryover ?? true}
+                onChange={(e) => setSetting("pressCarryover", e.target.checked)}
+                className="h-6 w-6 accent-[#354CA1]"
+              />
+            </Field>
+          )}
           {!isDirect && (
             <Field label="Handicap mode">
               <select

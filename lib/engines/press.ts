@@ -59,6 +59,22 @@ export function pressScopesOf(e: {
 }
 
 /**
+ * A copy of the round scoped to a press's holes. The press is its own bet, so it
+ * carries (or not) on the `pressCarryover` setting — independent of the base
+ * bet's carryover.
+ */
+function pressSubRound(round: Round, holes: Set<number>): Round {
+  return {
+    ...round,
+    settings: {
+      ...round.settings,
+      carryover: round.settings.pressCarryover ?? true,
+    },
+    entries: round.entries.filter((x) => holes.has(x.hole)),
+  };
+}
+
+/**
  * Total press money per player: for every flagged hole, re-settle the game over
  * the press's holes (via `computeLedger`) and sum the results. `computeLedger`
  * must be the RAW per-hole engine (not a press-wrapped one) to avoid recursion.
@@ -73,11 +89,7 @@ export function computePressMoney(
     for (const scope of pressScopesOf(e)) {
       const holes = new Set(pressRange(round, e.hole, scope));
       if (holes.size === 0) continue;
-      const sub: Round = {
-        ...round,
-        entries: round.entries.filter((x) => holes.has(x.hole)),
-      };
-      const l = computeLedger(sub);
+      const l = computeLedger(pressSubRound(round, holes));
       for (const p of round.players) out[p.id] += l[p.id] ?? 0;
     }
   }
@@ -139,11 +151,7 @@ export function decomposePresses(
     for (const scope of pressScopesOf(e)) {
       const holes = new Set(pressRange(round, e.hole, scope));
       if (holes.size === 0) continue;
-      const sub: Round = {
-        ...round,
-        entries: round.entries.filter((x) => holes.has(x.hole)),
-      };
-      const r = run(sub);
+      const r = run(pressSubRound(round, holes));
       for (const id of ids) pressLedger[id] += r.ledger[id] ?? 0;
       for (const hr of r.holeResults) {
         if (!holes.has(hr.hole)) continue;
