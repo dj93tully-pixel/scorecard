@@ -46,8 +46,10 @@ function HoleCard({
   const commit = (patch: Partial<HoleEntry>) => upsertEntry(hole, patch, base);
 
   // Forfeit (one side concedes) only makes sense for the two-team match games.
+  // Hammer applies to every game except stroke play.
   const gt = gameTypeOf(round);
   const forfeitable = gt === "bestball" || gt === "sixes";
+  const hammerable = gt !== "stroke";
 
   return (
     <div
@@ -65,27 +67,31 @@ function HoleCard({
 
         {/* Hammer (2×/4×) + forfeit (concede) toggles. */}
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          <button
-            onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
-            aria-label="Hammer — double the hole"
-            style={hammer === 1 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
-            className={`flex items-center rounded-lg border px-2 py-1.5 ${
-              hammer === 1 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-            }`}
-          >
-            <Hammer className="h-[15px] w-[15px]" />
-          </button>
-          <button
-            onClick={() => commit({ hammer: hammer === 2 ? 0 : 2 })}
-            aria-label="Double hammer — quadruple the hole"
-            style={hammer === 2 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
-            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
-              hammer === 2 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-            }`}
-          >
-            <Hammer className="h-[15px] w-[15px]" />
-            <Hammer className="h-[15px] w-[15px]" />
-          </button>
+          {hammerable && (
+            <>
+              <button
+                onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
+                aria-label="Hammer — double the hole"
+                style={hammer === 1 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
+                className={`flex items-center rounded-lg border px-2 py-1.5 ${
+                  hammer === 1 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                }`}
+              >
+                <Hammer className="h-[15px] w-[15px]" />
+              </button>
+              <button
+                onClick={() => commit({ hammer: hammer === 2 ? 0 : 2 })}
+                aria-label="Double hammer — quadruple the hole"
+                style={hammer === 2 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
+                className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
+                  hammer === 2 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                }`}
+              >
+                <Hammer className="h-[15px] w-[15px]" />
+                <Hammer className="h-[15px] w-[15px]" />
+              </button>
+            </>
+          )}
           {forfeitable &&
             (["A", "B"] as const).map((side) => (
               <button

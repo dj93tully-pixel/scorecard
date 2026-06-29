@@ -3,7 +3,7 @@
 // opponent for the net-stroke difference at the per-stroke value, so a player's
 // hole delta is value × Σ(opponentNet − theirNet). Summed over the round this
 // equals each pairing's total net-stroke difference, and it's zero-sum per hole.
-// Hammer multiplies a hole's money; net totals drive the standings.
+// Net totals drive the standings. (No hammer — it doesn't fit stroke play.)
 
 import { Round, PlayerId, computePops } from "../wolf";
 import { GameResult, GameHoleResult } from "./types";
@@ -39,11 +39,10 @@ export function computeStroke(round: Round): GameResult {
     for (const id of ids) net[id] = e!.grossScores[id]! - (pops[id]?.[h.number] ?? 0);
     for (const id of ids) strokes[id] += net[id];
 
-    const hammerMult = 2 ** Math.max(0, Math.floor(e!.hammer ?? 0));
     for (const id of ids) {
       let d = 0;
       for (const j of ids) if (j !== id) d += net[j] - net[id];
-      deltas[id] = d * value * hammerMult;
+      deltas[id] = d * value;
     }
 
     for (const id of ids) ledger[id] += deltas[id];

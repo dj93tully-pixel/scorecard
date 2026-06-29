@@ -216,24 +216,16 @@ describe("stroke play", () => {
     expect(sum(ledger)).toBe(0);
   });
 
-  it("scales by the per-stroke value and hammer", () => {
+  it("scales by the per-stroke value", () => {
     const round = makeRound(
       "stroke",
       scratch(["a", "b", "c", "d"]),
-      [
-        {
-          hole: 18,
-          wolfId: "",
-          mode: "2v2",
-          grossScores: { a: 3, b: 4, c: 4, d: 5 },
-          hammer: 1,
-        },
-      ],
+      [{ hole: 18, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 4, d: 5 } }],
       { stake: 2 }
     );
     const { ledger } = computeStroke(round);
-    expect(ledger.a).toBe(16); // 4 strokes × $2 × 2 (hammer)
-    expect(ledger.d).toBe(-16);
+    expect(ledger.a).toBe(8); // 4 strokes × $2
+    expect(ledger.d).toBe(-8);
     expect(sum(ledger)).toBe(0);
   });
 });
