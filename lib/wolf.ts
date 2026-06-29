@@ -83,6 +83,12 @@ export interface HoleEntry {
    * wins regardless of net scores. "A" = wolf side concedes, "B" = field concedes.
    */
   forfeit?: "A" | "B";
+  /**
+   * Skins only: per-player hammer choice. "hammer" = accepted a hammer (this
+   * player's loss on the hole doubles); "forfeit" = conceded (pays the single
+   * bet and is out of contention for the skin). Persisted in game_entries.meta.
+   */
+  skinActions?: Record<PlayerId, "hammer" | "forfeit">;
 }
 
 export interface Round {

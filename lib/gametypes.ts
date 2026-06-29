@@ -47,7 +47,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
   skins: {
     id: "skins",
     label: "Skins",
-    blurb: "Lowest net score wins the hole; ties carry the skins forward.",
+    blurb: "Lowest net wins the hole; ties carry. Players can hammer each other.",
     players: { min: 2, max: 6 },
     hasTeams: false,
     rotatesTeams: false,
