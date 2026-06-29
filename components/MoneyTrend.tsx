@@ -1,7 +1,7 @@
 // components/MoneyTrend.tsx
-// "If it ended now" panel for the total/segment games (Stroke, 11s, Nassau):
-// each player's money as the round would settle right now, plus a sparkline
-// trendline of how that money has moved hole by hole.
+// Trendline panel (Card tab, all games): each player's current money plus a
+// sparkline of how that money has moved hole by hole. Transparent — it sits on
+// the page background rather than in its own card.
 
 import { Round } from "@/lib/wolf";
 import { formatMoney } from "@/lib/storage";
@@ -39,8 +39,8 @@ export function MoneyTrend({
 
   return (
     <section className="space-y-2">
-      <h2 className="text-xl font-bold">If it ended now</h2>
-      <div className="overflow-hidden rounded-xl border border-card-border bg-card-bg">
+      <h2 className="text-xl font-bold">Trendline</h2>
+      <div className="overflow-hidden">
         {sorted.map((p, idx) => {
           const vals = valsOf(p.id);
           const cur = current[p.id] ?? 0;
@@ -48,7 +48,7 @@ export function MoneyTrend({
           return (
             <div
               key={p.id}
-              className={`flex items-center gap-3 px-3 py-2 ${
+              className={`flex items-center gap-3 px-1 py-2 ${
                 idx > 0 ? "border-t border-divider" : ""
               }`}
             >

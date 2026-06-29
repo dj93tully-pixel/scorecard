@@ -191,6 +191,37 @@ export default function GamePage() {
     return undefined;
   }, [round, isWolf, computation, gameResult]);
 
+  // Trendline data: the total money (base + press) as it would settle after each
+  // played hole, in hole order — for the Card tab's bottom trendline.
+  const cardTrend = useMemo(() => {
+    if (!round) return [];
+    const holes = round.course.holes;
+    const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
+    const scored = (n: number) => {
+      const e = entryByHole.get(n);
+      return !!e && round.players.some((p) => typeof e.grossScores[p.id] === "number");
+    };
+    let lastIdx = -1;
+    holes.forEach((h, i) => {
+      if (scored(h.number)) lastIdx = i;
+    });
+    const out: Record<string, number>[] = [];
+    for (let i = 0; i <= lastIdx; i++) {
+      const upTo = new Set(holes.slice(0, i + 1).map((h) => h.number));
+      const prefix: Round = { ...round, entries: round.entries.filter((e) => upTo.has(e.hole)) };
+      if (isWolf) {
+        const base = computeRound(prefix).ledger;
+        const press = computePressMoney(prefix, (r) => computeRound(r).ledger);
+        const ledger: Record<string, number> = {};
+        for (const id of Object.keys(base)) ledger[id] = (base[id] ?? 0) + (press[id] ?? 0);
+        out.push(ledger);
+      } else {
+        out.push(computeGame(prefix).ledger);
+      }
+    }
+    return out;
+  }, [round, isWolf]);
+
   const tabs: PillTab[] = [
     { id: "scores", label: "Scores" },
     { id: "card", label: "Card" },
@@ -253,7 +284,7 @@ export default function GamePage() {
             <ScoreEntryTab round={round} upsertEntry={upsertEntry} />
           ))}
         {tab === "card" && cardComp && (
-          <CardTab round={round} computation={cardComp} views={cardViews} />
+          <CardTab round={round} computation={cardComp} views={cardViews} trend={cardTrend} />
         )}
       </div>
     </div>

@@ -8,10 +8,9 @@
 
 import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
-import { computeGame, computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
+import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { combinedHoleResults, pressedHoles } from "@/lib/engines/press";
 import { holeHighlight } from "@/lib/holeHighlight";
-import { MoneyTrend } from "./MoneyTrend";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
 
@@ -327,29 +326,7 @@ export function ScoreEntryTab({
   const resultByHole = new Map(combined.map((r) => [r.hole, r]));
   // Holes any press covers — highlighted, not just the hole it was tapped on.
   const pressCover = pressedHoles(round);
-  const gt = gameTypeOf(round);
-  const isElevens = gt === "elevens";
-
-  // Total/segment games: the money as it would settle after each played hole,
-  // for the "if it ended now" standings + trendline below the holes.
-  const showTrend = gt === "stroke" || gt === "elevens" || gt === "nassau";
-  const prefixLedgers: Record<string, number>[] = [];
-  if (showTrend) {
-    const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
-    const scored = (n: number) => {
-      const e = entryByHole.get(n);
-      return !!e && round.players.some((p) => typeof e.grossScores[p.id] === "number");
-    };
-    let lastIdx = -1;
-    round.course.holes.forEach((h, i) => {
-      if (scored(h.number)) lastIdx = i;
-    });
-    for (let i = 0; i <= lastIdx; i++) {
-      const upTo = new Set(round.course.holes.slice(0, i + 1).map((h) => h.number));
-      const prefix = { ...round, entries: round.entries.filter((e) => upTo.has(e.hole)) };
-      prefixLedgers.push(computeGame(prefix).ledger);
-    }
-  }
+  const isElevens = gameTypeOf(round) === "elevens";
 
   // 11s: each player's running number of declared (checked) holes, of 11.
   const pickCounts: Record<string, number> = {};
@@ -396,8 +373,6 @@ export function ScoreEntryTab({
           upsertEntry={upsertEntry}
         />
       ))}
-
-      {showTrend && <MoneyTrend round={round} prefixLedgers={prefixLedgers} />}
     </div>
   );
 }

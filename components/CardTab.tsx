@@ -11,6 +11,7 @@ import { Round, Player } from "@/lib/wolf";
 import { gameTypeOf } from "@/lib/gametypes";
 import { pressedHoles } from "@/lib/engines/press";
 import { formatMoney, formatToPar } from "@/lib/storage";
+import { MoneyTrend } from "./MoneyTrend";
 
 // Minimal shape the Card view needs — satisfied by both Wolf's RoundComputation
 // and the generic GameResult, so this one component serves every game type.
@@ -459,6 +460,8 @@ function LedgerCard({
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
   let toPar: number | null = null;
   for (const e of round.entries) {
+    // Press view: the +/- only counts the pressed holes (like the money does).
+    if (pressHoles && !pressHoles.has(e.hole)) continue;
     const g = e.grossScores[player.id];
     if (typeof g === "number") {
       // Blue +/- follows the shared gross/net toggle (net = gross − pops).
@@ -555,10 +558,12 @@ export function CardTab({
   round,
   computation,
   views,
+  trend,
 }: {
   round: Round;
   computation: CardComputation;
   views?: PressViews;
+  trend?: Record<string, number>[]; // money after each played hole (trendline)
 }) {
   const front = Array.from({ length: 9 }, (_, i) => i + 1);
   const back = Array.from({ length: 9 }, (_, i) => i + 10);
@@ -656,6 +661,9 @@ export function CardTab({
         {/* Totals listed as part of the scorecard: name · total · +/- · money */}
         <Totals round={round} computation={active} net={net} holes={activeHoles} />
       </section>
+
+      {/* Money trendline over the holes played. */}
+      {trend && trend.length > 0 && <MoneyTrend round={round} prefixLedgers={trend} />}
     </div>
   );
 }
