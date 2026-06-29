@@ -56,9 +56,9 @@ function HoleCard({
   const hammerable = gt !== "stroke" && gt !== "skins";
   const perPlayerHammer = gt === "skins";
 
-  // Skins: toggle a player's hammer (accept → loss doubles) or forfeit (concede).
-  // Mutually exclusive; tapping the active one clears it.
-  function setSkinAction(pid: string, action: "hammer" | "forfeit") {
+  // Skins: toggle a player's hammer (×2 loss), double hammer (×4 loss), or
+  // forfeit (concede). Mutually exclusive; tapping the active one clears it.
+  function setSkinAction(pid: string, action: "hammer" | "double" | "forfeit") {
     const next = { ...skinActions };
     if (next[pid] === action) delete next[pid];
     else next[pid] = action;
@@ -165,19 +165,36 @@ function HoleCard({
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     onClick={() => setSkinAction(p.id, "hammer")}
-                    aria-label={`Hammer ${p.name || "player"} (loss doubles)`}
+                    aria-label={`Hammer ${p.name || "player"} (loss ×2)`}
                     style={
                       skinActions[p.id] === "hammer"
                         ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR }
                         : undefined
                     }
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg border ${
                       skinActions[p.id] === "hammer"
                         ? "text-on-dark"
                         : "border-card-border bg-card-bg text-text-muted"
                     }`}
                   >
-                    <Hammer className="h-[14px] w-[14px]" />
+                    <Hammer className="h-[13px] w-[13px]" />
+                  </button>
+                  <button
+                    onClick={() => setSkinAction(p.id, "double")}
+                    aria-label={`Double hammer ${p.name || "player"} (loss ×4)`}
+                    style={
+                      skinActions[p.id] === "double"
+                        ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR }
+                        : undefined
+                    }
+                    className={`flex h-7 items-center justify-center gap-0.5 rounded-lg border px-1 ${
+                      skinActions[p.id] === "double"
+                        ? "text-on-dark"
+                        : "border-card-border bg-card-bg text-text-muted"
+                    }`}
+                  >
+                    <Hammer className="h-[13px] w-[13px]" />
+                    <Hammer className="h-[13px] w-[13px]" />
                   </button>
                   <button
                     onClick={() => setSkinAction(p.id, "forfeit")}
@@ -187,13 +204,13 @@ function HoleCard({
                         ? { background: FORFEIT_COLOR, borderColor: FORFEIT_COLOR }
                         : undefined
                     }
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg border ${
                       skinActions[p.id] === "forfeit"
                         ? "text-on-dark"
                         : "border-card-border bg-card-bg text-text-muted"
                     }`}
                   >
-                    <Flag className="h-[14px] w-[14px]" />
+                    <Flag className="h-[13px] w-[13px]" />
                   </button>
                 </div>
               )}

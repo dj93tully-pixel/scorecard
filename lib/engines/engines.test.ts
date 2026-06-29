@@ -152,6 +152,59 @@ describe("skins", () => {
     expect(ledger.d).toBe(-5);
     expect(sum(ledger)).toBe(0);
   });
+
+  it("a double hammer quadruples a loser's bet", () => {
+    const round = makeRound(
+      "skins",
+      scratch(["a", "b", "c", "d"]),
+      [
+        {
+          hole: 1,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 3, b: 4, c: 4, d: 4 }, // a wins
+          skinActions: { b: "double" }, // b double-hammered → loss ×4
+        },
+      ],
+      { skinValue: 5 }
+    );
+    const { ledger } = computeSkins(round);
+    expect(ledger.b).toBe(-20); // 5 × 4
+    expect(ledger.c).toBe(-5);
+    expect(ledger.d).toBe(-5);
+    expect(ledger.a).toBe(30); // 20 + 5 + 5
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("on a push, forfeiters' single bets roll into the pot for the next winner", () => {
+    const round = makeRound(
+      "skins",
+      scratch(["a", "b", "c", "d"]),
+      [
+        // Hole 1: c & d forfeit; a & b tie → push. c/d each owe $5 to the pot.
+        {
+          hole: 1,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 4, b: 4 },
+          skinActions: { c: "forfeit", d: "forfeit" },
+        },
+        // Hole 2: a wins outright (2 skins) and also collects the held pot.
+        { hole: 2, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 4, d: 4 } },
+      ],
+      { skinValue: 5, carryover: true }
+    );
+    const { ledger, holeResults } = computeSkins(round);
+    // Hole 1 push: no money moves yet (forfeiter debts deferred).
+    expect(holeResults[0].decided).toBe(false);
+    expect(Object.values(holeResults[0].deltas).every((v) => v === 0)).toBe(true);
+    // Hole 2: b/c/d each pay 2 skins ($10); c & d also pay their $5 push debt.
+    expect(ledger.a).toBe(40); // 30 from this hole + 10 carry pot
+    expect(ledger.b).toBe(-10);
+    expect(ledger.c).toBe(-15); // 10 + 5
+    expect(ledger.d).toBe(-15);
+    expect(sum(ledger)).toBe(0);
+  });
 });
 
 // ── Best Ball ──────────────────────────────────────────────────────────────
