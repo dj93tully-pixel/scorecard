@@ -21,6 +21,17 @@ export function hasAnyPress(round: Round): boolean {
   return round.entries.some((e) => e.pressSeg || e.pressFull);
 }
 
+/** The set of holes covered by ANY press (the union of every press's range). */
+export function pressedHoles(round: Round): Set<number> {
+  const out = new Set<number>();
+  for (const e of round.entries) {
+    for (const scope of pressScopesOf(e)) {
+      for (const h of pressRange(round, e.hole, scope)) out.add(h);
+    }
+  }
+  return out;
+}
+
 /** Hole numbers a press started on `hole` with `scope` covers. */
 export function pressRange(round: Round, hole: number, scope: PressScope): number[] {
   const nums = round.course.holes.map((h) => h.number).sort((a, b) => a - b);

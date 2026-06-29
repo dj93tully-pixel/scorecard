@@ -9,6 +9,7 @@ import { CSSProperties, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Round, Player } from "@/lib/wolf";
 import { gameTypeOf } from "@/lib/gametypes";
+import { pressedHoles } from "@/lib/engines/press";
 import { formatMoney, formatToPar } from "@/lib/storage";
 
 // Minimal shape the Card view needs — satisfied by both Wolf's RoundComputation
@@ -241,6 +242,7 @@ function PlayerNine({
   label,
   mode,
   net = false,
+  holes,
 }: {
   round: Round;
   computation: CardComputation;
@@ -249,8 +251,9 @@ function PlayerNine({
   label: string;
   mode: "scores" | "money";
   net?: boolean; // scores mode: show net (gross − pops) instead of gross
+  holes?: number[]; // explicit hole list (press view); else the nine from `from`
 }) {
-  const nums = Array.from({ length: 9 }, (_, i) => from + i);
+  const nums = holes ?? Array.from({ length: 9 }, (_, i) => from + i);
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
   const resultByHole = new Map(computation.results.map((r) => [r.hole, r]));
@@ -426,6 +429,7 @@ function LedgerCard({
   rankIndex,
   scoreNet,
   bet,
+  pressHoles,
 }: {
   round: Round;
   computation: CardComputation;
@@ -433,6 +437,7 @@ function LedgerCard({
   rankIndex: number; // 0-based; tied players share the same index
   scoreNet: boolean; // shared gross/net toggle (next to the Standings header)
   bet: "total" | "press" | "original"; // which money view is active
+  pressHoles?: Set<number> | null; // press view: limit the scorecard to these
 }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"scores" | "money">("scores");
@@ -555,12 +560,28 @@ function LedgerCard({
             </div>
           )}
 
-          <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
-            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode={view} net={scoreNet} />
-          </div>
-          <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px" }}>
-            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode={view} net={scoreNet} />
-          </div>
+          {(() => {
+            const outHoles = pressHoles
+              ? Array.from({ length: 9 }, (_, i) => i + 1).filter((h) => pressHoles.has(h))
+              : null;
+            const inHoles = pressHoles
+              ? Array.from({ length: 9 }, (_, i) => i + 10).filter((h) => pressHoles.has(h))
+              : null;
+            return (
+              <>
+                {(!outHoles || outHoles.length > 0) && (
+                  <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
+                    <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode={view} net={scoreNet} holes={outHoles ?? undefined} />
+                  </div>
+                )}
+                {(!inHoles || inHoles.length > 0) && (
+                  <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px" }}>
+                    <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode={view} net={scoreNet} holes={inHoles ?? undefined} />
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
     </div>
@@ -595,6 +616,11 @@ export function CardTab({
   // skip the by-hole Ledger grid (standings + totals carry the money).
   const gt = gameTypeOf(round);
   const showLedger = gt !== "elevens" && gt !== "nassau";
+
+  // On the Press view, restrict the scorecard + ledger to the pressed holes.
+  const pressFilter = views && bet === "press" ? pressedHoles(round) : null;
+  const fHoles = pressFilter ? front.filter((h) => pressFilter.has(h)) : front;
+  const bHoles = pressFilter ? back.filter((h) => pressFilter.has(h)) : back;
 
   return (
     <div className="space-y-6">
@@ -637,6 +663,7 @@ export function CardTab({
               rankIndex={rankIndex}
               scoreNet={scoreNet}
               bet={bet}
+              pressHoles={pressFilter}
             />
           );
         })}
@@ -646,8 +673,12 @@ export function CardTab({
       {showLedger && (
         <section className="space-y-3">
           <h2 className="text-xl font-bold">Ledger</h2>
-          <BigNine round={round} computation={active} holes={front} title="Front" mode="money" />
-          <BigNine round={round} computation={active} holes={back} title="Back" mode="money" />
+          {fHoles.length > 0 && (
+            <BigNine round={round} computation={active} holes={fHoles} title="Front" mode="money" />
+          )}
+          {bHoles.length > 0 && (
+            <BigNine round={round} computation={active} holes={bHoles} title="Back" mode="money" />
+          )}
         </section>
       )}
 
@@ -657,10 +688,14 @@ export function CardTab({
           <h2 className="text-xl font-bold">Scorecard</h2>
           <GrossNetToggle net={net} onChange={(n) => setScoreView(n ? "net" : "gross")} />
         </div>
-        <BigNine round={round} computation={active} holes={front} title="Front" mode="scores" net={net} />
-        <BigNine round={round} computation={active} holes={back} title="Back" mode="scores" net={net} />
+        {fHoles.length > 0 && (
+          <BigNine round={round} computation={active} holes={fHoles} title="Front" mode="scores" net={net} />
+        )}
+        {bHoles.length > 0 && (
+          <BigNine round={round} computation={active} holes={bHoles} title="Back" mode="scores" net={net} />
+        )}
         {/* Totals listed as part of the scorecard: name · total · +/- · money */}
-        <Totals round={round} computation={active} net={net} />
+        <Totals round={round} computation={active} net={net} holes={pressFilter ?? undefined} />
       </section>
     </div>
   );
@@ -672,10 +707,12 @@ function Totals({
   round,
   computation,
   net,
+  holes,
 }: {
   round: Round;
   computation: CardComputation;
   net: boolean;
+  holes?: Set<number>; // limit the totals to these holes (press view)
 }) {
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
   const isElevens = gameTypeOf(round) === "elevens";
@@ -684,6 +721,7 @@ function Totals({
     let total = 0;
     let toPar: number | null = null;
     for (const e of round.entries) {
+      if (holes && !holes.has(e.hole)) continue;
       const g = e.grossScores[p.id];
       if (typeof g === "number") {
         const score = net ? g - (computation.pops[p.id]?.[e.hole] ?? 0) : g;
