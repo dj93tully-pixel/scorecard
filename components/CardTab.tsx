@@ -505,10 +505,9 @@ export function CardTab({
         </div>
         <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" net={net} />
         <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" net={net} />
+        {/* Totals listed as part of the scorecard: name · total · +/- · money */}
+        <Totals round={round} computation={computation} />
       </section>
-
-      {/* Totals — each player's total strokes, to-par, and money */}
-      <Totals round={round} computation={computation} />
     </div>
   );
 }
@@ -538,39 +537,35 @@ function Totals({
     .sort((a, b) => b.money - a.money);
 
   return (
-    <section className="space-y-2">
-      <h2 className="text-xl font-bold">Totals</h2>
-      <div className="overflow-hidden rounded-xl border border-card-border bg-card-bg">
-        <div className="flex items-center justify-between gap-2 border-b border-divider bg-surface-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-text-muted">
-          <span>Player</span>
-          <div className="flex items-center gap-4">
-            <span className="w-10 text-right">Total</span>
-            <span className="w-10 text-right">+/-</span>
-            <span className="w-16 text-right">Money</span>
+    <div className="border-y border-card-border bg-surface-2">
+      {rows.map(({ p, total, toPar, money }, i) => (
+        <div
+          key={p.id}
+          className="flex items-center justify-between gap-2 px-2 py-2"
+          style={i > 0 ? { borderTop: `1px solid ${HAIRLINE}` } : undefined}
+        >
+          <span
+            className="min-w-0 flex-1 truncate text-xs font-semibold"
+            style={{ color: INK }}
+          >
+            {p.name || "Unnamed"}
+          </span>
+          <div className="flex items-center gap-4 text-xs tabular-nums">
+            <span className="w-10 text-right font-bold" style={{ color: INK }}>
+              {total || "–"}
+            </span>
+            <span className="w-10 text-right font-bold" style={{ color: PRIMARY }}>
+              {toPar === null ? "–" : formatToPar(toPar)}
+            </span>
+            <span
+              className="w-16 text-right font-bold"
+              style={{ color: money > 0 ? POS : money < 0 ? NEG : MUTED }}
+            >
+              {formatMoney(money)}
+            </span>
           </div>
         </div>
-        {rows.map(({ p, total, toPar, money }) => (
-          <div
-            key={p.id}
-            className="flex items-center justify-between gap-2 border-b border-divider px-3 py-2 last:border-b-0"
-          >
-            <span className="min-w-0 flex-1 truncate font-semibold">{p.name || "Unnamed"}</span>
-            <div className="flex items-center gap-4 tabular-nums">
-              <span className="w-10 text-right font-bold">{total || "–"}</span>
-              <span className="w-10 text-right font-bold text-primary">
-                {toPar === null ? "–" : formatToPar(toPar)}
-              </span>
-              <span
-                className={`w-16 text-right font-serif font-bold ${
-                  money > 0 ? "text-positive" : money < 0 ? "text-negative" : "text-text-faint"
-                }`}
-              >
-                {formatMoney(money)}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
+      ))}
+    </div>
   );
 }
