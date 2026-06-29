@@ -13,7 +13,6 @@ import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
 
 const HAMMER_COLOR = "#7C3AED"; // vibrant purple, matches the Wolf Scores tab
-const FORFEIT_COLOR = "#06B6A4"; // vibrant teal, matches the Wolf forfeit toggle
 
 function HoleCard({
   round,
@@ -35,7 +34,6 @@ function HoleCard({
   const grossScores = existing?.grossScores ?? {};
   const hammer = existing?.hammer ?? 0;
   const forfeit = existing?.forfeit;
-  const skinActions = existing?.skinActions ?? {};
 
   const base: HoleEntry = {
     hole,
@@ -44,26 +42,14 @@ function HoleCard({
     grossScores,
     hammer,
     forfeit,
-    skinActions,
   };
   const commit = (patch: Partial<HoleEntry>) => upsertEntry(hole, patch, base);
 
   // Forfeit (one side concedes) only makes sense for the two-team match games.
-  // The hole-level hammer applies to every game except stroke play and skins
-  // (skins uses per-player hammers below instead).
+  // Hammer applies to every game except stroke play.
   const gt = gameTypeOf(round);
   const forfeitable = gt === "bestball" || gt === "sixes";
-  const hammerable = gt !== "stroke" && gt !== "skins";
-  const perPlayerHammer = gt === "skins";
-
-  // Skins: toggle a player's hammer (accept → loss doubles) or forfeit (concede).
-  // Mutually exclusive; tapping the active one clears it.
-  function setSkinAction(pid: string, action: "hammer" | "forfeit") {
-    const next = { ...skinActions };
-    if (next[pid] === action) delete next[pid];
-    else next[pid] = action;
-    commit({ skinActions: next });
-  }
+  const hammerable = gt !== "stroke";
 
   return (
     <div
@@ -160,43 +146,6 @@ function HoleCard({
                   </span>
                 )}
               </div>
-
-              {perPlayerHammer && (
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    onClick={() => setSkinAction(p.id, "hammer")}
-                    aria-label={`Hammer ${p.name || "player"} (loss doubles)`}
-                    style={
-                      skinActions[p.id] === "hammer"
-                        ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR }
-                        : undefined
-                    }
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
-                      skinActions[p.id] === "hammer"
-                        ? "text-on-dark"
-                        : "border-card-border bg-card-bg text-text-muted"
-                    }`}
-                  >
-                    <Hammer className="h-[14px] w-[14px]" />
-                  </button>
-                  <button
-                    onClick={() => setSkinAction(p.id, "forfeit")}
-                    aria-label={`${p.name || "Player"} forfeits (single bet)`}
-                    style={
-                      skinActions[p.id] === "forfeit"
-                        ? { background: FORFEIT_COLOR, borderColor: FORFEIT_COLOR }
-                        : undefined
-                    }
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
-                      skinActions[p.id] === "forfeit"
-                        ? "text-on-dark"
-                        : "border-card-border bg-card-bg text-text-muted"
-                    }`}
-                  >
-                    <Flag className="h-[14px] w-[14px]" />
-                  </button>
-                </div>
-              )}
 
               <input
                 type="number"

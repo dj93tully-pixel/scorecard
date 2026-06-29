@@ -84,74 +84,6 @@ describe("skins", () => {
     expect(ledger.b).toBe(-4);
     expect(sum(ledger)).toBe(0);
   });
-
-  it("a player who accepts a hammer and loses pays double", () => {
-    const round = makeRound(
-      "skins",
-      scratch(["a", "b", "c", "d"]),
-      [
-        {
-          hole: 1,
-          wolfId: "",
-          mode: "2v2",
-          grossScores: { a: 3, b: 4, c: 4, d: 4 }, // a wins
-          skinActions: { b: "hammer" }, // b accepted → b's loss doubles
-        },
-      ],
-      { skinValue: 5 }
-    );
-    const { ledger } = computeSkins(round);
-    expect(ledger.b).toBe(-10); // 5 × 2
-    expect(ledger.c).toBe(-5);
-    expect(ledger.d).toBe(-5);
-    expect(ledger.a).toBe(20); // collects 10 + 5 + 5
-    expect(sum(ledger)).toBe(0);
-  });
-
-  it("a forfeit pays the single bet and is out of contention (breaks a tie)", () => {
-    const round = makeRound(
-      "skins",
-      scratch(["a", "b", "c", "d"]),
-      [
-        {
-          hole: 1,
-          wolfId: "",
-          mode: "2v2",
-          grossScores: { a: 3, b: 3, c: 5, d: 5 }, // a & b tie low...
-          skinActions: { b: "forfeit" }, // ...but b folds → a wins outright
-        },
-      ],
-      { skinValue: 5, carryover: true }
-    );
-    const { ledger, stats } = computeSkins(round);
-    expect(stats.a.skins).toBe(1);
-    expect(ledger.a).toBe(15); // 5 from each of b, c, d
-    expect(ledger.b).toBe(-5); // single bet despite tying
-    expect(ledger.c).toBe(-5);
-    expect(ledger.d).toBe(-5);
-    expect(sum(ledger)).toBe(0);
-  });
-
-  it("a forfeiter needs no score and still pays the single bet", () => {
-    const round = makeRound(
-      "skins",
-      scratch(["a", "b", "c", "d"]),
-      [
-        {
-          hole: 1,
-          wolfId: "",
-          mode: "2v2",
-          grossScores: { a: 3, b: 4, c: 4 }, // d has no score
-          skinActions: { d: "forfeit" },
-        },
-      ],
-      { skinValue: 5 }
-    );
-    const { ledger } = computeSkins(round);
-    expect(ledger.a).toBe(15);
-    expect(ledger.d).toBe(-5);
-    expect(sum(ledger)).toBe(0);
-  });
 });
 
 // ── Best Ball ──────────────────────────────────────────────────────────────
@@ -355,6 +287,27 @@ describe("carryover option", () => {
 // ── Hammer & forfeit ────────────────────────────────────────────────────────
 
 describe("hammer & forfeit", () => {
+  it("skins: hammer doubles the hole payout", () => {
+    const round = makeRound(
+      "skins",
+      scratch(["a", "b", "c", "d"]),
+      [
+        {
+          hole: 1,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 3, b: 4, c: 5, d: 5 },
+          hammer: 1,
+        },
+      ],
+      { skinValue: 2 }
+    );
+    const { ledger } = computeSkins(round);
+    expect(ledger.a).toBe(12); // 6 × 2 (hammer)
+    expect(ledger.b).toBe(-4);
+    expect(sum(ledger)).toBe(0);
+  });
+
   it("vegas: hammer doubles the point money", () => {
     const round = makeRound(
       "vegas",
