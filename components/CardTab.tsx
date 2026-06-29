@@ -8,6 +8,7 @@
 import { CSSProperties, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Round, Player } from "@/lib/wolf";
+import { gameTypeOf } from "@/lib/gametypes";
 import { formatMoney, formatToPar } from "@/lib/storage";
 
 // Minimal shape the Card view needs — satisfied by both Wolf's RoundComputation
@@ -453,6 +454,9 @@ export function CardTab({
   const standings = [...round.players].sort(
     (a, b) => (computation.ledger[b.id] ?? 0) - (computation.ledger[a.id] ?? 0)
   );
+  // 11s is a total game — its per-hole money attribution is unintuitive, so skip
+  // the by-hole Ledger grid there (standings + totals carry the money).
+  const showLedger = gameTypeOf(round) !== "elevens";
 
   return (
     <div className="space-y-6">
@@ -477,12 +481,14 @@ export function CardTab({
         })}
       </section>
 
-      {/* By-hole money ledger */}
-      <section className="space-y-3">
-        <h2 className="text-xl font-bold">Ledger</h2>
-        <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" />
-        <BigNine round={round} computation={computation} holes={back} title="Back" mode="money" />
-      </section>
+      {/* By-hole money ledger (hidden for 11s — see showLedger) */}
+      {showLedger && (
+        <section className="space-y-3">
+          <h2 className="text-xl font-bold">Ledger</h2>
+          <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" />
+          <BigNine round={round} computation={computation} holes={back} title="Back" mode="money" />
+        </section>
+      )}
 
       {/* Big all-players scorecard */}
       <section className="space-y-3">
