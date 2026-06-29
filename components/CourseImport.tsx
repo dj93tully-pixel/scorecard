@@ -140,22 +140,36 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
 
       {!detail && results.length > 0 && (
         <ul className="divide-y divide-divider">
-          {results.map((r) => (
-            <li key={r.id}>
-              <button
-                onClick={() => pick(r.id)}
-                className="flex w-full items-center justify-between gap-2 py-3 text-left"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold">{r.club_name}</span>
-                  {r.location && (
-                    <span className="block truncate text-xs text-text-muted">{r.location}</span>
-                  )}
-                </span>
-                <span className="shrink-0 text-chevron">›</span>
-              </button>
-            </li>
-          ))}
+          {results.map((r) => {
+            const title = r.club_name || r.course_name || "Unnamed course";
+            // The course/layout name (e.g. "Highlands" vs "Creek") is what tells
+            // same-club courses apart — show it when it adds info.
+            const layout =
+              r.course_name && r.course_name !== title ? r.course_name : "";
+            return (
+              <li key={r.id}>
+                <button
+                  onClick={() => pick(r.id)}
+                  className="flex w-full items-center justify-between gap-2 py-3 text-left"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{title}</span>
+                    {layout && (
+                      <span className="block truncate text-xs font-medium text-primary">
+                        {layout}
+                      </span>
+                    )}
+                    {r.location && (
+                      <span className="block truncate text-xs text-text-muted">
+                        {r.location}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-chevron">›</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
