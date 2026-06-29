@@ -448,8 +448,11 @@ export function SetupTab({
       <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <h3 className="mb-1 font-bold">Money &amp; rules</h3>
         <div className="divide-y divide-divider">
-          {(isWolf || gameType === "bestball" || gameType === "sixes") && (
-            <Field label="Stake — $/hole">
+          {(isWolf ||
+            gameType === "bestball" ||
+            gameType === "sixes" ||
+            gameType === "stroke") && (
+            <Field label={gameType === "stroke" ? "$ per stroke" : "Stake — $/hole"}>
               <input
                 type="number"
                 min={0}
@@ -530,7 +533,7 @@ export function SetupTab({
               </Field>
             </>
           )}
-          {gameType !== "vegas" && (
+          {gameType !== "vegas" && gameType !== "stroke" && (
             <Field label="Carryover ties">
               <input
                 type="checkbox"

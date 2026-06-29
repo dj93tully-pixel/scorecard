@@ -62,7 +62,13 @@ export type WolfMode = "2v2" | "lone" | "blind";
 // Which money game a round is. "wolf" is the original engine; the others live in
 // lib/engines/* and are dispatched via lib/gametypes.ts. All non-wolf types use
 // only each hole's gross_scores as input (teams live in settings / are derived).
-export type GameTypeId = "wolf" | "skins" | "bestball" | "vegas" | "sixes";
+export type GameTypeId =
+  | "wolf"
+  | "skins"
+  | "bestball"
+  | "vegas"
+  | "sixes"
+  | "stroke";
 
 export interface HoleEntry {
   hole: number; // 1..18

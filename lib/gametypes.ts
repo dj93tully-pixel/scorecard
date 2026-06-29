@@ -10,6 +10,7 @@ import { computeSkins } from "./engines/skins";
 import { computeBestBall } from "./engines/bestball";
 import { computeVegas } from "./engines/vegas";
 import { computeSixes } from "./engines/sixes";
+import { computeStroke } from "./engines/strokeplay";
 import { splitTeams } from "./engines/teams";
 
 export interface StatColumn {
@@ -83,6 +84,16 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     statColumns: [{ key: "holesWon", label: "Holes won", kind: "number" }],
     defaultSettings: {},
   },
+  stroke: {
+    id: "stroke",
+    label: "Stroke Play",
+    blurb: "Net total strokes; win or lose money per stroke vs the field each hole.",
+    players: { min: 2, max: 6 },
+    hasTeams: false,
+    rotatesTeams: false,
+    statColumns: [{ key: "strokes", label: "Net", kind: "number" }],
+    defaultSettings: { stake: 1 },
+  },
 };
 
 export const GAME_TYPE_LIST: GameTypeMeta[] = [
@@ -91,6 +102,7 @@ export const GAME_TYPE_LIST: GameTypeMeta[] = [
   GAME_TYPES.bestball,
   GAME_TYPES.vegas,
   GAME_TYPES.sixes,
+  GAME_TYPES.stroke,
 ];
 
 export function gameTypeOf(round: Round): GameTypeId {
@@ -111,6 +123,8 @@ export function computeGame(round: Round): GameResult {
       return computeVegas(round);
     case "sixes":
       return computeSixes(round);
+    case "stroke":
+      return computeStroke(round);
     default:
       return { ledger: {}, pops: {}, holeResults: [], stats: {} };
   }

@@ -10,6 +10,7 @@ import { computeSkins } from "./skins";
 import { computeBestBall } from "./bestball";
 import { computeVegas } from "./vegas";
 import { computeSixes } from "./sixes";
+import { computeStroke } from "./strokeplay";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -195,6 +196,47 @@ describe("vegas", () => {
 });
 
 // ── Six-Six-Six ──────────────────────────────────────────────────────────
+
+// ── Stroke play ──────────────────────────────────────────────────────────────
+
+describe("stroke play", () => {
+  it("pays the net-stroke difference vs the field each hole; zero-sum", () => {
+    const round = makeRound(
+      "stroke",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 18, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 4, d: 5 } }],
+      { stake: 1 }
+    );
+    const { ledger, stats } = computeStroke(round);
+    expect(ledger.a).toBe(4); // (4-3)+(4-3)+(5-3)
+    expect(ledger.b).toBe(0);
+    expect(ledger.c).toBe(0);
+    expect(ledger.d).toBe(-4);
+    expect(stats.a.strokes).toBe(3); // net total
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("scales by the per-stroke value and hammer", () => {
+    const round = makeRound(
+      "stroke",
+      scratch(["a", "b", "c", "d"]),
+      [
+        {
+          hole: 18,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 3, b: 4, c: 4, d: 5 },
+          hammer: 1,
+        },
+      ],
+      { stake: 2 }
+    );
+    const { ledger } = computeStroke(round);
+    expect(ledger.a).toBe(16); // 4 strokes × $2 × 2 (hammer)
+    expect(ledger.d).toBe(-16);
+    expect(sum(ledger)).toBe(0);
+  });
+});
 
 // ── Carryover ────────────────────────────────────────────────────────────────
 
