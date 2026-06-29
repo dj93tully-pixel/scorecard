@@ -129,7 +129,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
       { key: "back", label: "Back", kind: "money" },
       { key: "overall", label: "Overall", kind: "money" },
     ],
-    defaultSettings: { stake: 2 },
+    defaultSettings: { stake: 2, nassauFormat: "teams" },
   },
 };
 

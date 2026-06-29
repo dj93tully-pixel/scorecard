@@ -55,6 +55,12 @@ export interface RoundSettings {
   pointValue?: number;
   /** Vegas: opponent birdie flips your team number high-digit-first. */
   birdieFlip?: boolean;
+  /**
+   * Nassau matchup format. "teams" = two sides A/B (any split: 1v1, 1v3, 2v2,
+   * 2v3…) playing better-ball match play; "robin" = everyone vs everyone.
+   * Defaults to "teams".
+   */
+  nassauFormat?: "teams" | "robin";
 }
 
 export type WolfMode = "2v2" | "lone" | "blind";
@@ -96,6 +102,12 @@ export interface HoleEntry {
    * "double" (×4), or "forfeit" (concede). Persisted in game_entries.meta.
    */
   fhActions?: Record<PlayerId, import("./fieldHammer").FHAction>;
+  /**
+   * Nassau only: a press was called on this hole — a fresh same-stake match-play
+   * bet over the remaining holes of this hole's segment (front/back). Presses
+   * stack. Persisted in game_entries.meta.
+   */
+  nassauPress?: boolean;
 }
 
 export interface Round {

@@ -50,6 +50,9 @@ export function SetupTab({
   const meta = gameTypeMeta(round);
   const gameType = round.gameType ?? "wolf";
   const isWolf = gameType === "wolf";
+  const nassauFormat = settings.nassauFormat ?? "teams";
+  // Nassau in team format uses the same A/B assignment UI as Best Ball / Vegas.
+  const showTeams = meta.hasTeams || (gameType === "nassau" && nassauFormat === "teams");
   const playerCountOk =
     players.length >= meta.players.min && players.length <= meta.players.max;
 
@@ -406,12 +409,12 @@ export function SetupTab({
         </p>
       </section>
 
-      {/* Teams (Best Ball / Vegas) */}
-      {meta.hasTeams && (
+      {/* Teams (Best Ball / Vegas / team Nassau) */}
+      {showTeams && (
         <section className="rounded-xl border border-card-border bg-card-bg p-4">
           <h3 className="mb-1 font-bold">Teams</h3>
           <p className="mb-3 text-xs text-text-muted">
-            Assign each player to team A or B.
+            Assign each player to team A or B (any split — 1v3, 2v2, 2v3…).
           </p>
           <div className="space-y-2">
             {orderedPlayers.map((p) => {
@@ -448,6 +451,20 @@ export function SetupTab({
       <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <h3 className="mb-1 font-bold">Money &amp; rules</h3>
         <div className="divide-y divide-divider">
+          {gameType === "nassau" && (
+            <Field label="Format">
+              <select
+                value={nassauFormat}
+                onChange={(e) =>
+                  setSetting("nassauFormat", e.target.value as "teams" | "robin")
+                }
+                className="rounded-lg border border-card-border px-2 py-2"
+              >
+                <option value="teams">Teams (A vs B)</option>
+                <option value="robin">Everyone vs everyone</option>
+              </select>
+            </Field>
+          )}
           {(isWolf ||
             gameType === "bestball" ||
             gameType === "sixes" ||

@@ -58,6 +58,7 @@ interface EntryRow {
   meta: {
     elevenPicks?: HoleEntry["elevenPicks"];
     fhActions?: HoleEntry["fhActions"];
+    nassauPress?: HoleEntry["nassauPress"];
   } | null;
 }
 
@@ -72,6 +73,7 @@ function rowToEntry(r: EntryRow): HoleEntry {
     forfeit: r.forfeit ?? undefined,
     elevenPicks: r.meta?.elevenPicks ?? undefined,
     fhActions: r.meta?.fhActions ?? undefined,
+    nassauPress: r.meta?.nassauPress ?? undefined,
   };
 }
 
@@ -131,8 +133,10 @@ export async function createGame(
   const meta = GAME_TYPES[gameType];
   const players = defaultPlayers();
   const settings: RoundSettings = { ...DEFAULT_SETTINGS, ...meta.defaultSettings };
-  // Seed a balanced default team split for the team games (A,B,A,B…).
-  if (meta.hasTeams) {
+  // Seed a balanced default team split for the team games (A,B,A,B…). Nassau
+  // defaults to team format, so seed it a split too (the user can re-split or
+  // switch to everyone-vs-everyone in Setup).
+  if (meta.hasTeams || gameType === "nassau") {
     settings.teams = Object.fromEntries(
       players.map((p, i) => [p.id, i % 2 === 0 ? "A" : "B"])
     );
@@ -212,6 +216,7 @@ export async function saveEntry(gameId: string, entry: HoleEntry): Promise<void>
       meta: {
         elevenPicks: entry.elevenPicks ?? {},
         fhActions: entry.fhActions ?? {},
+        nassauPress: entry.nassauPress ?? false,
       },
       updated_at: new Date().toISOString(),
     },

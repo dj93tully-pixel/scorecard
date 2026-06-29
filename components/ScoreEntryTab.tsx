@@ -6,7 +6,7 @@
 
 "use client";
 
-import { Hammer, Flag, Check } from "lucide-react";
+import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { GameHoleResult } from "@/lib/engines/types";
@@ -14,6 +14,7 @@ import { formatMoney } from "@/lib/storage";
 
 const HAMMER_COLOR = "#7C3AED"; // vibrant purple, matches the Wolf Scores tab
 const PICK_COLOR = "#2BC081"; // green check for an 11s hole the player is counting
+const PRESS_COLOR = "#E8590C"; // burnt orange for a live Nassau press
 
 function HoleCard({
   round,
@@ -38,6 +39,7 @@ function HoleCard({
   const hammer = existing?.hammer ?? 0;
   const forfeit = existing?.forfeit;
   const elevenPicks = existing?.elevenPicks ?? {};
+  const pressed = existing?.nassauPress ?? false;
 
   const base: HoleEntry = {
     hole,
@@ -47,6 +49,7 @@ function HoleCard({
     hammer,
     forfeit,
     elevenPicks,
+    nassauPress: pressed,
   };
   const commit = (patch: Partial<HoleEntry>) => upsertEntry(hole, patch, base);
 
@@ -58,6 +61,9 @@ function HoleCard({
   const eleven = gt === "elevens";
   // Segment/total games settle on totals, not per hole — no per-hole money note.
   const noHoleMoney = gt === "elevens" || gt === "nassau";
+  // Nassau (team format) can press: a per-hole "new bet on the rest of this
+  // segment" button. Round-robin has no two fixed sides to press, so no button.
+  const canPress = gt === "nassau" && (round.settings.nassauFormat ?? "teams") === "teams";
 
   // 11s: toggle whether this player is counting this hole toward their score.
   function togglePick(pid: string) {
@@ -81,8 +87,21 @@ function HoleCard({
           </div>
         </div>
 
-        {/* Hammer (2×/4×) + forfeit (concede) toggles. */}
+        {/* Hammer (2×/4×) + forfeit (concede) toggles, or Nassau press. */}
         <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {canPress && (
+            <button
+              onClick={() => commit({ nassauPress: !pressed })}
+              aria-label="Press — new bet on the rest of this nine"
+              style={pressed ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
+              className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[13px] font-bold ${
+                pressed ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+              }`}
+            >
+              <Zap className="h-[15px] w-[15px]" />
+              Press
+            </button>
+          )}
           {hammerable && (
             <>
               <button

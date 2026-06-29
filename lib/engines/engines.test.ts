@@ -314,7 +314,10 @@ describe("nassau", () => {
       if (h >= 10 && h <= 13) return { a: 4, b: 3 }; // b wins
       return { a: 4, b: 4 }; // halve
     });
-    const round = makeRound("nassau", scratch(["a", "b"]), entries, { stake: 2 });
+    const round = makeRound("nassau", scratch(["a", "b"]), entries, {
+      stake: 2,
+      nassauFormat: "robin",
+    });
     const { ledger, stats } = computeNassau(round);
     expect(stats.a.front).toBe(2); // a wins the front
     expect(stats.a.back).toBe(-2); // a loses the back
@@ -326,7 +329,10 @@ describe("nassau", () => {
 
   it("a clean sweep wins all three bets", () => {
     const entries = headsUp(() => ({ a: 4, b: 5 })); // a wins every hole
-    const round = makeRound("nassau", scratch(["a", "b"]), entries, { stake: 2 });
+    const round = makeRound("nassau", scratch(["a", "b"]), entries, {
+      stake: 2,
+      nassauFormat: "robin",
+    });
     const { ledger, stats } = computeNassau(round);
     expect(stats.a.front).toBe(2);
     expect(stats.a.back).toBe(2);
@@ -338,7 +344,10 @@ describe("nassau", () => {
   it("an all-square segment pushes (no money)", () => {
     // Identical scores everywhere → every bet halves.
     const entries = headsUp(() => ({ a: 4, b: 4 }));
-    const round = makeRound("nassau", scratch(["a", "b"]), entries, { stake: 2 });
+    const round = makeRound("nassau", scratch(["a", "b"]), entries, {
+      stake: 2,
+      nassauFormat: "robin",
+    });
     const { ledger } = computeNassau(round);
     expect(ledger.a).toBe(0);
     expect(ledger.b).toBe(0);
@@ -351,9 +360,95 @@ describe("nassau", () => {
       mode: "2v2" as const,
       grossScores: { a: 4, b: 5, c: 4, d: 6 },
     }));
-    const round = makeRound("nassau", scratch(["a", "b", "c", "d"]), entries, { stake: 2 });
+    const round = makeRound("nassau", scratch(["a", "b", "c", "d"]), entries, {
+      stake: 2,
+      nassauFormat: "robin",
+    });
     const { ledger } = computeNassau(round);
     expect(sum(ledger)).toBe(0);
+  });
+
+  it("team format settles better-ball match play, split within each side", () => {
+    // A = a,c  B = b,d. A takes the front (holes 1–5) and overall; B the back.
+    const entries = Array.from({ length: 18 }, (_, i) => {
+      const h = i + 1;
+      if (h <= 5) return { hole: h, wolfId: "", mode: "2v2" as const, grossScores: { a: 3, b: 4, c: 5, d: 5 } };
+      if (h >= 10 && h <= 13) return { hole: h, wolfId: "", mode: "2v2" as const, grossScores: { a: 4, b: 3, c: 5, d: 5 } };
+      return { hole: h, wolfId: "", mode: "2v2" as const, grossScores: { a: 4, b: 4, c: 4, d: 4 } };
+    });
+    const round = makeRound("nassau", scratch(["a", "b", "c", "d"]), entries, {
+      stake: 2,
+      nassauFormat: "teams",
+      teams: { a: "A", b: "B", c: "A", d: "B" },
+    });
+    const { ledger, stats } = computeNassau(round);
+    // $2 bets split across the 2-player sides → ±$1 each per bet.
+    expect(stats.a.front).toBe(1);
+    expect(stats.a.back).toBe(-1);
+    expect(stats.a.overall).toBe(1);
+    expect(ledger.a).toBe(1);
+    expect(ledger.c).toBe(1);
+    expect(ledger.b).toBe(-1);
+    expect(ledger.d).toBe(-1);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("uneven teams (1 v 3) — the single wins/loses the full stake", () => {
+    // A = a alone vs B = b,c,d. a wins every hole → sweeps all three bets.
+    const entries = Array.from({ length: 18 }, (_, i) => ({
+      hole: i + 1,
+      wolfId: "",
+      mode: "2v2" as const,
+      grossScores: { a: 3, b: 5, c: 5, d: 5 },
+    }));
+    const round = makeRound("nassau", scratch(["a", "b", "c", "d"]), entries, {
+      stake: 2,
+      nassauFormat: "teams",
+      teams: { a: "A", b: "B", c: "B", d: "B" },
+    });
+    const { ledger, stats } = computeNassau(round);
+    expect(ledger.a).toBeCloseTo(6); // 3 bets × $2
+    expect(stats.a.overall).toBeCloseTo(2);
+    expect(ledger.b).toBeCloseTo(-2); // each of the 3 splits −$2 over the round
+    expect(sum(ledger)).toBeCloseTo(0);
+  });
+
+  it("a press opens an offsetting bet on the rest of the nine", () => {
+    // Heads-up (A=a, B=b). Front halved. On the back b wins 10–14 (5 holes),
+    // a wins 15–18 (4). Base back + overall go to b. a presses on 15 and sweeps
+    // 15–18, winning that press back.
+    const make = (press: boolean) =>
+      Array.from({ length: 18 }, (_, i) => {
+        const h = i + 1;
+        const grossScores =
+          h <= 9 ? { a: 4, b: 4 } : h <= 14 ? { a: 5, b: 4 } : { a: 4, b: 5 };
+        return {
+          hole: h,
+          wolfId: "",
+          mode: "2v2" as const,
+          grossScores,
+          ...(press && h === 15 ? { nassauPress: true } : {}),
+        };
+      });
+    const opts = {
+      stake: 2,
+      nassauFormat: "teams" as const,
+      teams: { a: "A" as const, b: "B" as const },
+    };
+
+    // Without the press: a loses the back base (−2) and the overall (−2) = −4.
+    const noPress = computeNassau(
+      makeRound("nassau", scratch(["a", "b"]), make(false), opts)
+    );
+    expect(noPress.ledger.a).toBe(-4);
+
+    // With the press: a wins the press (+2), netting the back to a wash; only
+    // the overall (−2) is left.
+    const withPress = computeNassau(
+      makeRound("nassau", scratch(["a", "b"]), make(true), opts)
+    );
+    expect(withPress.ledger.a).toBe(-2);
+    expect(sum(withPress.ledger)).toBe(0);
   });
 });
 
