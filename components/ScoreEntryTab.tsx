@@ -198,9 +198,11 @@ function HoleCard({
         })}
       </div>
 
-      {/* Result note — the money each winner takes on the hole, or push/carry. */}
+      {/* Result note — the money each winner takes on the hole, or push/carry.
+          11s is a total game (low 11-hole total wins), so per-hole money isn't
+          shown — the pick/score summary up top is the meaningful readout. */}
       {(() => {
-        if (!note || note.detail === "—") return null;
+        if (eleven || !note || note.detail === "—") return null;
         const winners = players.filter((p) => (note.deltas[p.id] ?? 0) > 0);
         if (winners.length > 0) {
           return (

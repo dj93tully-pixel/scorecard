@@ -1,14 +1,14 @@
 // lib/engines/elevens.ts
 // 11s (net). Each player picks 11 of the 18 holes to count for their score,
-// declaring hole-by-hole (the checkbox in the score entry). Only holes a player
-// has checked count for them.
+// declaring hole-by-hole (the checkbox in the score entry). A player's 11s score
+// is the sum of net on the holes they've checked — lowest total wins.
 //
-// Money: on each hole, the players who BOTH checked it play a "dollar a stroke"
-// against one another — a player's hole delta is value × Σ(otherNet − theirNet)
-// over the other checkers. A hole with fewer than two checkers moves no money.
-// Zero-sum per hole, and the per-hole ledger only ever moves among the players
-// who chose that hole. Each player's running 11s score = sum of net on the holes
-// they've checked.
+// Payout is stroke-play style on those selected totals: each player's money is
+// value × Σ(otherTotal − theirTotal). Equivalently, per hole each player's
+// "counted net" is their net if they checked that hole (else 0), and we settle a
+// dollar a stroke vs the field on those counted nets — summed over 18 holes this
+// equals the total comparison and stays zero-sum every hole. A hole settles once
+// all of its checkers have a score (non-checkers need none).
 
 import { Round, PlayerId, computePops } from "../wolf";
 import { GameResult, GameHoleResult } from "./types";
@@ -37,35 +37,35 @@ export function computeElevens(round: Round): GameResult {
     for (const id of ids) deltas[id] = 0;
 
     const sel = e?.elevenPicks ?? {};
-    const net = (id: PlayerId) => e!.grossScores[id]! - (pops[id]?.[h.number] ?? 0);
-    // Players who checked this hole AND have a score on it.
-    const checkers = ids.filter(
-      (id) => sel[id] && typeof e?.grossScores[id] === "number"
-    );
-
-    for (const id of checkers) {
-      score[id] += net(id);
-      picks[id] += 1;
-    }
-
-    if (checkers.length >= 2) {
-      for (const id of checkers) {
-        let d = 0;
-        for (const j of checkers) if (j !== id) d += net(j) - net(id);
-        deltas[id] = d * value;
-      }
-      for (const id of ids) ledger[id] += deltas[id];
-      const anyMoney = checkers.some((id) => deltas[id] !== 0);
-      holeResults.push({
-        hole: h.number,
-        decided: anyMoney,
-        detail: anyMoney ? "" : "Push",
-        deltas,
-      });
-    } else {
-      // 0 or 1 player counted the hole → nothing to settle.
+    const checkers = ids.filter((id) => sel[id]);
+    const ready =
+      checkers.length > 0 &&
+      checkers.every((id) => typeof e?.grossScores[id] === "number");
+    if (!ready) {
       holeResults.push({ hole: h.number, decided: false, detail: "—", deltas });
+      continue;
     }
+
+    // counted net: a player's net if they checked this hole, otherwise 0.
+    const counted: Record<PlayerId, number> = {};
+    for (const id of ids) {
+      if (sel[id]) {
+        counted[id] = e!.grossScores[id]! - (pops[id]?.[h.number] ?? 0);
+        score[id] += counted[id];
+        picks[id] += 1;
+      } else {
+        counted[id] = 0;
+      }
+    }
+
+    // Dollar a stroke vs the field on the counted nets.
+    for (const id of ids) {
+      let d = 0;
+      for (const j of ids) if (j !== id) d += counted[j] - counted[id];
+      deltas[id] = d * value;
+    }
+    for (const id of ids) ledger[id] += deltas[id];
+    holeResults.push({ hole: h.number, decided: true, detail: "", deltas });
   }
 
   const stats: Record<PlayerId, Record<string, number>> = {};

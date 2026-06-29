@@ -98,7 +98,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
   elevens: {
     id: "elevens",
     label: "11s",
-    blurb: "Pick 11 of 18 holes for your score; declare each hole as you play.",
+    blurb: "Pick 11 of 18 holes; lowest net total wins, paid like stroke play.",
     players: { min: 2, max: 6 },
     hasTeams: false,
     rotatesTeams: false,

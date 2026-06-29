@@ -234,54 +234,62 @@ describe("stroke play", () => {
 // ── 11s ──────────────────────────────────────────────────────────────────────
 
 describe("elevens", () => {
-  it("only counts checked holes; settles a dollar a stroke among checkers", () => {
+  const allPick = { a: true, b: true, c: true, d: true } as const;
+
+  it("low selected total wins, paid stroke-play style on the totals", () => {
     const round = makeRound(
       "elevens",
       scratch(["a", "b", "c", "d"]),
       [
-        // a, b, c check the hole (d doesn't): settle among the three.
-        {
-          hole: 1,
-          wolfId: "",
-          mode: "2v2",
-          grossScores: { a: 3, b: 4, c: 5, d: 2 },
-          elevenPicks: { a: true, b: true, c: true },
-        },
+        { hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 4, d: 5 }, elevenPicks: { ...allPick } },
+        { hole: 2, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 4, c: 5, d: 5 }, elevenPicks: { ...allPick } },
       ],
       { stake: 1 }
     );
+    // Totals: a 7, b 8, c 9, d 10 → money = Σ(other − self).
     const { ledger, stats } = computeElevens(round);
-    // Among a(3), b(4), c(5): a +3, b 0, c -3. d didn't check → 0.
-    expect(ledger.a).toBe(3); // (4-3)+(5-3)
-    expect(ledger.b).toBe(0);
-    expect(ledger.c).toBe(-3);
-    expect(ledger.d).toBe(0);
-    expect(stats.a.picks).toBe(1);
-    expect(stats.a.score).toBe(3);
-    expect(stats.d.picks).toBe(0); // d didn't count this hole
+    expect(stats.a.score).toBe(7);
+    expect(stats.a.picks).toBe(2);
+    expect(ledger.a).toBe(6); // (8-7)+(9-7)+(10-7)
+    expect(ledger.b).toBe(2);
+    expect(ledger.c).toBe(-2);
+    expect(ledger.d).toBe(-6);
     expect(sum(ledger)).toBe(0);
   });
 
-  it("a hole with fewer than two checkers moves no money", () => {
+  it("an unchecked hole adds nothing to that player's total", () => {
     const round = makeRound(
       "elevens",
       scratch(["a", "b", "c", "d"]),
       [
+        // a does NOT count hole 1; everyone else does.
         {
           hole: 1,
           wolfId: "",
           mode: "2v2",
-          grossScores: { a: 3, b: 4, c: 5, d: 6 },
-          elevenPicks: { a: true }, // only a counts it
+          grossScores: { a: 9, b: 4, c: 4, d: 4 },
+          elevenPicks: { b: true, c: true, d: true },
         },
       ],
       { stake: 1 }
     );
     const { ledger, stats } = computeElevens(round);
+    expect(stats.a.score).toBe(0); // a's 9 doesn't count — a didn't check it
+    expect(stats.a.picks).toBe(0);
+    // a's counted net is 0 (best), so a is up; b/c/d each carry 4.
+    expect(ledger.a).toBe(12); // (4-0)×3
     expect(sum(ledger)).toBe(0);
+  });
+
+  it("a hole nobody counts moves no money", () => {
+    const round = makeRound(
+      "elevens",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 5, d: 6 } }],
+      { stake: 1 }
+    );
+    const { ledger } = computeElevens(round);
     expect(Object.values(ledger).every((v) => v === 0)).toBe(true);
-    expect(stats.a.score).toBe(3); // still counts toward a's score
-    expect(stats.a.picks).toBe(1);
   });
 });
 
