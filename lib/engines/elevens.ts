@@ -1,14 +1,20 @@
 // lib/engines/elevens.ts
-// 11s (net). Each player picks 11 of the 18 holes to count for their score,
-// declaring hole-by-hole (the checkbox in the score entry). A player's 11s score
-// is the sum of net on the holes they've checked — lowest total wins.
+// 11s (net, scored to par). Each player picks 11 of the 18 holes to count for
+// their score, declaring hole-by-hole (the checkbox in the score entry). A
+// player's 11s score is the sum of net-to-par over the holes they've checked —
+// lowest (most under par) wins.
 //
-// Payout is stroke-play style on those selected totals: each player's money is
-// value × Σ(otherTotal − theirTotal). Equivalently, per hole each player's
-// "counted net" is their net if they checked that hole (else 0), and we settle a
-// dollar a stroke vs the field on those counted nets — summed over 18 holes this
-// equals the total comparison and stays zero-sum every hole. A hole settles once
-// all of its checkers have a score (non-checkers need none).
+// Scoring is RELATIVE TO PAR, not raw strokes: a hole's "counted" value is the
+// player's net minus that hole's par if they checked it (else 0). This is what
+// keeps hole selection fair — otherwise a player would just pick the lowest-par
+// holes (a par 3 costs fewer strokes than a par 5), so raw totals would reward
+// picking short holes rather than playing them well.
+//
+// Payout is stroke-play style on those selected to-par totals: each player's
+// money is value × Σ(otherTotal − theirTotal). Equivalently, per hole each
+// player's counted to-par is settled a dollar a stroke vs the field — summed
+// over 18 holes this equals the total comparison and stays zero-sum every hole.
+// A hole settles once all of its checkers have a score (non-checkers need none).
 
 import { Round, PlayerId, computePops } from "../wolf";
 import { GameResult, GameHoleResult } from "./types";
@@ -22,7 +28,7 @@ export function computeElevens(round: Round): GameResult {
 
   const ledger: Record<PlayerId, number> = {};
   const picks: Record<PlayerId, number> = {}; // holes checked (and scored)
-  const score: Record<PlayerId, number> = {}; // net total over checked holes
+  const score: Record<PlayerId, number> = {}; // net-to-par total over checked holes
   for (const id of ids) {
     ledger[id] = 0;
     picks[id] = 0;
@@ -46,11 +52,13 @@ export function computeElevens(round: Round): GameResult {
       continue;
     }
 
-    // counted net: a player's net if they checked this hole, otherwise 0.
+    // counted to-par: a player's net minus this hole's par if they checked it,
+    // otherwise 0. Using to-par (not raw net) makes hole selection fair — picking
+    // a low-par hole no longer saves strokes vs a high-par one.
     const counted: Record<PlayerId, number> = {};
     for (const id of ids) {
       if (sel[id]) {
-        counted[id] = e!.grossScores[id]! - (pops[id]?.[h.number] ?? 0);
+        counted[id] = e!.grossScores[id]! - (pops[id]?.[h.number] ?? 0) - h.par;
         score[id] += counted[id];
         picks[id] += 1;
       } else {
@@ -58,7 +66,7 @@ export function computeElevens(round: Round): GameResult {
       }
     }
 
-    // Dollar a stroke vs the field on the counted nets.
+    // Dollar a stroke vs the field on the counted to-par values.
     for (const id of ids) {
       let d = 0;
       for (const j of ids) if (j !== id) d += counted[j] - counted[id];

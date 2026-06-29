@@ -246,11 +246,11 @@ describe("elevens", () => {
       ],
       { stake: 1 }
     );
-    // Totals: a 7, b 8, c 9, d 10 → money = Σ(other − self).
+    // Par 4 each. To-par totals: a -1, b 0, c +1, d +2 → money = Σ(other − self).
     const { ledger, stats } = computeElevens(round);
-    expect(stats.a.score).toBe(7);
+    expect(stats.a.score).toBe(-1);
     expect(stats.a.picks).toBe(2);
-    expect(ledger.a).toBe(6); // (8-7)+(9-7)+(10-7)
+    expect(ledger.a).toBe(6); // (0-(-1))+(1-(-1))+(2-(-1))
     expect(ledger.b).toBe(2);
     expect(ledger.c).toBe(-2);
     expect(ledger.d).toBe(-6);
@@ -262,12 +262,12 @@ describe("elevens", () => {
       "elevens",
       scratch(["a", "b", "c", "d"]),
       [
-        // a does NOT count hole 1; everyone else does.
+        // a does NOT count hole 1; everyone else does (par 4, they each bogey).
         {
           hole: 1,
           wolfId: "",
           mode: "2v2",
-          grossScores: { a: 9, b: 4, c: 4, d: 4 },
+          grossScores: { a: 9, b: 5, c: 5, d: 5 },
           elevenPicks: { b: true, c: true, d: true },
         },
       ],
@@ -276,8 +276,8 @@ describe("elevens", () => {
     const { ledger, stats } = computeElevens(round);
     expect(stats.a.score).toBe(0); // a's 9 doesn't count — a didn't check it
     expect(stats.a.picks).toBe(0);
-    // a's counted net is 0 (best), so a is up; b/c/d each carry 4.
-    expect(ledger.a).toBe(12); // (4-0)×3
+    // a's counted to-par is 0 (best), so a is up; b/c/d each carry +1 over par.
+    expect(ledger.a).toBe(3); // (1-0)×3
     expect(sum(ledger)).toBe(0);
   });
 

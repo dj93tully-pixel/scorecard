@@ -384,15 +384,18 @@ function LedgerCard({
   computation,
   player,
   rankIndex,
+  scoreNet,
+  setScoreNet,
 }: {
   round: Round;
   computation: CardComputation;
   player: Player;
   rankIndex: number; // 0-based; tied players share the same index
+  scoreNet: boolean; // shared gross/net toggle — drives every row's +/-
+  setScoreNet: (v: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"scores" | "money">("scores");
-  const [scoreNet, setScoreNet] = useState(false);
   const touch = useRef<{ x: number; y: number } | null>(null);
 
   const money = computation.ledger[player.id] ?? 0;
@@ -402,7 +405,9 @@ function LedgerCard({
   for (const e of round.entries) {
     const g = e.grossScores[player.id];
     if (typeof g === "number") {
-      toPar = (toPar ?? 0) + g - (parByHole.get(e.hole) ?? g);
+      // Blue +/- follows the shared gross/net toggle (net = gross − pops).
+      const s = scoreNet ? g - (computation.pops[player.id]?.[e.hole] ?? 0) : g;
+      toPar = (toPar ?? 0) + s - (parByHole.get(e.hole) ?? s);
       total += g;
     }
   }
@@ -437,7 +442,7 @@ function LedgerCard({
           </span>
           {chosen?.any && (
             <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-on-dark">
-              {chosen.score}
+              {formatToPar(chosen.toPar ?? 0)}
             </span>
           )}
         </span>
@@ -517,6 +522,9 @@ export function CardTab({
   const back = Array.from({ length: 9 }, (_, i) => i + 10);
   const [scoreView, setScoreView] = useState<"gross" | "net">("gross");
   const net = scoreView === "net";
+  // Shared gross/net toggle for the standings dropdowns — flipping it in any one
+  // player's scorecard updates the blue +/- on every standings row.
+  const [scoreNet, setScoreNet] = useState(false);
   const standings = [...round.players].sort(
     (a, b) => (computation.ledger[b.id] ?? 0) - (computation.ledger[a.id] ?? 0)
   );
@@ -542,6 +550,8 @@ export function CardTab({
               computation={computation}
               player={p}
               rankIndex={rankIndex}
+              scoreNet={scoreNet}
+              setScoreNet={setScoreNet}
             />
           );
         })}
