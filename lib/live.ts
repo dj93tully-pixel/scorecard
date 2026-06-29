@@ -5,7 +5,6 @@
 import { Round, RoundComputation, defaultWolfForHole } from "./wolf";
 import { suggestForHole } from "./caddie";
 import { gameTypeMeta } from "./gametypes";
-import type { GameResult } from "./engines/types";
 import type { TickerData } from "./header-context";
 
 export function liveSummary(round: Round, computation: RoundComputation): TickerData {
@@ -27,20 +26,8 @@ export function liveSummary(round: Round, computation: RoundComputation): Ticker
     entryByHole.get(currentHole)?.wolfId ?? defaultWolfForHole(teeOrder, currentHole);
   const wolf = players.find((p) => p.id === wolfId);
 
-  let leader = players[0];
-  let best = -Infinity;
-  for (const p of players) {
-    const v = computation.ledger[p.id] ?? 0;
-    if (v > best) {
-      best = v;
-      leader = p;
-    }
-  }
-  const anyMoney = players.some((p) => (computation.ledger[p.id] ?? 0) !== 0);
-
   const meta: string[] = [];
   if (!isFinal && wolf) meta.push(`Wolf: ${wolf.name || "—"}`);
-  if (anyMoney && leader) meta.push(`Lead: ${leader.name || "—"}`);
 
   // Caddie suggestion for the hole currently up (right of the leader).
   if (!isFinal) {
@@ -56,10 +43,9 @@ export function liveSummary(round: Round, computation: RoundComputation): Ticker
 }
 
 /**
- * Ticker for the non-Wolf game types. Shows the current hole + the money leader,
- * derived from the engine's GameResult (no Wolf-specific logic).
+ * Ticker for the non-Wolf game types — just the game label + current hole.
  */
-export function genericSummary(round: Round, result: GameResult): TickerData {
+export function genericSummary(round: Round): TickerData {
   const { players, course } = round;
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
   const allScored = (hole: number) => {
@@ -72,19 +58,7 @@ export function genericSummary(round: Round, result: GameResult): TickerData {
   const isFinal = !next && course.holes.length > 0;
   const currentHole = next?.number ?? course.holes.length;
 
-  let leader = players[0];
-  let best = -Infinity;
-  for (const p of players) {
-    const v = result.ledger[p.id] ?? 0;
-    if (v > best) {
-      best = v;
-      leader = p;
-    }
-  }
-  const anyMoney = players.some((p) => (result.ledger[p.id] ?? 0) !== 0);
-
   const meta: string[] = [gameTypeMeta(round).label];
-  if (anyMoney && leader) meta.push(`Lead: ${leader.name || "—"}`);
 
   return {
     live: playedCount > 0 && !isFinal,

@@ -10,6 +10,8 @@ import { Hammer, Flag, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame } from "@/lib/gametypes";
 import { formatMoney } from "@/lib/storage";
+import { holeHighlight } from "@/lib/holeHighlight";
+import { CrossHammer } from "../CrossHammer";
 
 const HAMMER_COLOR = "#7C3AED"; // purple
 const FORFEIT_COLOR = "#06B6A4"; // teal
@@ -63,7 +65,10 @@ function HoleCard({
   return (
     <div
       id={`hole-${hole}`}
-      style={{ scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)" }}
+      style={{
+        scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)",
+        ...holeHighlight(pressSeg || pressFull, hammer > 0),
+      }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
       {/* Header: hole + hole-level hammer / double hammer. */}
@@ -111,12 +116,11 @@ function HoleCard({
             onClick={() => setHammer(2)}
             aria-label="Double hammer — quadruple the hole"
             style={hammer === 2 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
-            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
+            className={`flex items-center rounded-lg border px-2 py-1.5 ${
               hammer === 2 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
-            <Hammer className="h-[15px] w-[15px]" />
-            <Hammer className="h-[15px] w-[15px]" />
+            <CrossHammer className="h-[15px] w-[15px]" />
           </button>
         </div>
       </div>

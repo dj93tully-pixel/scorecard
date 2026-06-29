@@ -55,7 +55,7 @@ export default function GamePage() {
   const ticker = useMemo(() => {
     if (!round) return null;
     if (isWolf && computation) return liveSummary(round, computation);
-    if (!isWolf && gameResult) return genericSummary(round, gameResult);
+    if (!isWolf && gameResult) return genericSummary(round);
     return null;
   }, [round, isWolf, computation, gameResult]);
 
