@@ -442,7 +442,6 @@ function LedgerCard({
   player,
   rankIndex,
   scoreNet,
-  bet,
   pressHoles,
 }: {
   round: Round;
@@ -450,7 +449,6 @@ function LedgerCard({
   player: Player;
   rankIndex: number; // 0-based; tied players share the same index
   scoreNet: boolean; // shared gross/net toggle (next to the Standings header)
-  bet: "total" | "press" | "original"; // which money view is active
   pressHoles?: Set<number> | null; // press view: limit the scorecard to these
 }) {
   const [open, setOpen] = useState(false);
@@ -476,9 +474,6 @@ function LedgerCard({
   const scoresOnly = isElevens || isNassau;
   // 11s: net-to-par over the player's chosen holes, shown as a blue badge.
   const chosen = isElevens ? elevenChosen(round, computation, player.id) : null;
-  // Nassau: this player's front / back / overall money (from engine stats). The
-  // segments describe the original bet, so hide them on the press view.
-  const nassau = isNassau && bet !== "press" ? computation.stats?.[player.id] : undefined;
 
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -543,36 +538,6 @@ function LedgerCard({
             </div>
             {!scoresOnly && <span className="text-[10px] text-text-faint">swipe ←→</span>}
           </div>
-
-          {/* Nassau: front / back / overall money of the original bet. */}
-          {isNassau && nassau && (
-            <div className="mb-2 grid grid-cols-3 gap-2">
-              {([
-                ["Front", "front"],
-                ["Back", "back"],
-                ["Overall", "overall"],
-              ] as const).map(([label, key]) => {
-                const v = Number(nassau[key] ?? 0);
-                return (
-                  <div
-                    key={key}
-                    className="rounded-lg bg-card-bg px-2 py-1.5 text-center"
-                    style={{ border: `1px solid ${HAIRLINE}` }}
-                  >
-                    <div className="text-[9px] font-bold uppercase tracking-wide text-text-faint">
-                      {label}
-                    </div>
-                    <div
-                      className="font-serif text-sm font-bold tabular-nums"
-                      style={{ color: v > 0 ? POS : v < 0 ? NEG : MUTED }}
-                    >
-                      {formatMoney(v)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
 
           <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
             <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode={view} net={scoreNet} activeHoles={pressHoles ?? undefined} />
@@ -665,7 +630,6 @@ export function CardTab({
               player={p}
               rankIndex={rankIndex}
               scoreNet={scoreNet}
-              bet={bet}
               pressHoles={activeHoles}
             />
           );
