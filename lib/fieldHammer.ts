@@ -75,11 +75,11 @@ export function settleHole(input: HoleInput): HoleResult {
 
   for (const key of allPairs(players)) {
     const [a, b] = unpair(key);
+    const carry = carryIn[key] ?? 0;
     const aF = actions[a] === "forfeit";
     const bF = actions[b] === "forfeit";
-    const pot = baseStake + (carryIn[key] ?? 0);
 
-    // Both conceded → nothing happens.
+    // Both conceded → nothing happens (any carry washes).
     if (aF && bF) {
       carryOut[key] = 0;
       pairOutcomes.push({ pair: key, a, b, stake: 0, winner: null, push: true, forfeit: true });
@@ -96,30 +96,37 @@ export function settleHole(input: HoleInput): HoleResult {
       continue;
     }
 
+    // A hammer doubles the pairing's bet (×2/×4) for BOTH players — the highest
+    // stance set on either player. The full stake includes any carried bet.
+    const pairMult = Math.max(multOf(actions[a]), multOf(actions[b]));
+    const stake = baseStake * pairMult + carry;
     const ga = grossScores[a];
     const gb = grossScores[b];
-    let winner: PlayerId | null = null;
-    let push = false;
-    let stake = 0;
+
     if (typeof ga === "number" && typeof gb === "number") {
       const netA = ga - (pops[a] ?? 0);
       const netB = gb - (pops[b] ?? 0);
       if (netA < netB) {
-        stake = pot * multOf(actions[b]); // loser b pays their own multiplier
         deltas[a] += stake;
         deltas[b] -= stake;
-        winner = a;
+        carryOut[key] = 0;
+        pairOutcomes.push({ pair: key, a, b, stake, winner: a, push: false, forfeit: false });
       } else if (netB < netA) {
-        stake = pot * multOf(actions[a]);
         deltas[b] += stake;
         deltas[a] -= stake;
-        winner = b;
+        carryOut[key] = 0;
+        pairOutcomes.push({ pair: key, a, b, stake, winner: b, push: false, forfeit: false });
       } else {
-        push = true;
+        // Push: a hammered bet always carries; a plain tie carries only when
+        // carryTies is on.
+        carryOut[key] = pairMult > 1 || input.carryTies ? stake : 0;
+        pairOutcomes.push({ pair: key, a, b, stake, winner: null, push: true, forfeit: false });
       }
+    } else {
+      // Not yet scored — preserve any carried bet (don't drop it on this hole).
+      carryOut[key] = carry;
+      pairOutcomes.push({ pair: key, a, b, stake, winner: null, push: false, forfeit: false });
     }
-    carryOut[key] = push && input.carryTies ? pot : 0;
-    pairOutcomes.push({ pair: key, a, b, stake, winner, push, forfeit: false });
   }
 
   return { deltas, pairOutcomes, carryOut };

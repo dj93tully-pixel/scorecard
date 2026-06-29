@@ -81,23 +81,7 @@ function HoleCard({
                 )}
               </div>
 
-              <input
-                type="number"
-                inputMode="numeric"
-                value={gross ?? ""}
-                placeholder="–"
-                onFocus={(e) => e.currentTarget.select()}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  const next = { ...grossScores };
-                  if (v === "") delete next[p.id];
-                  else next[p.id] = Math.max(1, parseInt(v) || 1);
-                  upsertEntry(hole, { grossScores: next }, base);
-                }}
-                className="h-9 w-12 shrink-0 rounded-lg border border-card-border bg-card-bg text-center text-lg font-bold tabular-nums outline-none focus:border-primary"
-              />
-
-              {/* Per-player stance buttons, to the right of the score. */}
+              {/* Per-player stance buttons, to the LEFT of the score. */}
               <div className="flex shrink-0 items-center gap-1">
                 <button
                   onClick={() => setAction(p.id, "hammer")}
@@ -143,6 +127,22 @@ function HoleCard({
                   <Flag className="h-[13px] w-[13px]" />
                 </button>
               </div>
+
+              <input
+                type="number"
+                inputMode="numeric"
+                value={gross ?? ""}
+                placeholder="–"
+                onFocus={(e) => e.currentTarget.select()}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const next = { ...grossScores };
+                  if (v === "") delete next[p.id];
+                  else next[p.id] = Math.max(1, parseInt(v) || 1);
+                  upsertEntry(hole, { grossScores: next }, base);
+                }}
+                className="h-9 w-12 shrink-0 rounded-lg border border-card-border bg-card-bg text-center text-lg font-bold tabular-nums outline-none focus:border-primary"
+              />
             </div>
           );
         })}
@@ -213,7 +213,7 @@ export function FieldHammerScores({
       </div>
 
       <div className="flex items-baseline justify-between">
-        <h2 className="text-xl font-bold">Field Hammer</h2>
+        <h2 className="text-xl font-bold">Sledgehammer</h2>
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
 
