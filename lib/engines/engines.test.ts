@@ -12,6 +12,7 @@ import { computeVegas } from "./vegas";
 import { computeSixes } from "./sixes";
 import { computeStroke } from "./strokeplay";
 import { computeElevens } from "./elevens";
+import { computeNassau } from "./nassau";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -290,6 +291,69 @@ describe("elevens", () => {
     );
     const { ledger } = computeElevens(round);
     expect(Object.values(ledger).every((v) => v === 0)).toBe(true);
+  });
+});
+
+// ── Nassau ─────────────────────────────────────────────────────────────────
+
+describe("nassau", () => {
+  // 2-player, par-4 course, scratch (net === gross).
+  const headsUp = (score: (hole: number) => { a: number; b: number }) =>
+    Array.from({ length: 18 }, (_, i) => ({
+      hole: i + 1,
+      wolfId: "",
+      mode: "2v2" as const,
+      grossScores: score(i + 1),
+    }));
+
+  it("front, back, and overall settle as three separate bets", () => {
+    // a sweeps the front (wins holes 1–5), b takes the back (wins 10–13),
+    // and a edges the overall 18 (5 holes to 4).
+    const entries = headsUp((h) => {
+      if (h <= 5) return { a: 3, b: 4 }; // a wins
+      if (h >= 10 && h <= 13) return { a: 4, b: 3 }; // b wins
+      return { a: 4, b: 4 }; // halve
+    });
+    const round = makeRound("nassau", scratch(["a", "b"]), entries, { stake: 2 });
+    const { ledger, stats } = computeNassau(round);
+    expect(stats.a.front).toBe(2); // a wins the front
+    expect(stats.a.back).toBe(-2); // a loses the back
+    expect(stats.a.overall).toBe(2); // a wins the overall
+    expect(ledger.a).toBe(2); // +2 −2 +2
+    expect(ledger.b).toBe(-2);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("a clean sweep wins all three bets", () => {
+    const entries = headsUp(() => ({ a: 4, b: 5 })); // a wins every hole
+    const round = makeRound("nassau", scratch(["a", "b"]), entries, { stake: 2 });
+    const { ledger, stats } = computeNassau(round);
+    expect(stats.a.front).toBe(2);
+    expect(stats.a.back).toBe(2);
+    expect(stats.a.overall).toBe(2);
+    expect(ledger.a).toBe(6); // all three bets
+    expect(ledger.b).toBe(-6);
+  });
+
+  it("an all-square segment pushes (no money)", () => {
+    // Identical scores everywhere → every bet halves.
+    const entries = headsUp(() => ({ a: 4, b: 4 }));
+    const round = makeRound("nassau", scratch(["a", "b"]), entries, { stake: 2 });
+    const { ledger } = computeNassau(round);
+    expect(ledger.a).toBe(0);
+    expect(ledger.b).toBe(0);
+  });
+
+  it("round-robin across 4 players stays zero-sum", () => {
+    const entries = Array.from({ length: 18 }, (_, i) => ({
+      hole: i + 1,
+      wolfId: "",
+      mode: "2v2" as const,
+      grossScores: { a: 4, b: 5, c: 4, d: 6 },
+    }));
+    const round = makeRound("nassau", scratch(["a", "b", "c", "d"]), entries, { stake: 2 });
+    const { ledger } = computeNassau(round);
+    expect(sum(ledger)).toBe(0);
   });
 });
 

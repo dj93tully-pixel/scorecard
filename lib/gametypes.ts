@@ -13,6 +13,7 @@ import { computeSixes } from "./engines/sixes";
 import { computeStroke } from "./engines/strokeplay";
 import { computeElevens } from "./engines/elevens";
 import { computeFieldHammer } from "./engines/fieldhammer";
+import { computeNassau } from "./engines/nassau";
 import { splitTeams } from "./engines/teams";
 
 export interface StatColumn {
@@ -116,6 +117,20 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     statColumns: [],
     defaultSettings: { stake: 5, carryover: false },
   },
+  nassau: {
+    id: "nassau",
+    label: "Nassau",
+    blurb: "Three match-play bets — front 9, back 9, and overall 18.",
+    players: { min: 2, max: 6 },
+    hasTeams: false,
+    rotatesTeams: false,
+    statColumns: [
+      { key: "front", label: "Front", kind: "money" },
+      { key: "back", label: "Back", kind: "money" },
+      { key: "overall", label: "Overall", kind: "money" },
+    ],
+    defaultSettings: { stake: 2 },
+  },
 };
 
 export const GAME_TYPE_LIST: GameTypeMeta[] = [
@@ -127,6 +142,7 @@ export const GAME_TYPE_LIST: GameTypeMeta[] = [
   GAME_TYPES.stroke,
   GAME_TYPES.elevens,
   GAME_TYPES.fieldhammer,
+  GAME_TYPES.nassau,
 ];
 
 export function gameTypeOf(round: Round): GameTypeId {
@@ -153,6 +169,8 @@ export function computeGame(round: Round): GameResult {
       return computeElevens(round);
     case "fieldhammer":
       return computeFieldHammer(round);
+    case "nassau":
+      return computeNassau(round);
     default:
       return { ledger: {}, pops: {}, holeResults: [], stats: {} };
   }

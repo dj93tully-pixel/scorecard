@@ -80,6 +80,7 @@ export default function GamePage() {
         ledger: gameResult.ledger,
         pops: gameResult.pops,
         results: gameResult.holeResults,
+        stats: gameResult.stats,
       };
     }
     return null;

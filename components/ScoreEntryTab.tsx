@@ -54,8 +54,10 @@ function HoleCard({
   // Hammer applies everywhere except stroke play and 11s (which has neither).
   const gt = gameTypeOf(round);
   const forfeitable = gt === "bestball" || gt === "sixes";
-  const hammerable = gt !== "stroke" && gt !== "elevens";
+  const hammerable = gt !== "stroke" && gt !== "elevens" && gt !== "nassau";
   const eleven = gt === "elevens";
+  // Segment/total games settle on totals, not per hole — no per-hole money note.
+  const noHoleMoney = gt === "elevens" || gt === "nassau";
 
   // 11s: toggle whether this player is counting this hole toward their score.
   function togglePick(pid: string) {
@@ -218,10 +220,10 @@ function HoleCard({
       </div>
 
       {/* Result note — the money each winner takes on the hole, or push/carry.
-          11s is a total game (low 11-hole total wins), so per-hole money isn't
-          shown — the pick/score summary up top is the meaningful readout. */}
+          Total/segment games (11s, Nassau) settle on totals, not per hole, so
+          per-hole money isn't shown — the standings carry the meaningful readout. */}
       {(() => {
-        if (eleven || !note || note.detail === "—") return null;
+        if (noHoleMoney || !note || note.detail === "—") return null;
         const winners = players.filter((p) => (note.deltas[p.id] ?? 0) > 0);
         if (winners.length > 0) {
           return (

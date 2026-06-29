@@ -24,6 +24,9 @@ export interface CardComputation {
     detail?: string;
     decided?: boolean;
   }[];
+  // Per-player engine stats (e.g. Nassau front/back/overall money). Optional so
+  // Wolf's RoundComputation still satisfies the shape.
+  stats?: Record<string, Record<string, number | string>>;
 }
 
 const INK = "#16181D";
@@ -437,10 +440,15 @@ function LedgerCard({
     }
   }
   const moneyColor = money > 0 ? "text-positive" : money < 0 ? "text-negative" : "text-text-muted";
-  // 11s is a total game (no per-hole money), so its dropdown is scores-only.
-  const isElevens = gameTypeOf(round) === "elevens";
+  const gt = gameTypeOf(round);
+  const isElevens = gt === "elevens";
+  const isNassau = gt === "nassau";
+  // Total/segment games carry no per-hole money, so their dropdown is scores-only.
+  const scoresOnly = isElevens || isNassau;
   // 11s: net-to-par over the player's chosen holes, shown as a blue badge.
   const chosen = isElevens ? elevenChosen(round, computation, player.id) : null;
+  // Nassau: this player's front / back / overall money (from engine stats).
+  const nassau = isNassau ? computation.stats?.[player.id] : undefined;
 
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -453,7 +461,7 @@ function LedgerCard({
     const t = e.changedTouches[0];
     const dx = t.clientX - s.x;
     if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(t.clientY - s.y)) return;
-    if (isElevens) return; // scores-only — no money view to swipe to
+    if (scoresOnly) return; // scores-only — no money view to swipe to
     setView(dx < 0 ? "money" : "scores");
   }
 
@@ -491,7 +499,7 @@ function LedgerCard({
         >
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {(isElevens ? (["scores"] as const) : (["scores", "money"] as const)).map((v) => (
+              {(scoresOnly ? (["scores"] as const) : (["scores", "money"] as const)).map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
@@ -503,8 +511,38 @@ function LedgerCard({
                 </button>
               ))}
             </div>
-            {!isElevens && <span className="text-[10px] text-text-faint">swipe ←→</span>}
+            {!scoresOnly && <span className="text-[10px] text-text-faint">swipe ←→</span>}
           </div>
+
+          {/* Nassau: front / back / overall money breakdown. */}
+          {isNassau && nassau && (
+            <div className="mb-2 grid grid-cols-3 gap-2">
+              {([
+                ["Front", "front"],
+                ["Back", "back"],
+                ["Overall", "overall"],
+              ] as const).map(([label, key]) => {
+                const v = Number(nassau[key] ?? 0);
+                return (
+                  <div
+                    key={key}
+                    className="rounded-lg bg-card-bg px-2 py-1.5 text-center"
+                    style={{ border: `1px solid ${HAIRLINE}` }}
+                  >
+                    <div className="text-[9px] font-bold uppercase tracking-wide text-text-faint">
+                      {label}
+                    </div>
+                    <div
+                      className="font-serif text-sm font-bold tabular-nums"
+                      style={{ color: v > 0 ? POS : v < 0 ? NEG : MUTED }}
+                    >
+                      {formatMoney(v)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
             <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode={view} net={scoreNet} />
@@ -535,9 +573,10 @@ export function CardTab({
   const standings = [...round.players].sort(
     (a, b) => (computation.ledger[b.id] ?? 0) - (computation.ledger[a.id] ?? 0)
   );
-  // 11s is a total game — its per-hole money attribution is unintuitive, so skip
-  // the by-hole Ledger grid there (standings + totals carry the money).
-  const showLedger = gameTypeOf(round) !== "elevens";
+  // 11s and Nassau are total/segment games — money isn't a per-hole thing, so
+  // skip the by-hole Ledger grid (standings + totals/breakdown carry the money).
+  const gt = gameTypeOf(round);
+  const showLedger = gt !== "elevens" && gt !== "nassau";
 
   return (
     <div className="space-y-6">
