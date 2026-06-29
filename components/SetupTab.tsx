@@ -473,20 +473,6 @@ export function SetupTab({
               />
             </Field>
           )}
-          {gameType === "fieldhammer" && (
-            <Field label="Hammer lines cap (max doublings)">
-              <input
-                type="number"
-                min={0}
-                value={settings.linesCap ?? 2}
-                onFocus={selectOnFocus}
-                onChange={(e) =>
-                  setSetting("linesCap", Math.max(0, parseInt(e.target.value) || 0))
-                }
-                className={numberInput}
-              />
-            </Field>
-          )}
           {gameType === "skins" && (
             <Field label="Skin value — $">
               <input

@@ -1,26 +1,19 @@
 // components/fieldhammer/FieldHammerScores.tsx
 // Field Hammer hole play, wired to the shared game (Supabase via upsertEntry).
-// Same hole-jumper + card styling as the other game types; the bespoke bit is the
-// per-pairing hammer / accept / fold / hammer-back flow. All state lives on the
-// hole entry (fhPairings); the engine settles it.
+// Round-robin skins: each player sets a per-hole stance with buttons to the right
+// of their score — Hammer (×2 your loss), Double (×4), or Forfeit (concede). No
+// thrower/responder step. The engine settles the pairings.
 
 "use client";
 
-import { Hammer, Check, Flag, X } from "lucide-react";
+import { Hammer, Flag } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame } from "@/lib/gametypes";
 import { formatMoney } from "@/lib/storage";
-import {
-  allPairs,
-  pairKey,
-  applyHammerField,
-  applyRespond,
-  applyHammerBack,
-  applyCancel,
-  LivePairings,
-} from "@/lib/fieldHammer";
+import { FHAction } from "@/lib/fieldHammer";
 
-const HAMMER_COLOR = "#7C3AED";
+const HAMMER_COLOR = "#7C3AED"; // purple
+const FORFEIT_COLOR = "#06B6A4"; // teal
 
 function HoleCard({
   round,
@@ -36,26 +29,22 @@ function HoleCard({
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
   const { players, course } = round;
-  const ids = players.map((p) => p.id);
   const courseHole = course.holes.find((h) => h.number === hole);
   const existing = round.entries.find((e) => e.hole === hole);
   const grossScores = existing?.grossScores ?? {};
-  const pairings: LivePairings = existing?.fhPairings ?? {};
-  const base: HoleEntry = { hole, wolfId: "", mode: "2v2", grossScores, fhPairings: pairings };
-  const baseStake = round.settings.stake || 1;
-  const cap = round.settings.linesCap ?? 2;
+  const fhActions = existing?.fhActions ?? {};
+  const base: HoleEntry = { hole, wolfId: "", mode: "2v2", grossScores, fhActions };
   const first = (id: string) =>
     (players.find((p) => p.id === id)?.name || "—").split(" ")[0];
 
-  const commit = (next: LivePairings) => upsertEntry(hole, { fhPairings: next }, base);
+  const setAction = (pid: string, action: FHAction) => {
+    const next = { ...fhActions };
+    if (next[pid] === action) delete next[pid];
+    else next[pid] = action;
+    upsertEntry(hole, { fhActions: next }, base);
+  };
 
-  // Pairings worth showing: anything not in the default (untouched) state.
-  const active = allPairs(ids).filter((key) => {
-    const st = pairings[key];
-    return st && (st.pending || st.doublings > 0 || st.fold);
-  });
-
-  const winners = ids.filter((id) => (deltas[id] ?? 0) !== 0);
+  const winners = players.filter((p) => (deltas[p.id] ?? 0) !== 0);
 
   return (
     <div
@@ -70,14 +59,14 @@ function HoleCard({
         </div>
       </div>
 
-      {/* Scores */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {players.map((p) => {
           const gross = grossScores[p.id];
           const pop = pops[p.id]?.[hole] ?? 0;
           const net = typeof gross === "number" ? gross - pop : null;
+          const action = fhActions[p.id];
           return (
-            <div key={p.id} className="flex items-center justify-between gap-2 py-1">
+            <div key={p.id} className="flex items-center gap-2">
               <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 <span className="truncate font-medium text-text-primary">{p.name || "Unnamed"}</span>
                 {pop > 0 && (
@@ -91,6 +80,7 @@ function HoleCard({
                   <span className="shrink-0 text-xs text-text-faint tabular-nums">net {net}</span>
                 )}
               </div>
+
               <input
                 type="number"
                 inputMode="numeric"
@@ -106,134 +96,65 @@ function HoleCard({
                 }}
                 className="h-9 w-12 shrink-0 rounded-lg border border-card-border bg-card-bg text-center text-lg font-bold tabular-nums outline-none focus:border-primary"
               />
+
+              {/* Per-player stance buttons, to the right of the score. */}
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  onClick={() => setAction(p.id, "hammer")}
+                  aria-label={`${p.name || "Player"} hammer (loss ×2)`}
+                  style={
+                    action === "hammer"
+                      ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR }
+                      : undefined
+                  }
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
+                    action === "hammer" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                  }`}
+                >
+                  <Hammer className="h-[13px] w-[13px]" />
+                </button>
+                <button
+                  onClick={() => setAction(p.id, "double")}
+                  aria-label={`${p.name || "Player"} double hammer (loss ×4)`}
+                  style={
+                    action === "double"
+                      ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR }
+                      : undefined
+                  }
+                  className={`flex h-8 items-center justify-center gap-0.5 rounded-lg border px-1 ${
+                    action === "double" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                  }`}
+                >
+                  <Hammer className="h-[13px] w-[13px]" />
+                  <Hammer className="h-[13px] w-[13px]" />
+                </button>
+                <button
+                  onClick={() => setAction(p.id, "forfeit")}
+                  aria-label={`${p.name || "Player"} forfeit`}
+                  style={
+                    action === "forfeit"
+                      ? { background: FORFEIT_COLOR, borderColor: FORFEIT_COLOR }
+                      : undefined
+                  }
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
+                    action === "forfeit" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                  }`}
+                >
+                  <Flag className="h-[13px] w-[13px]" />
+                </button>
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* Hammer the field */}
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
-          Hammer
-        </span>
-        {players.map((p) => {
-          const eligible = ids.some((opp) => {
-            if (opp === p.id) return false;
-            const st = pairings[pairKey(p.id, opp)] ?? { doublings: 0 };
-            return !st.fold && !st.pending && st.doublings < cap && st.lastHammerer !== p.id;
-          });
-          return (
-            <button
-              key={p.id}
-              onClick={() => commit(applyHammerField(pairings, ids, p.id, cap))}
-              disabled={!eligible}
-              className="flex items-center gap-1 rounded-lg border border-card-border px-2 py-1.5 text-sm font-semibold text-text-primary disabled:opacity-30"
-            >
-              <Hammer className="h-3.5 w-3.5" style={{ color: HAMMER_COLOR }} />
-              {first(p.id)}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Active pairings */}
-      {active.length > 0 && (
-        <div className="mt-2 space-y-1.5">
-          {active.map((key) => {
-            const [a, b] = key.split("|");
-            const st = pairings[key]!;
-            const stake = baseStake * 2 ** st.doublings;
-            const label = `${first(a)} v ${first(b)}`;
-
-            if (st.fold) {
-              const won = st.fold.folder === a ? b : a;
-              return (
-                <div
-                  key={key}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-surface-2 px-3 py-2 text-sm opacity-70"
-                >
-                  <span className="font-medium">{label}</span>
-                  <span className="text-text-muted">
-                    {first(st.fold.folder)} folded · {first(won)} +${st.fold.settleStake}
-                  </span>
-                </div>
-              );
-            }
-
-            if (st.pending) {
-              const responder = st.pending === a ? b : a;
-              return (
-                <div key={key} className="rounded-lg border border-[#7C3AED]/40 bg-[#7C3AED]/5 px-3 py-2">
-                  <div className="mb-1.5 flex items-center justify-between text-sm">
-                    <span className="font-medium">{label}</span>
-                    <span className="text-xs font-semibold" style={{ color: HAMMER_COLOR }}>
-                      {first(st.pending)} hammered → {first(responder)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => commit(applyRespond(pairings, key, "accept", baseStake))}
-                      className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-positive py-1.5 text-sm font-semibold text-on-dark"
-                    >
-                      <Check className="h-4 w-4" /> Accept · ${stake * 2}
-                    </button>
-                    <button
-                      onClick={() => commit(applyRespond(pairings, key, "fold", baseStake))}
-                      className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-card-border py-1.5 text-sm font-semibold text-negative"
-                    >
-                      <Flag className="h-4 w-4" /> Fold · −${stake}
-                    </button>
-                    <button
-                      onClick={() => commit(applyCancel(pairings, key))}
-                      aria-label="Cancel hammer"
-                      className="rounded-lg border border-card-border p-1.5 text-text-faint"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            }
-
-            // Accepted / doubled — show stake + hammer-back for the non-last-hammerer.
-            const backPlayer = st.lastHammerer ? (st.lastHammerer === a ? b : a) : null;
-            const canBack = st.doublings >= 1 && st.doublings < cap && !!backPlayer;
-            return (
-              <div
-                key={key}
-                className="flex items-center justify-between gap-2 rounded-lg border border-card-border px-3 py-2 text-sm"
-              >
-                <span className="font-medium">{label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="tabular-nums text-text-muted">
-                    ${stake}
-                    <span className="ml-1 font-bold" style={{ color: HAMMER_COLOR }}>
-                      ×{2 ** st.doublings}
-                    </span>
-                  </span>
-                  {canBack && (
-                    <button
-                      onClick={() => commit(applyHammerBack(pairings, key, backPlayer!, cap))}
-                      className="flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold"
-                      style={{ borderColor: HAMMER_COLOR, color: HAMMER_COLOR }}
-                    >
-                      <Hammer className="h-3.5 w-3.5" /> {first(backPlayer!)} back
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Hole result */}
+      {/* Hole result — each player's net money on the hole. */}
       {winners.length > 0 && (
         <div className="mt-2 text-right text-sm font-semibold">
-          {winners.map((id, i) => (
-            <span key={id} className={(deltas[id] ?? 0) > 0 ? "text-positive" : "text-negative"}>
+          {winners.map((p, i) => (
+            <span key={p.id} className={(deltas[p.id] ?? 0) > 0 ? "text-positive" : "text-negative"}>
               {i > 0 && <span className="text-text-faint"> · </span>}
-              {first(id)} {formatMoney(deltas[id] ?? 0)}
+              {first(p.id)} {formatMoney(deltas[p.id] ?? 0)}
             </span>
           ))}
         </div>

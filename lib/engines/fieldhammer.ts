@@ -1,12 +1,12 @@
 // lib/engines/fieldhammer.ts
-// GameResult adapter for Field Hammer: round-robin skins + hammer-the-field. The
-// money math lives in the pure lib/fieldHammer engine; this just feeds it each
-// hole (gross scores + pops from the existing pops engine + per-pairing state)
-// and threads the carry, producing the standard GameResult the Card view uses.
+// GameResult adapter for Field Hammer: round-robin skins with per-player hammer /
+// double / forfeit stances. The money math lives in the pure lib/fieldHammer
+// engine; this feeds it each hole (gross scores + pops + per-player actions) and
+// threads the carry, producing the standard GameResult the Card view uses.
 
 import { Round, PlayerId, computePops } from "../wolf";
 import { GameResult, GameHoleResult } from "./types";
-import { settleHole, toPairStates, PairKey, LivePairings } from "../fieldHammer";
+import { settleHole, PairKey, FHAction } from "../fieldHammer";
 
 export function computeFieldHammer(round: Round): GameResult {
   const { players, course, settings } = round;
@@ -24,12 +24,11 @@ export function computeFieldHammer(round: Round): GameResult {
   for (const h of course.holes) {
     const e = entryByHole.get(h.number);
     const pops = Object.fromEntries(ids.map((id) => [id, popsGrid[id]?.[h.number] ?? 0]));
-    const pairings = toPairStates((e?.fhPairings ?? {}) as LivePairings);
     const r = settleHole({
       players: ids,
       grossScores: e?.grossScores ?? {},
       pops,
-      pairings,
+      actions: (e?.fhActions ?? {}) as Record<PlayerId, FHAction>,
       baseStake,
       carryIn: carry,
       carryTies: settings.carryover,

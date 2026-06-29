@@ -55,8 +55,6 @@ export interface RoundSettings {
   pointValue?: number;
   /** Vegas: opponent birdie flips your team number high-digit-first. */
   birdieFlip?: boolean;
-  /** Field Hammer: max doublings per pairing (hammer "lines" cap). */
-  linesCap?: number;
 }
 
 export type WolfMode = "2v2" | "lone" | "blind";
@@ -93,10 +91,10 @@ export interface HoleEntry {
    */
   elevenPicks?: Record<PlayerId, boolean>;
   /**
-   * Field Hammer only: live per-pairing state (doublings / fold / pending hammer)
-   * keyed by canonical pair key. Persisted in game_entries.meta.
+   * Field Hammer only: per-player stance on the hole — "hammer" (×2 your loss),
+   * "double" (×4), or "forfeit" (concede). Persisted in game_entries.meta.
    */
-  fhPairings?: Record<string, import("./fieldHammer").FHPairLive>;
+  fhActions?: Record<PlayerId, import("./fieldHammer").FHAction>;
 }
 
 export interface Round {

@@ -1,18 +1,19 @@
 // lib/fieldHammer.ts
-// Pure settlement engine for the "Field Hammer" game mode: individual round-robin
-// skins with a "hammer the field" mechanic (each opponent accepts or folds
-// independently). NO React / UI / network imports — money is computed only here.
+// Pure settlement engine for "Field Hammer": individual round-robin skins where
+// every unordered pair has a 1-v-1 bet each hole (low net wins the base stake).
+// Each player can set a per-hole stance via a button next to their score:
+//   "hammer" — if this player LOSES a pairing, they pay ×2.
+//   "double" — if this player loses, they pay ×4.
+//   "forfeit" — concede every pairing for the base stake (out of contention).
+// No thrower/responder step — each player just sets their own stance.
 //
-// Net scores are computed elsewhere (the UI reuses the existing pops engine) and
-// passed in as `pops` per hole; this module never reimplements handicaps.
-//
-// INVARIANT: every pairing nets to zero, so each hole's deltas and the full
-// ledger always sum to exactly 0.
+// NO React / UI / network imports. INVARIANT: every pairing nets to zero, so each
+// hole's deltas and the full ledger always sum to exactly 0.
 
 export type PlayerId = string;
 export type PairKey = string; // canonical `${minId}|${maxId}`
+export type FHAction = "hammer" | "double" | "forfeit";
 
-/** Canonical, order-independent key for an unordered pair. */
 export function pairKey(a: PlayerId, b: PlayerId): PairKey {
   return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
@@ -22,7 +23,6 @@ export function unpair(key: PairKey): [PlayerId, PlayerId] {
   return [a, b];
 }
 
-/** Every unordered pair of the given players, as canonical keys. */
 export function allPairs(ids: PlayerId[]): PairKey[] {
   const out: PairKey[] = [];
   for (let i = 0; i < ids.length; i++) {
@@ -31,19 +31,16 @@ export function allPairs(ids: PlayerId[]): PairKey[] {
   return out;
 }
 
-export interface PairState {
-  /** Times this pairing's stake has doubled (one per accepted hammer). */
-  doublings: number;
-  /** If set, the pairing was folded: `folder` pays the other player `settleStake`. */
-  fold?: { folder: PlayerId; settleStake: number };
-}
+/** Loss multiplier for a player's stance: double 4×, hammer 2×, else 1×. */
+export const multOf = (a?: FHAction): number => (a === "double" ? 4 : a === "hammer" ? 2 : 1);
 
 export interface HoleInput {
   players: PlayerId[];
   grossScores: Record<PlayerId, number>;
   /** Strokes received on THIS hole per player (from the existing pops engine). */
   pops: Record<PlayerId, number>;
-  pairings: Record<PairKey, PairState>;
+  /** Per-player stance; absent = plain (×1). */
+  actions: Record<PlayerId, FHAction>;
   baseStake: number;
   /** Stake carried into a pairing from a prior push (skins-style). */
   carryIn?: Record<PairKey, number>;
@@ -55,22 +52,21 @@ export interface PairOutcome {
   pair: PairKey;
   a: PlayerId;
   b: PlayerId;
-  stake: number; // amount that changed hands (fold settle stake, or the played stake)
-  folded: boolean;
-  winner: PlayerId | null; // null = push or not-yet-scored
+  stake: number; // amount that changed hands
+  winner: PlayerId | null; // null = push / not-yet-scored
   push: boolean;
+  forfeit: boolean;
 }
 
 export interface HoleResult {
   deltas: Record<PlayerId, number>;
   pairOutcomes: PairOutcome[];
-  /** Stake carried to the next hole per pairing (0 unless a push + carryTies). */
   carryOut: Record<PairKey, number>;
 }
 
-/** Settle ONE hole given the final per-pairing state + gross scores. */
+/** Settle ONE hole given the per-player stances + gross scores. */
 export function settleHole(input: HoleInput): HoleResult {
-  const { players, grossScores, pops, pairings, baseStake } = input;
+  const { players, grossScores, pops, actions, baseStake } = input;
   const carryIn = input.carryIn ?? {};
   const deltas: Record<PlayerId, number> = {};
   for (const id of players) deltas[id] = 0;
@@ -79,33 +75,42 @@ export function settleHole(input: HoleInput): HoleResult {
 
   for (const key of allPairs(players)) {
     const [a, b] = unpair(key);
-    const st: PairState = pairings[key] ?? { doublings: 0 };
+    const aF = actions[a] === "forfeit";
+    const bF = actions[b] === "forfeit";
+    const pot = baseStake + (carryIn[key] ?? 0);
 
-    // Folded pairing: settled immediately, scores no longer matter.
-    if (st.fold) {
-      const folder = st.fold.folder;
-      const winner = folder === a ? b : a;
-      const s = st.fold.settleStake;
-      deltas[winner] += s;
-      deltas[folder] -= s;
+    // Both conceded → nothing happens.
+    if (aF && bF) {
       carryOut[key] = 0;
-      pairOutcomes.push({ pair: key, a, b, stake: s, folded: true, winner, push: false });
+      pairOutcomes.push({ pair: key, a, b, stake: 0, winner: null, push: true, forfeit: true });
+      continue;
+    }
+    // One conceded → pays the base stake to the other (out of contention).
+    if (aF || bF) {
+      const folder = aF ? a : b;
+      const winner = aF ? b : a;
+      deltas[winner] += baseStake;
+      deltas[folder] -= baseStake;
+      carryOut[key] = 0;
+      pairOutcomes.push({ pair: key, a, b, stake: baseStake, winner, push: false, forfeit: true });
       continue;
     }
 
-    const stake = baseStake * 2 ** (st.doublings ?? 0) + (carryIn[key] ?? 0);
     const ga = grossScores[a];
     const gb = grossScores[b];
     let winner: PlayerId | null = null;
     let push = false;
+    let stake = 0;
     if (typeof ga === "number" && typeof gb === "number") {
       const netA = ga - (pops[a] ?? 0);
       const netB = gb - (pops[b] ?? 0);
       if (netA < netB) {
+        stake = pot * multOf(actions[b]); // loser b pays their own multiplier
         deltas[a] += stake;
         deltas[b] -= stake;
         winner = a;
       } else if (netB < netA) {
+        stake = pot * multOf(actions[a]);
         deltas[b] += stake;
         deltas[a] -= stake;
         winner = b;
@@ -113,8 +118,8 @@ export function settleHole(input: HoleInput): HoleResult {
         push = true;
       }
     }
-    carryOut[key] = push && input.carryTies ? stake : 0;
-    pairOutcomes.push({ pair: key, a, b, stake, folded: false, winner, push });
+    carryOut[key] = push && input.carryTies ? pot : 0;
+    pairOutcomes.push({ pair: key, a, b, stake, winner, push, forfeit: false });
   }
 
   return { deltas, pairOutcomes, carryOut };
@@ -126,14 +131,14 @@ export interface RoundHole {
   number: number;
   grossScores: Record<PlayerId, number>;
   pops: Record<PlayerId, number>;
-  pairings: Record<PairKey, PairState>;
+  actions: Record<PlayerId, FHAction>;
 }
 
 export interface RoundInput {
   players: PlayerId[];
   baseStake: number;
   carryTies: boolean;
-  holes: RoundHole[]; // in hole order
+  holes: RoundHole[];
 }
 
 export interface RoundResult {
@@ -141,7 +146,6 @@ export interface RoundResult {
   holeResults: { number: number; result: HoleResult }[];
 }
 
-/** Settle a whole round, threading per-pairing carry across holes. */
 export function settleRound(input: RoundInput): RoundResult {
   const ledger: Record<PlayerId, number> = {};
   for (const id of input.players) ledger[id] = 0;
@@ -153,7 +157,7 @@ export function settleRound(input: RoundInput): RoundResult {
       players: input.players,
       grossScores: h.grossScores,
       pops: h.pops,
-      pairings: h.pairings,
+      actions: h.actions,
       baseStake: input.baseStake,
       carryIn: carry,
       carryTies: input.carryTies,
@@ -164,101 +168,6 @@ export function settleRound(input: RoundInput): RoundResult {
   }
 
   return { ledger, holeResults };
-}
-
-// ── Live pairing state + hammer state machine (pure) ─────────────────────────
-// The UI stores this richer per-pairing state on each hole entry; settlement only
-// reads { doublings, fold } (see toPairStates).
-
-export interface FHPairLive {
-  doublings: number;
-  fold?: { folder: PlayerId; settleStake: number };
-  lastHammerer?: PlayerId; // who last hammered this pairing (alternation rule)
-  pending?: PlayerId; // a hammer awaiting the opponent's accept/fold
-}
-
-export type LivePairings = Record<PairKey, FHPairLive>;
-
-const livePair = (pairings: LivePairings, key: PairKey): FHPairLive =>
-  pairings[key] ?? { doublings: 0 };
-
-/** Strip live UI state down to what the engine settles. */
-export function toPairStates(pairings: LivePairings): Record<PairKey, PairState> {
-  const out: Record<PairKey, PairState> = {};
-  for (const [k, v] of Object.entries(pairings)) {
-    const ps: PairState = { doublings: v.doublings };
-    if (v.fold) ps.fold = v.fold;
-    out[k] = ps;
-  }
-  return out;
-}
-
-/** Propose a hammer on every eligible pairing the hammerer is in. */
-export function applyHammerField(
-  pairings: LivePairings,
-  ids: PlayerId[],
-  hammerer: PlayerId,
-  linesCap: number
-): LivePairings {
-  const next = { ...pairings };
-  for (const opp of ids) {
-    if (opp === hammerer) continue;
-    const key = pairKey(hammerer, opp);
-    const st = livePair(next, key);
-    if (st.fold || st.pending) continue;
-    if (st.doublings >= linesCap) continue;
-    if (st.lastHammerer === hammerer) continue; // no two in a row
-    next[key] = { ...st, pending: hammerer };
-  }
-  return next;
-}
-
-/** The non-pending player accepts or folds a pending hammer on a pairing. */
-export function applyRespond(
-  pairings: LivePairings,
-  key: PairKey,
-  action: "accept" | "fold",
-  baseStake: number
-): LivePairings {
-  const st = livePair(pairings, key);
-  if (!st.pending) return pairings;
-  const [a, b] = unpair(key);
-  const responder = st.pending === a ? b : a;
-  const next = { ...pairings };
-  if (action === "accept") {
-    next[key] = { doublings: st.doublings + 1, lastHammerer: st.pending };
-  } else {
-    next[key] = {
-      doublings: st.doublings,
-      lastHammerer: st.lastHammerer,
-      fold: { folder: responder, settleStake: baseStake * 2 ** st.doublings },
-    };
-  }
-  return next;
-}
-
-/** An acceptor re-raises a pairing (becomes the new pending hammerer). */
-export function applyHammerBack(
-  pairings: LivePairings,
-  key: PairKey,
-  hammerer: PlayerId,
-  linesCap: number
-): LivePairings {
-  const st = livePair(pairings, key);
-  if (st.fold || st.pending) return pairings;
-  if (st.doublings >= linesCap) return pairings;
-  if (st.lastHammerer === hammerer) return pairings; // alternation
-  return { ...pairings, [key]: { ...st, pending: hammerer } };
-}
-
-/** Withdraw an un-answered pending hammer. */
-export function applyCancel(pairings: LivePairings, key: PairKey): LivePairings {
-  const st = livePair(pairings, key);
-  if (!st.pending) return pairings;
-  return {
-    ...pairings,
-    [key]: { doublings: st.doublings, lastHammerer: st.lastHammerer },
-  };
 }
 
 // ── Settle up (minimal transactions) ─────────────────────────────────────────
@@ -272,8 +181,8 @@ export interface Transaction {
 /** Roll a (zero-sum) ledger into a minimal "who pays whom" set of transactions. */
 export function settleUp(ledger: Record<PlayerId, number>): Transaction[] {
   const cents = (v: number) => Math.round(v * 100);
-  const debtors: { id: PlayerId; amt: number }[] = []; // owe (positive amount)
-  const creditors: { id: PlayerId; amt: number }[] = []; // owed (positive amount)
+  const debtors: { id: PlayerId; amt: number }[] = [];
+  const creditors: { id: PlayerId; amt: number }[] = [];
   for (const [id, v] of Object.entries(ledger)) {
     const c = cents(v);
     if (c < 0) debtors.push({ id, amt: -c });
@@ -287,9 +196,7 @@ export function settleUp(ledger: Record<PlayerId, number>): Transaction[] {
   let j = 0;
   while (i < debtors.length && j < creditors.length) {
     const pay = Math.min(debtors[i].amt, creditors[j].amt);
-    if (pay > 0) {
-      txns.push({ from: debtors[i].id, to: creditors[j].id, amount: pay / 100 });
-    }
+    if (pay > 0) txns.push({ from: debtors[i].id, to: creditors[j].id, amount: pay / 100 });
     debtors[i].amt -= pay;
     creditors[j].amt -= pay;
     if (debtors[i].amt === 0) i++;

@@ -109,12 +109,12 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
   fieldhammer: {
     id: "fieldhammer",
     label: "Field Hammer",
-    blurb: "Round-robin skins; hammer the field — each opponent accepts or folds.",
+    blurb: "Round-robin skins; tap hammer (×2), double (×4), or forfeit per player.",
     players: { min: 3, max: 6 },
     hasTeams: false,
     rotatesTeams: false,
     statColumns: [],
-    defaultSettings: { stake: 5, linesCap: 2, carryover: false },
+    defaultSettings: { stake: 5, carryover: false },
   },
 };
 

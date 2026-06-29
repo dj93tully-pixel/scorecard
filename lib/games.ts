@@ -57,7 +57,7 @@ interface EntryRow {
   forfeit: "A" | "B" | null;
   meta: {
     elevenPicks?: HoleEntry["elevenPicks"];
-    fhPairings?: HoleEntry["fhPairings"];
+    fhActions?: HoleEntry["fhActions"];
   } | null;
 }
 
@@ -71,7 +71,7 @@ function rowToEntry(r: EntryRow): HoleEntry {
     hammer: r.hammer ?? 0,
     forfeit: r.forfeit ?? undefined,
     elevenPicks: r.meta?.elevenPicks ?? undefined,
-    fhPairings: r.meta?.fhPairings ?? undefined,
+    fhActions: r.meta?.fhActions ?? undefined,
   };
 }
 
@@ -211,7 +211,7 @@ export async function saveEntry(gameId: string, entry: HoleEntry): Promise<void>
       forfeit: entry.forfeit ?? null,
       meta: {
         elevenPicks: entry.elevenPicks ?? {},
-        fhPairings: entry.fhPairings ?? {},
+        fhActions: entry.fhActions ?? {},
       },
       updated_at: new Date().toISOString(),
     },
