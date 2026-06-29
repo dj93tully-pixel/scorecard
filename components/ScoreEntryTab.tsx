@@ -152,6 +152,18 @@ function HoleCard({
                 <span className="truncate font-medium text-text-primary">
                   {p.name || "Unnamed"}
                 </span>
+                {myPops > 0 && (
+                  <span className="inline-flex shrink-0 gap-0.5">
+                    {Array.from({ length: myPops }).map((_, i) => (
+                      <span key={i} className="h-[5px] w-[5px] rounded-full bg-primary" />
+                    ))}
+                  </span>
+                )}
+                {typeof score === "number" && (
+                  <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-bold tabular-nums text-primary">
+                    net {score - myPops}
+                  </span>
+                )}
                 {eleven &&
                   (() => {
                     const c = pickCounts?.[p.id] ?? 0;
@@ -169,18 +181,6 @@ function HoleCard({
                       </span>
                     );
                   })()}
-                {myPops > 0 && (
-                  <span className="inline-flex shrink-0 gap-0.5">
-                    {Array.from({ length: myPops }).map((_, i) => (
-                      <span key={i} className="h-[5px] w-[5px] rounded-full bg-primary" />
-                    ))}
-                  </span>
-                )}
-                {typeof score === "number" && (
-                  <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-bold tabular-nums text-primary">
-                    net {score - myPops}
-                  </span>
-                )}
               </div>
 
               {eleven && (

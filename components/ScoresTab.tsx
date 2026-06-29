@@ -212,7 +212,7 @@ function HoleBox({
             <div
               key={p.id}
               className={`flex items-center justify-between gap-2 rounded-lg border-l-4 py-1 pl-2 pr-1 ${
-                isWolf ? "border-alert" : "border-transparent"
+                isWolf ? "border-alert" : isPartner ? "border-primary" : "border-transparent"
               } ${onTeamA ? "bg-row-tint" : "bg-transparent"}`}
             >
               {/* Left: identity */}
