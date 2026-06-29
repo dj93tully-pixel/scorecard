@@ -88,15 +88,6 @@ function HoleCard({
       </div>
 
       <div className="space-y-1.5">
-        {/* Column header — "net" above the net box. */}
-        <div className="flex items-center gap-2">
-          <span className="flex-1" />
-          <span className="h-8 w-8 shrink-0" />
-          <span className="w-12 shrink-0" />
-          <span className="w-12 shrink-0 text-center text-[10px] font-bold uppercase tracking-wide text-primary">
-            net
-          </span>
-        </div>
         {players.map((p) => {
           const gross = grossScores[p.id];
           const pop = pops[p.id]?.[hole] ?? 0;
@@ -111,6 +102,11 @@ function HoleCard({
                     {Array.from({ length: pop }).map((_, i) => (
                       <span key={i} className="h-[5px] w-[5px] rounded-full bg-primary" />
                     ))}
+                  </span>
+                )}
+                {net !== null && (
+                  <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-bold tabular-nums text-primary">
+                    net {net}
                   </span>
                 )}
               </div>
@@ -144,11 +140,6 @@ function HoleCard({
                 }}
                 className="h-9 w-12 shrink-0 rounded-lg border border-card-border bg-card-bg text-center text-lg font-bold tabular-nums outline-none focus:border-primary"
               />
-
-              {/* Net score, to the right of the entered score. */}
-              <div className="flex h-9 w-12 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-lg font-bold tabular-nums text-primary">
-                {net ?? "–"}
-              </div>
             </div>
           );
         })}
