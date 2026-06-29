@@ -524,21 +524,20 @@ function Totals({
   net: boolean;
 }) {
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
-  const rows = round.players
-    .map((p) => {
-      let total = 0;
-      let toPar: number | null = null;
-      for (const e of round.entries) {
-        const g = e.grossScores[p.id];
-        if (typeof g === "number") {
-          const score = net ? g - (computation.pops[p.id]?.[e.hole] ?? 0) : g;
-          total += score;
-          toPar = (toPar ?? 0) + score - (parByHole.get(e.hole) ?? score);
-        }
+  // Same order as the scorecard rows (round.players, unsorted).
+  const rows = round.players.map((p) => {
+    let total = 0;
+    let toPar: number | null = null;
+    for (const e of round.entries) {
+      const g = e.grossScores[p.id];
+      if (typeof g === "number") {
+        const score = net ? g - (computation.pops[p.id]?.[e.hole] ?? 0) : g;
+        total += score;
+        toPar = (toPar ?? 0) + score - (parByHole.get(e.hole) ?? score);
       }
-      return { p, total, toPar, money: computation.ledger[p.id] ?? 0 };
-    })
-    .sort((a, b) => b.money - a.money);
+    }
+    return { p, total, toPar, money: computation.ledger[p.id] ?? 0 };
+  });
 
   return (
     <div className="border-y border-card-border bg-surface-2">
