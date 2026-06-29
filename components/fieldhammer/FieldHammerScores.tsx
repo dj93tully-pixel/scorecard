@@ -1,8 +1,8 @@
 // components/fieldhammer/FieldHammerScores.tsx
-// Field Hammer hole play, wired to the shared game (Supabase via upsertEntry).
-// Round-robin skins: each player sets a per-hole stance with buttons to the right
-// of their score — Hammer (×2 your loss), Double (×4), or Forfeit (concede). No
-// thrower/responder step. The engine settles the pairings.
+// Sledgehammer hole play, wired to the shared game (Supabase via upsertEntry).
+// Round-robin skins: a single hole-level hammer (×2) / double hammer (×4) at the
+// top of each hole, plus a per-player forfeit flag to the left of each score.
+// The engine settles the pairings.
 
 "use client";
 
@@ -10,7 +10,6 @@ import { Hammer, Flag } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame } from "@/lib/gametypes";
 import { formatMoney } from "@/lib/storage";
-import { FHAction } from "@/lib/fieldHammer";
 
 const HAMMER_COLOR = "#7C3AED"; // purple
 const FORFEIT_COLOR = "#06B6A4"; // teal
@@ -33,14 +32,17 @@ function HoleCard({
   const existing = round.entries.find((e) => e.hole === hole);
   const grossScores = existing?.grossScores ?? {};
   const fhActions = existing?.fhActions ?? {};
-  const base: HoleEntry = { hole, wolfId: "", mode: "2v2", grossScores, fhActions };
+  const hammer = existing?.hammer ?? 0;
+  const base: HoleEntry = { hole, wolfId: "", mode: "2v2", grossScores, fhActions, hammer };
   const first = (id: string) =>
     (players.find((p) => p.id === id)?.name || "—").split(" ")[0];
 
-  const setAction = (pid: string, action: FHAction) => {
+  const setHammer = (level: number) =>
+    upsertEntry(hole, { hammer: hammer === level ? 0 : level }, base);
+  const toggleForfeit = (pid: string) => {
     const next = { ...fhActions };
-    if (next[pid] === action) delete next[pid];
-    else next[pid] = action;
+    if (next[pid] === "forfeit") delete next[pid];
+    else next[pid] = "forfeit";
     upsertEntry(hole, { fhActions: next }, base);
   };
 
@@ -52,10 +54,36 @@ function HoleCard({
       style={{ scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)" }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
-      <div className="mb-2 leading-tight">
-        <div className="text-lg font-extrabold">Hole {hole}</div>
-        <div className="text-xs text-text-muted">
-          Par {courseHole?.par ?? "–"} · Hcp {courseHole?.strokeIndex ?? "–"}
+      {/* Header: hole + hole-level hammer / double hammer. */}
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="leading-tight">
+          <div className="text-lg font-extrabold">Hole {hole}</div>
+          <div className="text-xs text-text-muted">
+            Par {courseHole?.par ?? "–"} · Hcp {courseHole?.strokeIndex ?? "–"}
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setHammer(1)}
+            aria-label="Hammer — double the hole"
+            style={hammer === 1 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
+            className={`flex items-center rounded-lg border px-2 py-1.5 ${
+              hammer === 1 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            }`}
+          >
+            <Hammer className="h-[15px] w-[15px]" />
+          </button>
+          <button
+            onClick={() => setHammer(2)}
+            aria-label="Double hammer — quadruple the hole"
+            style={hammer === 2 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
+            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
+              hammer === 2 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            }`}
+          >
+            <Hammer className="h-[15px] w-[15px]" />
+            <Hammer className="h-[15px] w-[15px]" />
+          </button>
         </div>
       </div>
 
@@ -64,7 +92,7 @@ function HoleCard({
           const gross = grossScores[p.id];
           const pop = pops[p.id]?.[hole] ?? 0;
           const net = typeof gross === "number" ? gross - pop : null;
-          const action = fhActions[p.id];
+          const forfeited = fhActions[p.id] === "forfeit";
           return (
             <div key={p.id} className="flex items-center gap-2">
               <div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -81,52 +109,19 @@ function HoleCard({
                 )}
               </div>
 
-              {/* Per-player stance buttons, to the LEFT of the score. */}
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  onClick={() => setAction(p.id, "hammer")}
-                  aria-label={`${p.name || "Player"} hammer (loss ×2)`}
-                  style={
-                    action === "hammer"
-                      ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR }
-                      : undefined
-                  }
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
-                    action === "hammer" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-                  }`}
-                >
-                  <Hammer className="h-[13px] w-[13px]" />
-                </button>
-                <button
-                  onClick={() => setAction(p.id, "double")}
-                  aria-label={`${p.name || "Player"} double hammer (loss ×4)`}
-                  style={
-                    action === "double"
-                      ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR }
-                      : undefined
-                  }
-                  className={`flex h-8 items-center justify-center gap-0.5 rounded-lg border px-1 ${
-                    action === "double" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-                  }`}
-                >
-                  <Hammer className="h-[13px] w-[13px]" />
-                  <Hammer className="h-[13px] w-[13px]" />
-                </button>
-                <button
-                  onClick={() => setAction(p.id, "forfeit")}
-                  aria-label={`${p.name || "Player"} forfeit`}
-                  style={
-                    action === "forfeit"
-                      ? { background: FORFEIT_COLOR, borderColor: FORFEIT_COLOR }
-                      : undefined
-                  }
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
-                    action === "forfeit" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-                  }`}
-                >
-                  <Flag className="h-[13px] w-[13px]" />
-                </button>
-              </div>
+              {/* Forfeit flag, to the left of the score. */}
+              <button
+                onClick={() => toggleForfeit(p.id)}
+                aria-label={`${p.name || "Player"} forfeit`}
+                style={
+                  forfeited ? { background: FORFEIT_COLOR, borderColor: FORFEIT_COLOR } : undefined
+                }
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                  forfeited ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                }`}
+              >
+                <Flag className="h-[14px] w-[14px]" />
+              </button>
 
               <input
                 type="number"

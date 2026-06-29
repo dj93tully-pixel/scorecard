@@ -1,24 +1,23 @@
 // lib/fieldHammer.ts
 // Pure settlement engine for "Sledgehammer" (game-type id "fieldhammer"):
 // individual round-robin skins where every unordered pair has a 1-v-1 bet each
-// hole (low net wins the base stake). Each player sets a per-hole stance via a
-// button next to their score:
-//   "hammer" — doubles the pairing's bet (×2) for BOTH win and loss.
-//   "double" — quadruples it (×4).
-//   "forfeit" — concede every pairing for the base stake (out of contention).
-// The pairing's stake = baseStake × the highest stance on either player.
+// hole (low net wins the base stake).
 //
-// HAMMER CARRY: when a HAMMERED pairing ties, the doubled bet carries — but it
-// carries as a ONE-SIDED bet owned by the player who hammered. On the carry hole
-// only that hammerer wins (+) or loses (−) the carried amount; the opponent is
-// never on the hook for it (so a forfeiter only ever pays the base). This makes a
-// carry NOT zero-sum, by design. The base bet on every hole is still zero-sum.
+//  - A single HOLE-LEVEL hammer doubles (×2) or quadruples (×4) every pairing's
+//    bet on the hole (entry.hammer 0/1/2 → holeMult 1/2/4).
+//  - Each player can FORFEIT (per-player flag): they concede every pairing for
+//    the base stake and are out of contention.
+//
+// HAMMER CARRY: when a hammered pairing (holeMult > 1) ties, the doubled bet
+// carries to the same pairing next hole. The carry is only ever settled between
+// two players who both play it out, so a forfeiter never pays a carried bet (it
+// washes for that pairing). Every applied bet is zero-sum, so the ledger sums to 0.
 //
 // NO React / UI / network imports.
 
 export type PlayerId = string;
 export type PairKey = string; // canonical `${minId}|${maxId}`
-export type FHAction = "hammer" | "double" | "forfeit";
+export type FHAction = "forfeit"; // per-player flag (kept as a union for the entry)
 
 export function pairKey(a: PlayerId, b: PlayerId): PairKey {
   return a < b ? `${a}|${b}` : `${b}|${a}`;
@@ -35,25 +34,22 @@ export function allPairs(ids: PlayerId[]): PairKey[] {
   return out;
 }
 
-/** Bet multiplier for a stance: double 4×, hammer 2×, else 1×. */
-export const multOf = (a?: FHAction): number => (a === "double" ? 4 : a === "hammer" ? 2 : 1);
-
-/** A hammered tie carried forward — owned by the player who hammered it. */
-export interface FHCarry {
-  amount: number;
-  hammerer: PlayerId;
-}
+/** Hole multiplier from the hole-level hammer level (0→1×, 1→2×, 2→4×). */
+export const holeMultOf = (hammer?: number): number =>
+  2 ** Math.max(0, Math.floor(hammer ?? 0));
 
 export interface HoleInput {
   players: PlayerId[];
   grossScores: Record<PlayerId, number>;
   /** Strokes received on THIS hole per player (from the existing pops engine). */
   pops: Record<PlayerId, number>;
-  /** Per-player stance; absent = plain (×1). */
-  actions: Record<PlayerId, FHAction>;
+  /** Per-player forfeit flag. */
+  forfeits: Record<PlayerId, boolean>;
+  /** Hole-level hammer multiplier (1, 2, or 4). */
+  holeMult: number;
   baseStake: number;
-  /** One-sided hammer carry per pairing from a prior hole. */
-  carryIn?: Record<PairKey, FHCarry>;
+  /** Carried bet per pairing from a prior hammered tie. */
+  carryIn?: Record<PairKey, number>;
 }
 
 export interface PairOutcome {
@@ -69,86 +65,67 @@ export interface PairOutcome {
 export interface HoleResult {
   deltas: Record<PlayerId, number>;
   pairOutcomes: PairOutcome[];
-  carryOut: Record<PairKey, FHCarry>;
+  carryOut: Record<PairKey, number>;
 }
 
-/** Settle ONE hole given the per-player stances + gross scores. */
+/** Settle ONE hole. */
 export function settleHole(input: HoleInput): HoleResult {
-  const { players, grossScores, pops, actions, baseStake } = input;
+  const { players, grossScores, pops, forfeits, holeMult, baseStake } = input;
   const carryIn = input.carryIn ?? {};
   const deltas: Record<PlayerId, number> = {};
   for (const id of players) deltas[id] = 0;
   const pairOutcomes: PairOutcome[] = [];
-  const carryOut: Record<PairKey, FHCarry> = {};
+  const carryOut: Record<PairKey, number> = {};
 
   for (const key of allPairs(players)) {
     const [a, b] = unpair(key);
-    const carry = carryIn[key];
-    const aF = actions[a] === "forfeit";
-    const bF = actions[b] === "forfeit";
-    const pairMult = Math.max(multOf(actions[a]), multOf(actions[b]));
-    const hammerer = multOf(actions[a]) >= multOf(actions[b]) ? a : b;
+    const carry = carryIn[key] ?? 0;
+    const aF = !!forfeits[a];
+    const bF = !!forfeits[b];
 
-    // ── Settle THIS hole's base bet (zero-sum) and find the pairing winner. ──
-    let winner: PlayerId | null = null;
-    let push = false;
-    let scored = false;
-    let stake = 0;
+    // Both conceded → nothing happens; any carry washes.
     if (aF && bF) {
-      push = true;
-      scored = true; // both conceded — nothing on the base
-    } else if (aF || bF) {
+      carryOut[key] = 0;
+      pairOutcomes.push({ pair: key, a, b, stake: 0, winner: null, push: true, forfeit: true });
+      continue;
+    }
+    // One conceded → pays the base stake; the carried bet washes (not their bet).
+    if (aF || bF) {
       const folder = aF ? a : b;
-      winner = aF ? b : a;
+      const winner = aF ? b : a;
       deltas[winner] += baseStake;
       deltas[folder] -= baseStake;
-      stake = baseStake;
-      scored = true;
+      carryOut[key] = 0;
+      pairOutcomes.push({ pair: key, a, b, stake: baseStake, winner, push: false, forfeit: true });
+      continue;
+    }
+
+    const stake = baseStake * holeMult + carry;
+    const ga = grossScores[a];
+    const gb = grossScores[b];
+    if (typeof ga === "number" && typeof gb === "number") {
+      const netA = ga - (pops[a] ?? 0);
+      const netB = gb - (pops[b] ?? 0);
+      if (netA < netB) {
+        deltas[a] += stake;
+        deltas[b] -= stake;
+        carryOut[key] = 0;
+        pairOutcomes.push({ pair: key, a, b, stake, winner: a, push: false, forfeit: false });
+      } else if (netB < netA) {
+        deltas[b] += stake;
+        deltas[a] -= stake;
+        carryOut[key] = 0;
+        pairOutcomes.push({ pair: key, a, b, stake, winner: b, push: false, forfeit: false });
+      } else {
+        // Tie: a hammered bet carries; a plain tie washes.
+        carryOut[key] = holeMult > 1 ? stake : 0;
+        pairOutcomes.push({ pair: key, a, b, stake, winner: null, push: true, forfeit: false });
+      }
     } else {
-      const ga = grossScores[a];
-      const gb = grossScores[b];
-      if (typeof ga === "number" && typeof gb === "number") {
-        scored = true;
-        const netA = ga - (pops[a] ?? 0);
-        const netB = gb - (pops[b] ?? 0);
-        stake = baseStake * pairMult;
-        if (netA < netB) {
-          deltas[a] += stake;
-          deltas[b] -= stake;
-          winner = a;
-        } else if (netB < netA) {
-          deltas[b] += stake;
-          deltas[a] -= stake;
-          winner = b;
-        } else {
-          push = true;
-        }
-      }
+      // Not played yet — preserve any carried bet.
+      carryOut[key] = carry;
+      pairOutcomes.push({ pair: key, a, b, stake, winner: null, push: false, forfeit: false });
     }
-
-    // ── Resolve / forward the one-sided hammer carry. ──
-    if (!scored) {
-      // Not played yet → preserve any carry untouched.
-      if (carry) carryOut[key] = carry;
-    } else if (winner) {
-      // Base resolved → the carry pays only its owner (win + / loss −).
-      if (carry) {
-        deltas[carry.hammerer] += winner === carry.hammerer ? carry.amount : -carry.amount;
-      }
-    } else if (push) {
-      if (aF && bF) {
-        // Both conceded → the carry washes.
-      } else if (pairMult > 1) {
-        // Hammered tie → the doubled bet becomes (or extends) the carry.
-        carryOut[key] = { amount: baseStake * pairMult + (carry?.amount ?? 0), hammerer };
-      } else if (carry) {
-        // Plain tie with an existing carry → it rides along unchanged.
-        carryOut[key] = carry;
-      }
-      // Plain tie with no carry → nothing carries.
-    }
-
-    pairOutcomes.push({ pair: key, a, b, stake, winner, push, forfeit: aF || bF });
   }
 
   return { deltas, pairOutcomes, carryOut };
@@ -160,7 +137,8 @@ export interface RoundHole {
   number: number;
   grossScores: Record<PlayerId, number>;
   pops: Record<PlayerId, number>;
-  actions: Record<PlayerId, FHAction>;
+  forfeits: Record<PlayerId, boolean>;
+  holeMult: number;
 }
 
 export interface RoundInput {
@@ -177,7 +155,7 @@ export interface RoundResult {
 export function settleRound(input: RoundInput): RoundResult {
   const ledger: Record<PlayerId, number> = {};
   for (const id of input.players) ledger[id] = 0;
-  let carry: Record<PairKey, FHCarry> = {};
+  let carry: Record<PairKey, number> = {};
   const holeResults: RoundResult["holeResults"] = [];
 
   for (const h of [...input.holes].sort((x, y) => x.number - y.number)) {
@@ -185,7 +163,8 @@ export function settleRound(input: RoundInput): RoundResult {
       players: input.players,
       grossScores: h.grossScores,
       pops: h.pops,
-      actions: h.actions,
+      forfeits: h.forfeits,
+      holeMult: h.holeMult,
       baseStake: input.baseStake,
       carryIn: carry,
     });
@@ -205,7 +184,7 @@ export interface Transaction {
   amount: number;
 }
 
-/** Roll a ledger into a minimal "who pays whom" set of transactions. */
+/** Roll a (zero-sum) ledger into a minimal "who pays whom" set of transactions. */
 export function settleUp(ledger: Record<PlayerId, number>): Transaction[] {
   const cents = (v: number) => Math.round(v * 100);
   const debtors: { id: PlayerId; amt: number }[] = [];
