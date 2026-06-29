@@ -1,20 +1,26 @@
-// components/nassau/NassauBreakdown.tsx
-// Shared Nassau money displays: the original / press / total split. Used in the
-// standings dropdown, below the scorecard, and atop the Scores tab so a Nassau's
-// original bets and presses are always visible — and who's up or down on each.
+// components/PressBreakdown.tsx
+// Shared money displays for any game with presses: the original / press / total
+// split. Used in the standings dropdown, below the scorecard, and atop the
+// score-entry tabs so the original bet and every press are always visible — and
+// who's up or down on each.
 
 import { Round } from "@/lib/wolf";
 import { formatMoney } from "@/lib/storage";
-import { nassauMoney } from "@/lib/engines/nassau";
+import { pressSplit } from "@/lib/engines/press";
 
 type Stats = Record<string, Record<string, number | string>> | undefined;
 
 const moneyColor = (v: number) =>
   v > 0 ? "text-positive" : v < 0 ? "text-negative" : "text-text-muted";
 
+/** Whether any press has been called in the round. */
+export function hasAnyPress(round: Round): boolean {
+  return round.entries.some((e) => e.pressSeg || e.pressFull);
+}
+
 // Three chips — Original / Press / Total — for one player.
-export function NassauTriple({ stats, pid }: { stats: Stats; pid: string }) {
-  const m = nassauMoney(stats, pid);
+export function PressTriple({ stats, pid }: { stats: Stats; pid: string }) {
+  const m = pressSplit(stats, pid);
   const cells: { label: string; value: number; strong?: boolean }[] = [
     { label: "Original", value: m.original },
     { label: "Press", value: m.press },
@@ -44,10 +50,10 @@ export function NassauTriple({ stats, pid }: { stats: Stats; pid: string }) {
 }
 
 // Per-player table — Player · Original · Press · Total — showing who's up and
-// who's down on each. Players are sorted by total (most up first).
-export function NassauTable({ round, stats }: { round: Round; stats: Stats }) {
+// who's down on each. Players sorted by total (most up first).
+export function PressTable({ round, stats }: { round: Round; stats: Stats }) {
   const rows = [...round.players].sort(
-    (a, b) => nassauMoney(stats, b.id).total - nassauMoney(stats, a.id).total
+    (a, b) => pressSplit(stats, b.id).total - pressSplit(stats, a.id).total
   );
   return (
     <div className="overflow-hidden rounded-xl border border-card-border bg-card-bg">
@@ -58,7 +64,7 @@ export function NassauTable({ round, stats }: { round: Round; stats: Stats }) {
         <span className="w-16 text-right">Total</span>
       </div>
       {rows.map((p) => {
-        const m = nassauMoney(stats, p.id);
+        const m = pressSplit(stats, p.id);
         return (
           <div
             key={p.id}

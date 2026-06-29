@@ -13,6 +13,7 @@ import { computeSixes } from "./sixes";
 import { computeStroke } from "./strokeplay";
 import { computeElevens } from "./elevens";
 import { computeNassau } from "./nassau";
+import { withPresses, pressRange } from "./press";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -427,7 +428,7 @@ describe("nassau", () => {
           wolfId: "",
           mode: "2v2" as const,
           grossScores,
-          ...(press && h === 15 ? { nassauPress: true } : {}),
+          ...(press && h === 15 ? { pressSeg: true } : {}),
         };
       });
     const opts = {
@@ -451,6 +452,45 @@ describe("nassau", () => {
     expect(withPress.stats.a.original).toBe(-4); // back −2 + overall −2
     expect(withPress.stats.a.press).toBe(2); // press won back
     expect(sum(withPress.ledger)).toBe(0);
+  });
+});
+
+// ── Press (generic, all games) ───────────────────────────────────────────────
+
+describe("press", () => {
+  it("ranges: seg = rest of the nine (six in 666), full = rest of the round", () => {
+    const round = makeRound("stroke", scratch(["a", "b"]), [], { stake: 1 });
+    expect(pressRange(round, 3, "seg")).toEqual([3, 4, 5, 6, 7, 8, 9]);
+    expect(pressRange(round, 12, "seg")).toEqual([12, 13, 14, 15, 16, 17, 18]);
+    expect(pressRange(round, 3, "full")).toEqual(
+      Array.from({ length: 16 }, (_, i) => i + 3)
+    );
+    const sixes = makeRound("sixes", scratch(["a", "b", "c", "d"]), [], {});
+    expect(pressRange(sixes, 3, "seg")).toEqual([3, 4, 5, 6]);
+    expect(pressRange(sixes, 8, "seg")).toEqual([8, 9, 10, 11, 12]);
+  });
+
+  it("withPresses adds a fresh same-stake bet over the pressed holes", () => {
+    // Stroke play, scratch. Only hole 18 separates them (a by one). A press on
+    // hole 16 re-bets holes 16–18 → another +1 to a.
+    const entries = Array.from({ length: 18 }, (_, i) => {
+      const h = i + 1;
+      const grossScores = h === 18 ? { a: 4, b: 5 } : { a: 4, b: 4 };
+      return {
+        hole: h,
+        wolfId: "",
+        mode: "2v2" as const,
+        grossScores,
+        ...(h === 16 ? { pressSeg: true } : {}),
+      };
+    });
+    const round = makeRound("stroke", scratch(["a", "b"]), entries, { stake: 1 });
+    const r = withPresses(round, computeStroke);
+    expect(r.stats.a.original).toBe(1); // base: hole 18 only
+    expect(r.stats.a.press).toBe(1); // press re-bets holes 16–18
+    expect(r.ledger.a).toBe(2);
+    expect(r.ledger.b).toBe(-2);
+    expect(sum(r.ledger)).toBe(0);
   });
 });
 

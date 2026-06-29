@@ -14,6 +14,7 @@ import { computeStroke } from "./engines/strokeplay";
 import { computeElevens } from "./engines/elevens";
 import { computeFieldHammer } from "./engines/fieldhammer";
 import { computeNassau } from "./engines/nassau";
+import { withPresses } from "./engines/press";
 import { splitTeams } from "./engines/teams";
 
 export interface StatColumn {
@@ -155,20 +156,22 @@ export function gameTypeMeta(round: Round): GameTypeMeta {
 /** Compute a non-Wolf game. (Wolf uses computeRound from lib/wolf directly.) */
 export function computeGame(round: Round): GameResult {
   switch (gameTypeOf(round)) {
+    // Per-hole games — presses re-run the engine over the pressed holes.
     case "skins":
-      return computeSkins(round);
+      return withPresses(round, computeSkins);
     case "bestball":
-      return computeBestBall(round);
+      return withPresses(round, computeBestBall);
     case "vegas":
-      return computeVegas(round);
+      return withPresses(round, computeVegas);
     case "sixes":
-      return computeSixes(round);
+      return withPresses(round, computeSixes);
     case "stroke":
-      return computeStroke(round);
+      return withPresses(round, computeStroke);
+    case "fieldhammer":
+      return withPresses(round, computeFieldHammer);
+    // 11s has no press; Nassau settles its own (match play per segment).
     case "elevens":
       return computeElevens(round);
-    case "fieldhammer":
-      return computeFieldHammer(round);
     case "nassau":
       return computeNassau(round);
     default:

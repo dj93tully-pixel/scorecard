@@ -7,6 +7,7 @@ import { useGame } from "@/lib/useGame";
 import { useHeader } from "@/lib/header-context";
 import { liveSummary, genericSummary } from "@/lib/live";
 import { computeGame, gameTypeOf } from "@/lib/gametypes";
+import { computePressMoney } from "@/lib/engines/press";
 import { ScoresTab } from "@/components/ScoresTab";
 import { CardTab, CardComputation } from "@/components/CardTab";
 import { ScoreEntryTab } from "@/components/ScoreEntryTab";
@@ -56,10 +57,21 @@ export default function GamePage() {
   // Both engines feed the same Card view (standings + ledger + scorecard + the
   // by-hole summary). For Wolf we synthesize each hole's note from its result.
   const cardComp: CardComputation | null = useMemo(() => {
-    if (isWolf && computation) {
+    if (isWolf && computation && round) {
+      // Fold press money (re-run Wolf over each press's holes) into the ledger.
+      const press = computePressMoney(round, (r) => computeRound(r).ledger);
+      const ledger: Record<string, number> = {};
+      const stats: Record<string, Record<string, number>> = {};
+      for (const id of Object.keys(computation.ledger)) {
+        const original = computation.ledger[id] ?? 0;
+        const pr = press[id] ?? 0;
+        ledger[id] = original + pr;
+        stats[id] = { original, press: pr };
+      }
       return {
-        ledger: computation.ledger,
+        ledger,
         pops: computation.pops,
+        stats,
         results: computation.results.map((r) => ({
           hole: r.hole,
           deltas: r.deltas,
@@ -84,7 +96,7 @@ export default function GamePage() {
       };
     }
     return null;
-  }, [isWolf, computation, gameResult]);
+  }, [isWolf, computation, gameResult, round]);
 
   const tabs: PillTab[] = [
     { id: "scores", label: "Scores" },

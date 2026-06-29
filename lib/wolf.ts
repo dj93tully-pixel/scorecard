@@ -103,11 +103,14 @@ export interface HoleEntry {
    */
   fhActions?: Record<PlayerId, import("./fieldHammer").FHAction>;
   /**
-   * Nassau only: a press was called on this hole — a fresh same-stake match-play
-   * bet over the remaining holes of this hole's segment (front/back). Presses
-   * stack. Persisted in game_entries.meta.
+   * Press flags (all games except 11s). A press opens a fresh same-stake bet,
+   * settled by this game's own rules, over the remaining holes — `pressSeg`
+   * covers the rest of this hole's segment (the nine, or the six in Six-Six-Six)
+   * and `pressFull` covers the rest of the round (through 18). Presses stack
+   * (one of each per hole). Persisted in game_entries.meta.
    */
-  nassauPress?: boolean;
+  pressSeg?: boolean;
+  pressFull?: boolean;
 }
 
 export interface Round {

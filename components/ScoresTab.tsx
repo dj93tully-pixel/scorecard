@@ -6,18 +6,22 @@
 
 "use client";
 
-import { Hammer, Flag, PawPrint, Users, ChevronDown } from "lucide-react";
+import { Hammer, Flag, Zap, PawPrint, Users, ChevronDown } from "lucide-react";
 import {
   Round,
   RoundComputation,
   HoleEntry,
   defaultWolfForHole,
+  computeRound,
 } from "@/lib/wolf";
 import { formatMoney } from "@/lib/storage";
+import { computePressMoney } from "@/lib/engines/press";
+import { PressTable, hasAnyPress } from "./PressBreakdown";
 
 // Vibrant peacock-family accents for the hole-card toggles.
 const HAMMER = "#7C3AED"; // vibrant purple
 const FORFEIT = "#06B6A4"; // vibrant cyan-bluish-green
+const PRESS = "#E8590C"; // burnt orange
 
 function HoleBox({
   round,
@@ -42,6 +46,8 @@ function HoleBox({
   const grossScores = existing?.grossScores ?? {};
   const hammer = existing?.hammer ?? 0;
   const forfeit = existing?.forfeit;
+  const pressSeg = existing?.pressSeg ?? false;
+  const pressFull = existing?.pressFull ?? false;
 
   const base: HoleEntry = {
     hole,
@@ -51,6 +57,8 @@ function HoleBox({
     grossScores,
     hammer,
     forfeit,
+    pressSeg,
+    pressFull,
   };
   const commit = (patch: Partial<HoleEntry>) => upsertEntry(hole, patch, base);
 
@@ -85,8 +93,28 @@ function HoleBox({
           </div>
         </div>
 
-        {/* Hammer + forfeit toggles */}
+        {/* Press + hammer + forfeit toggles */}
         <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <button
+            onClick={() => commit({ pressSeg: !pressSeg })}
+            aria-label="Press — new bet on the rest of this nine"
+            style={pressSeg ? { background: PRESS, borderColor: PRESS } : undefined}
+            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+              pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            }`}
+          >
+            <Zap className="h-[15px] w-[15px]" />9
+          </button>
+          <button
+            onClick={() => commit({ pressFull: !pressFull })}
+            aria-label="Press — new bet on the rest of the round"
+            style={pressFull ? { background: PRESS, borderColor: PRESS } : undefined}
+            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+              pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            }`}
+          >
+            <Zap className="h-[15px] w-[15px]" />18
+          </button>
           <button
             onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
             aria-label="Hammer — double the hole"
@@ -330,6 +358,20 @@ export function ScoresTab({
     );
   }
 
+  // Press money: re-run Wolf over each press's holes. original = the base ledger.
+  const pressMoney = hasAnyPress(round)
+    ? computePressMoney(round, (r) => computeRound(r).ledger)
+    : null;
+  const pressStats: Record<string, Record<string, number>> = {};
+  if (pressMoney) {
+    for (const p of round.players) {
+      pressStats[p.id] = {
+        original: computation.ledger[p.id] ?? 0,
+        press: pressMoney[p.id] ?? 0,
+      };
+    }
+  }
+
   return (
     <div className="space-y-3">
       {/* Quick hole jumper: one thin row, scrolls sideways, pinned below the
@@ -354,6 +396,9 @@ export function ScoresTab({
         <h2 className="text-xl font-bold">Scores</h2>
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
+
+      {/* Live money — who's up / down on the original bet and the presses. */}
+      {pressMoney && <PressTable round={round} stats={pressStats} />}
 
       {round.course.holes.map((h) => (
         <HoleBox

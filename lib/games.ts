@@ -58,7 +58,10 @@ interface EntryRow {
   meta: {
     elevenPicks?: HoleEntry["elevenPicks"];
     fhActions?: HoleEntry["fhActions"];
-    nassauPress?: HoleEntry["nassauPress"];
+    pressSeg?: HoleEntry["pressSeg"];
+    pressFull?: HoleEntry["pressFull"];
+    /** Legacy: the original Nassau single-press flag (→ pressSeg). */
+    nassauPress?: boolean;
   } | null;
 }
 
@@ -73,7 +76,8 @@ function rowToEntry(r: EntryRow): HoleEntry {
     forfeit: r.forfeit ?? undefined,
     elevenPicks: r.meta?.elevenPicks ?? undefined,
     fhActions: r.meta?.fhActions ?? undefined,
-    nassauPress: r.meta?.nassauPress ?? undefined,
+    pressSeg: r.meta?.pressSeg ?? r.meta?.nassauPress ?? undefined,
+    pressFull: r.meta?.pressFull ?? undefined,
   };
 }
 
@@ -216,7 +220,8 @@ export async function saveEntry(gameId: string, entry: HoleEntry): Promise<void>
       meta: {
         elevenPicks: entry.elevenPicks ?? {},
         fhActions: entry.fhActions ?? {},
-        nassauPress: entry.nassauPress ?? false,
+        pressSeg: entry.pressSeg ?? false,
+        pressFull: entry.pressFull ?? false,
       },
       updated_at: new Date().toISOString(),
     },

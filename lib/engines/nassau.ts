@@ -28,36 +28,9 @@
 import { Round, PlayerId, computePops } from "../wolf";
 import { GameResult, GameHoleResult } from "./types";
 import { splitTeams } from "./teams";
+import { pressRange, pressScopesOf } from "./press";
 
 type SegKey = "front" | "back" | "overall";
-
-export interface NassauMoney {
-  front: number;
-  back: number;
-  overall: number;
-  original: number; // the three base bets combined
-  press: number; // every press bet combined
-  total: number; // original + press (== this player's ledger)
-}
-
-/** Pull a player's Nassau money split out of a GameResult's stats. */
-export function nassauMoney(
-  stats: Record<string, Record<string, number | string>> | undefined,
-  pid: string
-): NassauMoney {
-  const s = stats?.[pid] ?? {};
-  const num = (k: string) => Number(s[k] ?? 0);
-  const original = num("original");
-  const press = num("press");
-  return {
-    front: num("front"),
-    back: num("back"),
-    overall: num("overall"),
-    original,
-    press,
-    total: original + press,
-  };
-}
 
 export function computeNassau(round: Round): GameResult {
   const { players, course, settings } = round;
@@ -165,13 +138,12 @@ export function computeNassau(round: Round): GameResult {
       settleBet(backNums, (id, amt) => (base[id].back += amt));
       settleBet(holeNums, (id, amt) => (base[id].overall += amt));
 
-      // Presses: each flagged hole opens a fresh bet over the remaining holes of
-      // that hole's nine, all bucketed into `press`.
-      for (const n of holeNums) {
-        if (!entryByHole.get(n)?.nassauPress) continue;
-        const inFront = n <= 9;
-        const pressHoles = (inFront ? frontNums : backNums).filter((h) => h >= n);
-        settleBet(pressHoles, (id, amt) => (press[id] += amt));
+      // Presses: each flagged hole opens a fresh match-play bet over the rest of
+      // its nine ("seg") and/or the rest of the round ("full"), into `press`.
+      for (const e of round.entries) {
+        for (const scope of pressScopesOf(e)) {
+          settleBet(pressRange(round, e.hole, scope), (id, amt) => (press[id] += amt));
+        }
       }
     }
   }

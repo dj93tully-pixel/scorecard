@@ -6,13 +6,15 @@
 
 "use client";
 
-import { Hammer, Flag } from "lucide-react";
+import { Hammer, Flag, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame } from "@/lib/gametypes";
 import { formatMoney } from "@/lib/storage";
+import { PressTable, hasAnyPress } from "../PressBreakdown";
 
 const HAMMER_COLOR = "#7C3AED"; // purple
 const FORFEIT_COLOR = "#06B6A4"; // teal
+const PRESS_COLOR = "#E8590C"; // burnt orange
 
 function HoleCard({
   round,
@@ -33,7 +35,18 @@ function HoleCard({
   const grossScores = existing?.grossScores ?? {};
   const fhActions = existing?.fhActions ?? {};
   const hammer = existing?.hammer ?? 0;
-  const base: HoleEntry = { hole, wolfId: "", mode: "2v2", grossScores, fhActions, hammer };
+  const pressSeg = existing?.pressSeg ?? false;
+  const pressFull = existing?.pressFull ?? false;
+  const base: HoleEntry = {
+    hole,
+    wolfId: "",
+    mode: "2v2",
+    grossScores,
+    fhActions,
+    hammer,
+    pressSeg,
+    pressFull,
+  };
   const first = (id: string) =>
     (players.find((p) => p.id === id)?.name || "—").split(" ")[0];
 
@@ -62,7 +75,27 @@ function HoleCard({
             Par {courseHole?.par ?? "–"} · Hcp {courseHole?.strokeIndex ?? "–"}
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <button
+            onClick={() => upsertEntry(hole, { pressSeg: !pressSeg }, base)}
+            aria-label="Press — new bet on the rest of this nine"
+            style={pressSeg ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
+            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+              pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            }`}
+          >
+            <Zap className="h-[15px] w-[15px]" />9
+          </button>
+          <button
+            onClick={() => upsertEntry(hole, { pressFull: !pressFull }, base)}
+            aria-label="Press — new bet on the rest of the round"
+            style={pressFull ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
+            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+              pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            }`}
+          >
+            <Zap className="h-[15px] w-[15px]" />18
+          </button>
           <button
             onClick={() => setHammer(1)}
             aria-label="Hammer — double the hole"
@@ -181,9 +214,8 @@ export function FieldHammerScores({
   }
 
   const pops = computePops(round.players, round.course, round.settings.handicapMode);
-  const deltasByHole = new Map(
-    computeGame(round).holeResults.map((r) => [r.hole, r.deltas])
-  );
+  const result = computeGame(round);
+  const deltasByHole = new Map(result.holeResults.map((r) => [r.hole, r.deltas]));
 
   return (
     <div className="space-y-3">
@@ -207,6 +239,9 @@ export function FieldHammerScores({
         <h2 className="text-xl font-bold">Hammerskin</h2>
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
+
+      {/* Live money — who's up / down on the original bet and the presses. */}
+      {hasAnyPress(round) && <PressTable round={round} stats={result.stats} />}
 
       {round.course.holes.map((h) => (
         <HoleCard

@@ -10,7 +10,7 @@ import { ChevronDown } from "lucide-react";
 import { Round, Player } from "@/lib/wolf";
 import { gameTypeOf } from "@/lib/gametypes";
 import { formatMoney, formatToPar } from "@/lib/storage";
-import { NassauTriple, NassauTable } from "./nassau/NassauBreakdown";
+import { PressTriple, PressTable, hasAnyPress } from "./PressBreakdown";
 
 // Minimal shape the Card view needs — satisfied by both Wolf's RoundComputation
 // and the generic GameResult, so this one component serves every game type.
@@ -450,6 +450,8 @@ function LedgerCard({
   const chosen = isElevens ? elevenChosen(round, computation, player.id) : null;
   // Nassau: this player's front / back / overall money (from engine stats).
   const nassau = isNassau ? computation.stats?.[player.id] : undefined;
+  // Original / press / total breakdown whenever a press is in play (or Nassau).
+  const showPress = isNassau || hasAnyPress(round);
 
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -515,36 +517,38 @@ function LedgerCard({
             {!scoresOnly && <span className="text-[10px] text-text-faint">swipe ←→</span>}
           </div>
 
-          {/* Nassau: per-bet money — front/back/overall, then original/press/total. */}
-          {isNassau && nassau && (
+          {/* Money breakdown: Nassau's front/back/overall, then original/press/total. */}
+          {showPress && (
             <div className="mb-2 space-y-2">
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  ["Front", "front"],
-                  ["Back", "back"],
-                  ["Overall", "overall"],
-                ] as const).map(([label, key]) => {
-                  const v = Number(nassau[key] ?? 0);
-                  return (
-                    <div
-                      key={key}
-                      className="rounded-lg bg-card-bg px-2 py-1.5 text-center"
-                      style={{ border: `1px solid ${HAIRLINE}` }}
-                    >
-                      <div className="text-[9px] font-bold uppercase tracking-wide text-text-faint">
-                        {label}
-                      </div>
+              {isNassau && nassau && (
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    ["Front", "front"],
+                    ["Back", "back"],
+                    ["Overall", "overall"],
+                  ] as const).map(([label, key]) => {
+                    const v = Number(nassau[key] ?? 0);
+                    return (
                       <div
-                        className="font-serif text-sm font-bold tabular-nums"
-                        style={{ color: v > 0 ? POS : v < 0 ? NEG : MUTED }}
+                        key={key}
+                        className="rounded-lg bg-card-bg px-2 py-1.5 text-center"
+                        style={{ border: `1px solid ${HAIRLINE}` }}
                       >
-                        {formatMoney(v)}
+                        <div className="text-[9px] font-bold uppercase tracking-wide text-text-faint">
+                          {label}
+                        </div>
+                        <div
+                          className="font-serif text-sm font-bold tabular-nums"
+                          style={{ color: v > 0 ? POS : v < 0 ? NEG : MUTED }}
+                        >
+                          {formatMoney(v)}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <NassauTriple stats={computation.stats} pid={player.id} />
+                    );
+                  })}
+                </div>
+              )}
+              <PressTriple stats={computation.stats} pid={player.id} />
             </div>
           )}
 
@@ -630,11 +634,11 @@ export function CardTab({
         <Totals round={round} computation={computation} net={net} />
       </section>
 
-      {/* Nassau: original / press / total money for every player. */}
-      {gt === "nassau" && (
+      {/* Original / press / total money — shown once any press is in play. */}
+      {(gt === "nassau" || hasAnyPress(round)) && (
         <section className="space-y-3">
           <h2 className="text-xl font-bold">Money — original / press / total</h2>
-          <NassauTable round={round} stats={computation.stats} />
+          <PressTable round={round} stats={computation.stats} />
         </section>
       )}
     </div>

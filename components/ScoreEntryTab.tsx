@@ -9,7 +9,7 @@
 import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
-import { NassauTable } from "./nassau/NassauBreakdown";
+import { PressTable, hasAnyPress } from "./PressBreakdown";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
 
@@ -40,7 +40,8 @@ function HoleCard({
   const hammer = existing?.hammer ?? 0;
   const forfeit = existing?.forfeit;
   const elevenPicks = existing?.elevenPicks ?? {};
-  const pressed = existing?.nassauPress ?? false;
+  const pressSeg = existing?.pressSeg ?? false;
+  const pressFull = existing?.pressFull ?? false;
 
   const base: HoleEntry = {
     hole,
@@ -50,7 +51,8 @@ function HoleCard({
     hammer,
     forfeit,
     elevenPicks,
-    nassauPress: pressed,
+    pressSeg,
+    pressFull,
   };
   const commit = (patch: Partial<HoleEntry>) => upsertEntry(hole, patch, base);
 
@@ -62,9 +64,11 @@ function HoleCard({
   const eleven = gt === "elevens";
   // Segment/total games settle on totals, not per hole — no per-hole money note.
   const noHoleMoney = gt === "elevens" || gt === "nassau";
-  // Nassau (team format) can press: a per-hole "new bet on the rest of this
-  // segment" button. Round-robin has no two fixed sides to press, so no button.
-  const canPress = gt === "nassau" && (round.settings.nassauFormat ?? "teams") === "teams";
+  // Press is in every game except 11s (Nassau needs two fixed sides → teams only).
+  const canPress =
+    gt !== "elevens" &&
+    !(gt === "nassau" && (round.settings.nassauFormat ?? "teams") === "robin");
+  const segLabel = gt === "sixes" ? "6" : "9"; // press the rest of this six / nine
 
   // 11s: toggle whether this player is counting this hole toward their score.
   function togglePick(pid: string) {
@@ -88,20 +92,33 @@ function HoleCard({
           </div>
         </div>
 
-        {/* Hammer (2×/4×) + forfeit (concede) toggles, or Nassau press. */}
+        {/* Press (rest of this nine/six, rest of 18), hammer, forfeit toggles. */}
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           {canPress && (
-            <button
-              onClick={() => commit({ nassauPress: !pressed })}
-              aria-label="Press — new bet on the rest of this nine"
-              style={pressed ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
-              className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[13px] font-bold ${
-                pressed ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-              }`}
-            >
-              <Zap className="h-[15px] w-[15px]" />
-              Press
-            </button>
+            <>
+              <button
+                onClick={() => commit({ pressSeg: !pressSeg })}
+                aria-label={`Press — new bet on the rest of this ${segLabel === "6" ? "six" : "nine"}`}
+                style={pressSeg ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
+                className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+                  pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                }`}
+              >
+                <Zap className="h-[15px] w-[15px]" />
+                {segLabel}
+              </button>
+              <button
+                onClick={() => commit({ pressFull: !pressFull })}
+                aria-label="Press — new bet on the rest of the round"
+                style={pressFull ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
+                className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+                  pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+                }`}
+              >
+                <Zap className="h-[15px] w-[15px]" />
+                18
+              </button>
+            </>
           )}
           {hammerable && (
             <>
@@ -295,6 +312,8 @@ export function ScoreEntryTab({
   const resultByHole = new Map(result.holeResults.map((r) => [r.hole, r]));
   const isElevens = gameTypeOf(round) === "elevens";
   const isNassau = gameTypeOf(round) === "nassau";
+  // Show the original/press/total money table once a press is live (or Nassau).
+  const showPress = isNassau || hasAnyPress(round);
 
   // 11s: each player's running number of declared (checked) holes, of 11.
   const pickCounts: Record<string, number> = {};
@@ -329,8 +348,8 @@ export function ScoreEntryTab({
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
 
-      {/* Nassau: live money — who's up / down on the original bets and presses. */}
-      {isNassau && <NassauTable round={round} stats={result.stats} />}
+      {/* Live money — who's up / down on the original bet and the presses. */}
+      {showPress && <PressTable round={round} stats={result.stats} />}
 
       {round.course.holes.map((h) => (
         <HoleCard
