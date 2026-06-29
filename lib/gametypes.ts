@@ -11,6 +11,7 @@ import { computeBestBall } from "./engines/bestball";
 import { computeVegas } from "./engines/vegas";
 import { computeSixes } from "./engines/sixes";
 import { computeStroke } from "./engines/strokeplay";
+import { computeElevens } from "./engines/elevens";
 import { splitTeams } from "./engines/teams";
 
 export interface StatColumn {
@@ -94,6 +95,16 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     statColumns: [{ key: "strokes", label: "Net", kind: "number" }],
     defaultSettings: { stake: 1 },
   },
+  elevens: {
+    id: "elevens",
+    label: "11s",
+    blurb: "Pick 11 of 18 holes for your score; declare each hole as you play.",
+    players: { min: 2, max: 6 },
+    hasTeams: false,
+    rotatesTeams: false,
+    statColumns: [{ key: "picks", label: "Picks", kind: "number" }],
+    defaultSettings: { stake: 1 },
+  },
 };
 
 export const GAME_TYPE_LIST: GameTypeMeta[] = [
@@ -103,6 +114,7 @@ export const GAME_TYPE_LIST: GameTypeMeta[] = [
   GAME_TYPES.vegas,
   GAME_TYPES.sixes,
   GAME_TYPES.stroke,
+  GAME_TYPES.elevens,
 ];
 
 export function gameTypeOf(round: Round): GameTypeId {
@@ -125,6 +137,8 @@ export function computeGame(round: Round): GameResult {
       return computeSixes(round);
     case "stroke":
       return computeStroke(round);
+    case "elevens":
+      return computeElevens(round);
     default:
       return { ledger: {}, pops: {}, holeResults: [], stats: {} };
   }

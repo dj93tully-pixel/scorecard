@@ -451,8 +451,15 @@ export function SetupTab({
           {(isWolf ||
             gameType === "bestball" ||
             gameType === "sixes" ||
-            gameType === "stroke") && (
-            <Field label={gameType === "stroke" ? "$ per stroke" : "Stake — $/hole"}>
+            gameType === "stroke" ||
+            gameType === "elevens") && (
+            <Field
+              label={
+                gameType === "stroke" || gameType === "elevens"
+                  ? "$ per stroke"
+                  : "Stake — $/hole"
+              }
+            >
               <input
                 type="number"
                 min={0}
@@ -533,7 +540,7 @@ export function SetupTab({
               </Field>
             </>
           )}
-          {gameType !== "vegas" && gameType !== "stroke" && (
+          {gameType !== "vegas" && gameType !== "stroke" && gameType !== "elevens" && (
             <Field label="Carryover ties">
               <input
                 type="checkbox"

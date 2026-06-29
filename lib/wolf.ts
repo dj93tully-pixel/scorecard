@@ -68,7 +68,8 @@ export type GameTypeId =
   | "bestball"
   | "vegas"
   | "sixes"
-  | "stroke";
+  | "stroke"
+  | "elevens";
 
 export interface HoleEntry {
   hole: number; // 1..18
@@ -83,6 +84,11 @@ export interface HoleEntry {
    * wins regardless of net scores. "A" = wolf side concedes, "B" = field concedes.
    */
   forfeit?: "A" | "B";
+  /**
+   * 11s only: per-player "I'm counting this hole" flag. Each player picks 11 of
+   * 18 holes; only the holes they check count. Persisted in game_entries.meta.
+   */
+  elevenPicks?: Record<PlayerId, boolean>;
 }
 
 export interface Round {

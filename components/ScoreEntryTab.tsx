@@ -6,13 +6,14 @@
 
 "use client";
 
-import { Hammer, Flag } from "lucide-react";
+import { Hammer, Flag, Check } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
 
 const HAMMER_COLOR = "#7C3AED"; // vibrant purple, matches the Wolf Scores tab
+const PICK_COLOR = "#2BC081"; // green check for an 11s hole the player is counting
 
 function HoleCard({
   round,
@@ -34,6 +35,7 @@ function HoleCard({
   const grossScores = existing?.grossScores ?? {};
   const hammer = existing?.hammer ?? 0;
   const forfeit = existing?.forfeit;
+  const elevenPicks = existing?.elevenPicks ?? {};
 
   const base: HoleEntry = {
     hole,
@@ -42,14 +44,24 @@ function HoleCard({
     grossScores,
     hammer,
     forfeit,
+    elevenPicks,
   };
   const commit = (patch: Partial<HoleEntry>) => upsertEntry(hole, patch, base);
 
   // Forfeit (one side concedes) only makes sense for the two-team match games.
-  // Hammer applies to every game except stroke play.
+  // Hammer applies everywhere except stroke play and 11s (which has neither).
   const gt = gameTypeOf(round);
   const forfeitable = gt === "bestball" || gt === "sixes";
-  const hammerable = gt !== "stroke";
+  const hammerable = gt !== "stroke" && gt !== "elevens";
+  const eleven = gt === "elevens";
+
+  // 11s: toggle whether this player is counting this hole toward their score.
+  function togglePick(pid: string) {
+    const next = { ...elevenPicks };
+    if (next[pid]) delete next[pid];
+    else next[pid] = true;
+    commit({ elevenPicks: next });
+  }
 
   return (
     <div
@@ -147,6 +159,25 @@ function HoleCard({
                 )}
               </div>
 
+              {eleven && (
+                <button
+                  onClick={() => togglePick(p.id)}
+                  aria-label={`${p.name || "Player"} counts this hole`}
+                  style={
+                    elevenPicks[p.id]
+                      ? { background: PICK_COLOR, borderColor: PICK_COLOR }
+                      : undefined
+                  }
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                    elevenPicks[p.id]
+                      ? "text-on-dark"
+                      : "border-card-border bg-card-bg text-text-faint"
+                  }`}
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+              )}
+
               <input
                 type="number"
                 inputMode="numeric"
@@ -217,9 +248,9 @@ export function ScoreEntryTab({
   }
 
   const pops = computePops(round.players, round.course, round.settings.handicapMode);
-  const resultByHole = new Map(
-    computeGame(round).holeResults.map((r) => [r.hole, r])
-  );
+  const result = computeGame(round);
+  const resultByHole = new Map(result.holeResults.map((r) => [r.hole, r]));
+  const isElevens = gameTypeOf(round) === "elevens";
 
   return (
     <div className="space-y-3">
@@ -244,6 +275,40 @@ export function ScoreEntryTab({
         <h2 className="text-xl font-bold">{meta.label}</h2>
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
+
+      {/* 11s: running pick count (need 11) + selected-hole score per player. */}
+      {isElevens && (
+        <div className="rounded-xl border border-card-border bg-card-bg px-3 py-2 text-xs">
+          <div className="mb-1 font-semibold uppercase tracking-wide text-text-muted">
+            Picks (need 11) · score
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {round.players.map((p) => {
+              const picks = Number(result.stats[p.id]?.picks ?? 0);
+              const sc = Number(result.stats[p.id]?.score ?? 0);
+              return (
+                <span key={p.id} className="tabular-nums">
+                  <span className="font-medium text-text-primary">
+                    {(p.name || "?").split(" ")[0]}
+                  </span>{" "}
+                  <span
+                    className={
+                      picks === 11
+                        ? "font-bold text-positive"
+                        : picks > 11
+                          ? "font-bold text-negative"
+                          : "text-text-muted"
+                    }
+                  >
+                    {picks}/11
+                  </span>
+                  <span className="text-text-faint"> · {sc}</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {round.course.holes.map((h) => (
         <HoleCard

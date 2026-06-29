@@ -11,6 +11,7 @@ import { computeBestBall } from "./bestball";
 import { computeVegas } from "./vegas";
 import { computeSixes } from "./sixes";
 import { computeStroke } from "./strokeplay";
+import { computeElevens } from "./elevens";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -227,6 +228,60 @@ describe("stroke play", () => {
     expect(ledger.a).toBe(8); // 4 strokes × $2
     expect(ledger.d).toBe(-8);
     expect(sum(ledger)).toBe(0);
+  });
+});
+
+// ── 11s ──────────────────────────────────────────────────────────────────────
+
+describe("elevens", () => {
+  it("only counts checked holes; settles a dollar a stroke among checkers", () => {
+    const round = makeRound(
+      "elevens",
+      scratch(["a", "b", "c", "d"]),
+      [
+        // a, b, c check the hole (d doesn't): settle among the three.
+        {
+          hole: 1,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 3, b: 4, c: 5, d: 2 },
+          elevenPicks: { a: true, b: true, c: true },
+        },
+      ],
+      { stake: 1 }
+    );
+    const { ledger, stats } = computeElevens(round);
+    // Among a(3), b(4), c(5): a +3, b 0, c -3. d didn't check → 0.
+    expect(ledger.a).toBe(3); // (4-3)+(5-3)
+    expect(ledger.b).toBe(0);
+    expect(ledger.c).toBe(-3);
+    expect(ledger.d).toBe(0);
+    expect(stats.a.picks).toBe(1);
+    expect(stats.a.score).toBe(3);
+    expect(stats.d.picks).toBe(0); // d didn't count this hole
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("a hole with fewer than two checkers moves no money", () => {
+    const round = makeRound(
+      "elevens",
+      scratch(["a", "b", "c", "d"]),
+      [
+        {
+          hole: 1,
+          wolfId: "",
+          mode: "2v2",
+          grossScores: { a: 3, b: 4, c: 5, d: 6 },
+          elevenPicks: { a: true }, // only a counts it
+        },
+      ],
+      { stake: 1 }
+    );
+    const { ledger, stats } = computeElevens(round);
+    expect(sum(ledger)).toBe(0);
+    expect(Object.values(ledger).every((v) => v === 0)).toBe(true);
+    expect(stats.a.score).toBe(3); // still counts toward a's score
+    expect(stats.a.picks).toBe(1);
   });
 });
 
