@@ -401,19 +401,19 @@ function LedgerCard({
   const money = computation.ledger[player.id] ?? 0;
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
   let toPar: number | null = null;
-  let total = 0; // gross total over played holes
   for (const e of round.entries) {
     const g = e.grossScores[player.id];
     if (typeof g === "number") {
       // Blue +/- follows the shared gross/net toggle (net = gross − pops).
       const s = scoreNet ? g - (computation.pops[player.id]?.[e.hole] ?? 0) : g;
       toPar = (toPar ?? 0) + s - (parByHole.get(e.hole) ?? s);
-      total += g;
     }
   }
   const moneyColor = money > 0 ? "text-positive" : money < 0 ? "text-negative" : "text-text-muted";
-  // 11s: net score over the player's chosen holes, shown as a blue badge.
-  const chosen = gameTypeOf(round) === "elevens" ? elevenChosen(round, computation, player.id) : null;
+  // 11s is a total game (no per-hole money), so its dropdown is scores-only.
+  const isElevens = gameTypeOf(round) === "elevens";
+  // 11s: net-to-par over the player's chosen holes, shown as a blue badge.
+  const chosen = isElevens ? elevenChosen(round, computation, player.id) : null;
 
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -426,6 +426,7 @@ function LedgerCard({
     const t = e.changedTouches[0];
     const dx = t.clientX - s.x;
     if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(t.clientY - s.y)) return;
+    if (isElevens) return; // scores-only — no money view to swipe to
     setView(dx < 0 ? "money" : "scores");
   }
 
@@ -449,9 +450,6 @@ function LedgerCard({
         <span className={`font-serif text-lg font-extrabold tabular-nums ${moneyColor}`}>
           {formatMoney(money)}
         </span>
-        <span className="shrink-0 text-[11px] font-bold tabular-nums text-text-muted">
-          TOT: {total || "–"}
-        </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`}
         />
@@ -466,7 +464,7 @@ function LedgerCard({
         >
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {(["scores", "money"] as const).map((v) => (
+              {(isElevens ? (["scores"] as const) : (["scores", "money"] as const)).map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
@@ -496,7 +494,7 @@ function LedgerCard({
                 </div>
               )}
             </div>
-            <span className="text-[10px] text-text-faint">swipe ←→</span>
+            {!isElevens && <span className="text-[10px] text-text-faint">swipe ←→</span>}
           </div>
 
           <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
