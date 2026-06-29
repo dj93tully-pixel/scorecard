@@ -8,7 +8,8 @@
 
 import { Hammer, Flag, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
-import { computeGame } from "@/lib/gametypes";
+import { computeBaseGame } from "@/lib/gametypes";
+import { combinedHoleResults, pressedHoles } from "@/lib/engines/press";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
 import { CrossHammer } from "../CrossHammer";
@@ -22,12 +23,14 @@ function HoleCard({
   pops,
   hole,
   deltas,
+  pressed,
   upsertEntry,
 }: {
   round: Round;
   pops: Record<string, Record<number, number>>;
   hole: number;
   deltas: Record<string, number>;
+  pressed?: boolean; // this hole is covered by a press (highlight it)
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
   const { players, course } = round;
@@ -67,7 +70,7 @@ function HoleCard({
       id={`hole-${hole}`}
       style={{
         scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)",
-        ...holeHighlight(pressSeg || pressFull, hammer > 0),
+        ...holeHighlight(!!pressed, hammer > 0),
       }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
@@ -219,8 +222,13 @@ export function FieldHammerScores({
   }
 
   const pops = computePops(round.players, round.course, round.settings.handicapMode);
-  const result = computeGame(round);
-  const deltasByHole = new Map(result.holeResults.map((r) => [r.hole, r.deltas]));
+  // Per-hole money = base round-robin + any press money on that hole.
+  const combined = combinedHoleResults(round, (r) => {
+    const g = computeBaseGame(r);
+    return { ledger: g.ledger, holeResults: g.holeResults };
+  });
+  const deltasByHole = new Map(combined.map((r) => [r.hole, r.deltas]));
+  const pressCover = pressedHoles(round);
 
   return (
     <div className="space-y-3">
@@ -252,6 +260,7 @@ export function FieldHammerScores({
           pops={pops}
           hole={h.number}
           deltas={deltasByHole.get(h.number) ?? {}}
+          pressed={pressCover.has(h.number)}
           upsertEntry={upsertEntry}
         />
       ))}

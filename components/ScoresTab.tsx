@@ -12,7 +12,9 @@ import {
   RoundComputation,
   HoleEntry,
   defaultWolfForHole,
+  computeRound,
 } from "@/lib/wolf";
+import { combinedHoleResults, pressedHoles } from "@/lib/engines/press";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
 import { CrossHammer } from "./CrossHammer";
@@ -26,11 +28,15 @@ function HoleBox({
   round,
   computation,
   hole,
+  deltas,
+  pressed,
   upsertEntry,
 }: {
   round: Round;
   computation: RoundComputation;
   hole: number;
+  deltas: Record<string, number>; // per-hole money (base + press)
+  pressed?: boolean; // this hole is covered by a press (highlight it)
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
   const { players, teeOrder, course } = round;
@@ -82,7 +88,7 @@ function HoleBox({
       id={`hole-${hole}`}
       style={{
         scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)",
-        ...holeHighlight(pressSeg || pressFull, hammer > 0),
+        ...holeHighlight(!!pressed, hammer > 0),
       }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
@@ -234,7 +240,7 @@ function HoleBox({
           const onTeamA = isWolf || isPartner;
           const myPops = computation.pops[p.id]?.[hole] ?? 0;
           const score = grossScores[p.id];
-          const delta = result?.deltas[p.id] ?? 0;
+          const delta = deltas[p.id] ?? 0;
           // This player's side conceded → scores aren't needed.
           const conceded =
             (forfeit === "A" && onTeamA) || (forfeit === "B" && !onTeamA);
@@ -318,7 +324,9 @@ function HoleBox({
                 <span className="text-text-muted">{2 ** hammer}× · </span>
               )}
               {result.winner === "A" ? "Wolf" : "Field"} wins{" "}
-              <span className="text-positive">${result.pot}</span>
+              <span className="text-positive">
+                ${Object.values(deltas).reduce((s, v) => (v > 0 ? s + v : s), 0)}
+              </span>
               {forfeit && <span className="font-medium text-text-muted"> · forfeit</span>}
             </span>
           )}
@@ -361,6 +369,23 @@ export function ScoresTab({
     );
   }
 
+  // Per-hole money = base Wolf result + any press money on that hole.
+  const moneyByHole = new Map(
+    combinedHoleResults(round, (r) => {
+      const c = computeRound(r);
+      return {
+        ledger: c.ledger,
+        holeResults: c.results.map((rr) => ({
+          hole: rr.hole,
+          deltas: rr.deltas,
+          detail: "",
+          decided: rr.winner !== "push",
+        })),
+      };
+    }).map((r) => [r.hole, r.deltas])
+  );
+  const pressCover = pressedHoles(round);
+
   return (
     <div className="space-y-3">
       {/* Quick hole jumper: one thin row, scrolls sideways, pinned below the
@@ -392,6 +417,8 @@ export function ScoresTab({
           round={round}
           computation={computation}
           hole={h.number}
+          deltas={moneyByHole.get(h.number) ?? {}}
+          pressed={pressCover.has(h.number)}
           upsertEntry={upsertEntry}
         />
       ))}

@@ -8,7 +8,8 @@
 
 import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
-import { computeGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
+import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
+import { combinedHoleResults, pressedHoles } from "@/lib/engines/press";
 import { holeHighlight } from "@/lib/holeHighlight";
 import { CrossHammer } from "./CrossHammer";
 import { GameHoleResult } from "@/lib/engines/types";
@@ -24,6 +25,7 @@ function HoleCard({
   hole,
   note,
   pickCounts,
+  pressed,
   upsertEntry,
 }: {
   round: Round;
@@ -31,6 +33,7 @@ function HoleCard({
   hole: number;
   note?: GameHoleResult;
   pickCounts?: Record<string, number>; // 11s: each player's running picks (of 11)
+  pressed?: boolean; // this hole is covered by a press (highlight it)
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
   const { players, course } = round;
@@ -84,7 +87,7 @@ function HoleCard({
       id={`hole-${hole}`}
       style={{
         scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)",
-        ...holeHighlight(pressSeg || pressFull, hammer > 0),
+        ...holeHighlight(!!pressed, hammer > 0),
       }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
@@ -315,8 +318,14 @@ export function ScoreEntryTab({
   }
 
   const pops = computePops(round.players, round.course, round.settings.handicapMode);
-  const result = computeGame(round);
-  const resultByHole = new Map(result.holeResults.map((r) => [r.hole, r]));
+  // Per-hole money = base bet + any press money landing on that hole.
+  const combined = combinedHoleResults(round, (r) => {
+    const g = computeBaseGame(r);
+    return { ledger: g.ledger, holeResults: g.holeResults };
+  });
+  const resultByHole = new Map(combined.map((r) => [r.hole, r]));
+  // Holes any press covers — highlighted, not just the hole it was tapped on.
+  const pressCover = pressedHoles(round);
   const isElevens = gameTypeOf(round) === "elevens";
 
   // 11s: each player's running number of declared (checked) holes, of 11.
@@ -360,6 +369,7 @@ export function ScoreEntryTab({
           hole={h.number}
           note={resultByHole.get(h.number)}
           pickCounts={pickCounts}
+          pressed={pressCover.has(h.number)}
           upsertEntry={upsertEntry}
         />
       ))}

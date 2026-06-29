@@ -13,7 +13,7 @@ import { computeSixes } from "./sixes";
 import { computeStroke } from "./strokeplay";
 import { computeElevens } from "./elevens";
 import { computeNassau } from "./nassau";
-import { withPresses, pressRange } from "./press";
+import { withPresses, pressRange, combinedHoleResults } from "./press";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -520,6 +520,28 @@ describe("press", () => {
       pressCarryover: false,
     });
     expect(withPresses(off, computeSkins).stats.a.press).toBe(5);
+  });
+
+  it("combinedHoleResults sums base + press money on each hole", () => {
+    const entries = Array.from({ length: 18 }, (_, i) => {
+      const h = i + 1;
+      const grossScores = h === 18 ? { a: 4, b: 5 } : { a: 4, b: 4 };
+      return {
+        hole: h,
+        wolfId: "",
+        mode: "2v2" as const,
+        grossScores,
+        ...(h === 16 ? { pressSeg: true } : {}),
+      };
+    });
+    const round = makeRound("stroke", scratch(["a", "b"]), entries, { stake: 1 });
+    const combined = combinedHoleResults(round, (r) => {
+      const g = computeStroke(r);
+      return { ledger: g.ledger, holeResults: g.holeResults };
+    });
+    const h18 = combined.find((r) => r.hole === 18)!;
+    expect(h18.deltas.a).toBe(2); // base +1 + press +1
+    expect(h18.deltas.b).toBe(-2);
   });
 });
 

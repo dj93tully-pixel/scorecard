@@ -12,7 +12,7 @@
 // presses itself (match play per segment); 11s has no press.
 
 import { Round, PlayerId } from "../wolf";
-import { GameResult } from "./types";
+import { GameResult, GameHoleResult } from "./types";
 
 export type PressScope = "seg" | "full";
 
@@ -172,6 +172,25 @@ export function decomposePresses(
   });
 
   return { base, press: { ledger: pressLedger, holeResults: pressHoleResults } };
+}
+
+/**
+ * Per-hole results with the base bet AND the press bets combined, so a score
+ * tab's per-hole money note shows the total moved on that hole (original +
+ * press), not just the original.
+ */
+export function combinedHoleResults(
+  round: Round,
+  run: (r: Round) => RunResult
+): GameHoleResult[] {
+  const { base, press } = decomposePresses(round, run);
+  const pByHole = new Map(press.holeResults.map((r) => [r.hole, r.deltas]));
+  return base.holeResults.map((hr) => {
+    const pr = pByHole.get(hr.hole);
+    const deltas = { ...hr.deltas };
+    if (pr) for (const id of Object.keys(pr)) deltas[id] = (deltas[id] ?? 0) + (pr[id] ?? 0);
+    return { hole: hr.hole, deltas, detail: hr.detail ?? "", decided: hr.decided ?? false };
+  });
 }
 
 export interface PressSplit {
