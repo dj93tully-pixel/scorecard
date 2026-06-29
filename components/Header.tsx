@@ -91,7 +91,7 @@ export function Header() {
         <WolfLogo className="h-7 w-7 shrink-0 text-accent-on-dark" />
         <div className="min-w-0 flex-1 leading-tight">
           <h1 className="truncate text-lg font-bold uppercase tracking-[0.18em]">
-            {config.title || "WOLF"}
+            {config.title || "Lunchball"}
           </h1>
         </div>
         <div className="flex shrink-0 items-center gap-2">

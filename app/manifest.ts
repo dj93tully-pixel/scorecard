@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
 
-// Minimal PWA manifest so Wolf can be added to a phone's home screen.
+// Minimal PWA manifest so Lunchball can be added to a phone's home screen.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Wolf — Golf Money Game",
-    short_name: "Wolf",
-    description: "Track scores, pops, and the Wolf money game live on the course.",
+    name: "Lunchball — Golf Money Games",
+    short_name: "Lunchball",
+    description: "Track scores, pops, and golf money games live on the course.",
     start_url: "/",
     display: "standalone",
     background_color: "#0C0C0E",
