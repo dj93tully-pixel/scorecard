@@ -176,6 +176,11 @@ function HoleCard({
                     ))}
                   </span>
                 )}
+                {typeof score === "number" && (
+                  <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-bold tabular-nums text-primary">
+                    net {score - myPops}
+                  </span>
+                )}
               </div>
 
               {eleven && (
