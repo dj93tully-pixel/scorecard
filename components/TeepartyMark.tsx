@@ -11,8 +11,11 @@ export function TeepartyMark({
   className?: string;
 }) {
   return (
+    // viewBox framed tight on the glyph (ball top ≈33, cup bottom ≈80) so the cup
+    // sits vertically centered and fills the box — the full 0–100 box leaves it
+    // low, with empty space above the cup.
     <svg
-      viewBox="0 0 100 100"
+      viewBox="29.5 30 53 53"
       width={size}
       height={size}
       className={className}
