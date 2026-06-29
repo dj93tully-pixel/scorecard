@@ -473,7 +473,7 @@ function LedgerCard({
                 </button>
               ))}
               {view === "scores" && (
-                <div className="ml-1 inline-flex rounded-full bg-divider p-[2px] text-[9px] font-bold">
+                <div className="ml-1 inline-flex rounded-full bg-divider p-px text-[9px] font-bold leading-none">
                   {(["gross", "net"] as const).map((g) => (
                     <button
                       key={g}
@@ -481,7 +481,7 @@ function LedgerCard({
                       style={
                         scoreNet === (g === "net") ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined
                       }
-                      className={`rounded-full px-2 py-0.5 uppercase ${
+                      className={`rounded-full px-1.5 py-[3px] uppercase ${
                         scoreNet === (g === "net") ? "bg-white text-accent-on-light" : "text-text-faint"
                       }`}
                     >
