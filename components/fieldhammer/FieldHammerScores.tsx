@@ -91,7 +91,6 @@ function HoleCard({
         {players.map((p) => {
           const gross = grossScores[p.id];
           const pop = pops[p.id]?.[hole] ?? 0;
-          const net = typeof gross === "number" ? gross - pop : null;
           const forfeited = fhActions[p.id] === "forfeit";
           return (
             <div key={p.id} className="flex items-center gap-2">
@@ -103,9 +102,6 @@ function HoleCard({
                       <span key={i} className="h-[5px] w-[5px] rounded-full bg-primary" />
                     ))}
                   </span>
-                )}
-                {net !== null && (
-                  <span className="shrink-0 text-xs text-text-faint tabular-nums">net {net}</span>
                 )}
               </div>
 
