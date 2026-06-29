@@ -9,7 +9,6 @@
 import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
-import { PressTable, hasAnyPress } from "./PressBreakdown";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
 
@@ -311,9 +310,6 @@ export function ScoreEntryTab({
   const result = computeGame(round);
   const resultByHole = new Map(result.holeResults.map((r) => [r.hole, r]));
   const isElevens = gameTypeOf(round) === "elevens";
-  const isNassau = gameTypeOf(round) === "nassau";
-  // Show the original/press/total money table once a press is live (or Nassau).
-  const showPress = isNassau || hasAnyPress(round);
 
   // 11s: each player's running number of declared (checked) holes, of 11.
   const pickCounts: Record<string, number> = {};
@@ -347,9 +343,6 @@ export function ScoreEntryTab({
         <h2 className="text-xl font-bold">{meta.label}</h2>
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
-
-      {/* Live money — who's up / down on the original bet and the presses. */}
-      {showPress && <PressTable round={round} stats={result.stats} />}
 
       {round.course.holes.map((h) => (
         <HoleCard

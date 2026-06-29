@@ -12,11 +12,8 @@ import {
   RoundComputation,
   HoleEntry,
   defaultWolfForHole,
-  computeRound,
 } from "@/lib/wolf";
 import { formatMoney } from "@/lib/storage";
-import { computePressMoney } from "@/lib/engines/press";
-import { PressTable, hasAnyPress } from "./PressBreakdown";
 
 // Vibrant peacock-family accents for the hole-card toggles.
 const HAMMER = "#7C3AED"; // vibrant purple
@@ -358,20 +355,6 @@ export function ScoresTab({
     );
   }
 
-  // Press money: re-run Wolf over each press's holes. original = the base ledger.
-  const pressMoney = hasAnyPress(round)
-    ? computePressMoney(round, (r) => computeRound(r).ledger)
-    : null;
-  const pressStats: Record<string, Record<string, number>> = {};
-  if (pressMoney) {
-    for (const p of round.players) {
-      pressStats[p.id] = {
-        original: computation.ledger[p.id] ?? 0,
-        press: pressMoney[p.id] ?? 0,
-      };
-    }
-  }
-
   return (
     <div className="space-y-3">
       {/* Quick hole jumper: one thin row, scrolls sideways, pinned below the
@@ -396,9 +379,6 @@ export function ScoresTab({
         <h2 className="text-xl font-bold">Scores</h2>
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
-
-      {/* Live money — who's up / down on the original bet and the presses. */}
-      {pressMoney && <PressTable round={round} stats={pressStats} />}
 
       {round.course.holes.map((h) => (
         <HoleBox

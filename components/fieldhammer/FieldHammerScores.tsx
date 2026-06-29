@@ -10,7 +10,6 @@ import { Hammer, Flag, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeGame } from "@/lib/gametypes";
 import { formatMoney } from "@/lib/storage";
-import { PressTable, hasAnyPress } from "../PressBreakdown";
 
 const HAMMER_COLOR = "#7C3AED"; // purple
 const FORFEIT_COLOR = "#06B6A4"; // teal
@@ -239,9 +238,6 @@ export function FieldHammerScores({
         <h2 className="text-xl font-bold">Hammerskin</h2>
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
-
-      {/* Live money — who's up / down on the original bet and the presses. */}
-      {hasAnyPress(round) && <PressTable round={round} stats={result.stats} />}
 
       {round.course.holes.map((h) => (
         <HoleCard
