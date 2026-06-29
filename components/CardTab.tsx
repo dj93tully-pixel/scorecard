@@ -378,6 +378,35 @@ function elevenChosen(
   return { score, toPar, any };
 }
 
+// Gross/net pill toggle — sized to sit beside a section header.
+function GrossNetToggle({
+  net,
+  onChange,
+}: {
+  net: boolean;
+  onChange: (net: boolean) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-full bg-divider p-[2px] text-sm font-semibold">
+      {(["gross", "net"] as const).map((v) => {
+        const active = net === (v === "net");
+        return (
+          <button
+            key={v}
+            onClick={() => onChange(v === "net")}
+            style={active ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
+            className={`rounded-full px-3 py-0.5 capitalize transition ${
+              active ? "bg-white text-accent-on-light" : "text-text-faint"
+            }`}
+          >
+            {v}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Ledger badge that drops down to the player's detailed scorecard ─────────
 function LedgerCard({
   round,
@@ -391,8 +420,7 @@ function LedgerCard({
   computation: CardComputation;
   player: Player;
   rankIndex: number; // 0-based; tied players share the same index
-  scoreNet: boolean; // shared gross/net toggle — drives every row's +/-
-  setScoreNet: (v: boolean) => void;
+  scoreNet: boolean; // shared gross/net toggle (next to the Standings header)
 }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"scores" | "money">("scores");
@@ -475,24 +503,6 @@ function LedgerCard({
                   {v === "scores" ? "Scores" : "Money"}
                 </button>
               ))}
-              {view === "scores" && (
-                <div className="ml-1 inline-flex rounded-full bg-divider p-px text-[9px] font-bold leading-none">
-                  {(["gross", "net"] as const).map((g) => (
-                    <button
-                      key={g}
-                      onClick={() => setScoreNet(g === "net")}
-                      style={
-                        scoreNet === (g === "net") ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined
-                      }
-                      className={`rounded-full px-1.5 py-[3px] uppercase ${
-                        scoreNet === (g === "net") ? "bg-white text-accent-on-light" : "text-text-faint"
-                      }`}
-                    >
-                      {g}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
             {!isElevens && <span className="text-[10px] text-text-faint">swipe ←→</span>}
           </div>
@@ -534,7 +544,10 @@ export function CardTab({
     <div className="space-y-6">
       {/* Standings → tap a player to drop down their full scorecard */}
       <section className="space-y-2">
-        <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">Standings</h3>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold">Standings</h2>
+          <GrossNetToggle net={scoreNet} onChange={setScoreNet} />
+        </div>
         {standings.map((p) => {
           const m = computation.ledger[p.id] ?? 0;
           // Tie-aware rank: 1 + number of players strictly ahead.
@@ -549,7 +562,6 @@ export function CardTab({
               player={p}
               rankIndex={rankIndex}
               scoreNet={scoreNet}
-              setScoreNet={setScoreNet}
             />
           );
         })}
@@ -568,20 +580,7 @@ export function CardTab({
       <section className="space-y-3">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold">Scorecard</h2>
-          <div className="inline-flex rounded-full bg-divider p-[2px] text-[10px] font-medium">
-            {(["gross", "net"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setScoreView(v)}
-                style={scoreView === v ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
-                className={`rounded-full px-[9px] py-0.5 capitalize transition ${
-                  scoreView === v ? "bg-white text-accent-on-light" : "text-text-faint"
-                }`}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
+          <GrossNetToggle net={net} onChange={(n) => setScoreView(n ? "net" : "gross")} />
         </div>
         <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" net={net} />
         <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" net={net} />
