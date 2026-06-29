@@ -88,6 +88,7 @@ function BigNine({
   mode,
   net = false,
   grand = false,
+  spacer = false,
 }: {
   round: Round;
   computation: CardComputation;
@@ -95,8 +96,10 @@ function BigNine({
   title: string;
   mode: "scores" | "money";
   net?: boolean; // scores mode: show net (gross − pops) instead of gross
-  grand?: boolean; // also show a full-round total column (used on the back nine)
+  grand?: boolean; // show a full-round total column (back nine → TOT)
+  spacer?: boolean; // render an empty trailing column so OUT lines up with IN
 }) {
+  const trailing = grand || spacer; // both nines reserve a 12th column to align
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
   const siByHole = new Map(round.course.holes.map((h) => [h.number, h.strokeIndex]));
@@ -129,39 +132,48 @@ function BigNine({
 
   return (
     <div className="overflow-x-auto border-y border-card-border bg-surface-2">
-      <table className="w-full border-collapse text-center">
+      <table className="w-full table-fixed border-collapse text-center">
+        {/* Identical column template on both nines so OUT and IN line up. */}
+        <colgroup>
+          <col style={{ width: 52 }} />
+          {holes.map((h) => (
+            <col key={h} style={{ width: 22 }} />
+          ))}
+          <col style={{ width: 30 }} />
+          {trailing && <col style={{ width: 34 }} />}
+        </colgroup>
         <thead>
           <tr className="text-[10px] font-semibold text-text-muted">
             <th className="sticky left-0 z-10 bg-surface-2 px-1.5 py-1.5 text-left">{title}</th>
             {holes.map((h) => (
-              <th key={h} className="px-1 py-1.5">
+              <th key={h} className="px-0.5 py-1.5">
                 {h}
               </th>
             ))}
-            <th className="bg-surface-2 px-1.5 py-1.5">{totalLabel}</th>
-            {grand && <th className="bg-surface-2 px-1.5 py-1.5">TOT</th>}
+            <th className="bg-surface-2 px-0.5 py-1.5">{totalLabel}</th>
+            {trailing && <th className="bg-surface-2 px-0.5 py-1.5">{grand ? "TOT" : ""}</th>}
           </tr>
           {mode === "scores" && (
             <>
               <tr className="text-[9px] text-text-faint" style={{ background: HAIRLINE }}>
                 <td className="sticky left-0 z-10 bg-surface-2 px-1.5 py-0.5 text-left">Par</td>
                 {holes.map((h) => (
-                  <td key={h} className="px-1 py-0.5">
+                  <td key={h} className="px-0.5 py-0.5">
                     {parByHole.get(h)}
                   </td>
                 ))}
-                <td className="px-1.5 py-0.5">{parTotal}</td>
-                {grand && <td className="px-1.5 py-0.5">{parGrand}</td>}
+                <td className="px-0.5 py-0.5">{parTotal}</td>
+                {trailing && <td className="px-0.5 py-0.5">{grand ? parGrand : ""}</td>}
               </tr>
               <tr className="text-[9px] text-text-faint">
                 <td className="sticky left-0 z-10 bg-surface-2 px-1.5 py-0.5 text-left">Hcp</td>
                 {holes.map((h) => (
-                  <td key={h} className="px-1 py-0.5">
+                  <td key={h} className="px-0.5 py-0.5">
                     {siByHole.get(h)}
                   </td>
                 ))}
-                <td className="px-1.5 py-0.5" />
-                {grand && <td className="px-1.5 py-0.5" />}
+                <td className="px-0.5 py-0.5" />
+                {trailing && <td className="px-0.5 py-0.5" />}
               </tr>
             </>
           )}
@@ -182,7 +194,7 @@ function BigNine({
                     const par = parByHole.get(h) ?? 0;
                     const num = typeof g === "number" ? (net ? g - pops : g) : null;
                     return (
-                      <td key={h} className="px-1 py-2">
+                      <td key={h} className="px-0.5 py-2">
                         {num !== null ? (
                           <StrokeCell
                             gross={num}
@@ -202,7 +214,7 @@ function BigNine({
                   return (
                     <td
                       key={h}
-                      className="px-1 py-2 text-[9px] font-bold tabular-nums"
+                      className="px-0.5 py-2 text-[9px] font-bold tabular-nums"
                       style={{ color: m > 0 ? POS : m < 0 ? NEG : "#C4C8CE" }}
                     >
                       {m === 0 ? "·" : formatMoney(m)}
@@ -210,7 +222,7 @@ function BigNine({
                   );
                 })}
                 <td
-                  className="px-1.5 py-2 text-xs font-bold tabular-nums"
+                  className="px-0.5 py-2 text-xs font-bold tabular-nums"
                   style={
                     mode === "money"
                       ? { color: tot > 0 ? POS : tot < 0 ? NEG : INK }
@@ -219,20 +231,22 @@ function BigNine({
                 >
                   {mode === "scores" ? tot || "" : tot === 0 ? "–" : formatMoney(tot)}
                 </td>
-                {grand && (
+                {trailing && (
                   <td
-                    className="px-1.5 py-2 text-xs font-extrabold tabular-nums"
+                    className="px-0.5 py-2 text-xs font-extrabold tabular-nums"
                     style={
-                      mode === "money"
+                      grand && mode === "money"
                         ? { color: gtot > 0 ? POS : gtot < 0 ? NEG : INK }
                         : undefined
                     }
                   >
-                    {mode === "scores"
-                      ? gtot || ""
-                      : gtot === 0
-                        ? "–"
-                        : formatMoney(gtot)}
+                    {!grand
+                      ? ""
+                      : mode === "scores"
+                        ? gtot || ""
+                        : gtot === 0
+                          ? "–"
+                          : formatMoney(gtot)}
                   </td>
                 )}
               </tr>
@@ -514,7 +528,7 @@ export function CardTab({
       {/* By-hole money ledger */}
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Ledger</h2>
-        <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" />
+        <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" spacer />
         <BigNine round={round} computation={computation} holes={back} title="Back" mode="money" grand />
       </section>
 
@@ -537,60 +551,9 @@ export function CardTab({
             ))}
           </div>
         </div>
-        <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" net={net} />
+        <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" net={net} spacer />
         <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" net={net} grand />
       </section>
-
-      {/* Hole-by-hole one-line summary */}
-      <ByHole round={round} computation={computation} />
     </div>
-  );
-}
-
-// One line per played hole: the money each winner took, or push/carry.
-function ByHole({
-  round,
-  computation,
-}: {
-  round: Round;
-  computation: CardComputation;
-}) {
-  const rows = computation.results
-    .filter((r) => r.detail !== "—")
-    .slice()
-    .sort((a, b) => a.hole - b.hole);
-  if (rows.length === 0) return null;
-
-  return (
-    <section className="space-y-2">
-      <h2 className="text-xl font-bold">By hole</h2>
-      <div className="overflow-hidden rounded-xl border border-card-border bg-card-bg">
-        {rows.map((r) => {
-          const winners = round.players.filter((p) => (r.deltas[p.id] ?? 0) > 0);
-          const text = winners.length
-            ? winners
-                .map((p) => `${(p.name || "?").split(" ")[0]} ${formatMoney(r.deltas[p.id] ?? 0)}`)
-                .join(", ")
-            : r.detail || "Push";
-          return (
-            <div
-              key={r.hole}
-              className="flex items-center gap-3 border-b border-divider px-3 py-1.5 text-sm last:border-b-0"
-            >
-              <span className="w-6 shrink-0 font-bold tabular-nums text-text-faint">
-                {r.hole}
-              </span>
-              <span
-                className={`min-w-0 flex-1 truncate ${
-                  winners.length ? "font-semibold text-positive" : "text-text-muted"
-                }`}
-              >
-                {text}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </section>
   );
 }
