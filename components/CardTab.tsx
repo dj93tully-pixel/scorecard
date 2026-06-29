@@ -345,6 +345,27 @@ function PlayerNine({
   );
 }
 
+// 11s: a player's net total + to-par over ONLY the holes they checked.
+function elevenChosen(
+  round: Round,
+  computation: CardComputation,
+  pid: string
+): { score: number; toPar: number | null; any: boolean } {
+  const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
+  let score = 0;
+  let toPar: number | null = null;
+  let any = false;
+  for (const e of round.entries) {
+    if (e.elevenPicks?.[pid] && typeof e.grossScores[pid] === "number") {
+      const net = e.grossScores[pid] - (computation.pops[pid]?.[e.hole] ?? 0);
+      score += net;
+      toPar = (toPar ?? 0) + net - (parByHole.get(e.hole) ?? net);
+      any = true;
+    }
+  }
+  return { score, toPar, any };
+}
+
 // ── Ledger badge that drops down to the player's detailed scorecard ─────────
 function LedgerCard({
   round,
@@ -369,6 +390,8 @@ function LedgerCard({
     if (typeof g === "number") toPar = (toPar ?? 0) + g - (parByHole.get(e.hole) ?? g);
   }
   const moneyColor = money > 0 ? "text-positive" : money < 0 ? "text-negative" : "text-text-muted";
+  // 11s: net score over the player's chosen holes, shown as a blue badge.
+  const chosen = gameTypeOf(round) === "elevens" ? elevenChosen(round, computation, player.id) : null;
 
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -395,6 +418,11 @@ function LedgerCard({
           <span className="shrink-0 font-serif text-sm font-bold tabular-nums text-primary">
             {toPar === null ? "–" : formatToPar(toPar)}
           </span>
+          {chosen?.any && (
+            <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-on-dark">
+              {chosen.score}
+            </span>
+          )}
         </span>
         <span className={`font-serif text-lg font-extrabold tabular-nums ${moneyColor}`}>
           {formatMoney(money)}
@@ -530,6 +558,7 @@ function Totals({
   net: boolean;
 }) {
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
+  const isElevens = gameTypeOf(round) === "elevens";
   // Same order as the scorecard rows (round.players, unsorted).
   const rows = round.players.map((p) => {
     let total = 0;
@@ -542,12 +571,13 @@ function Totals({
         toPar = (toPar ?? 0) + score - (parByHole.get(e.hole) ?? score);
       }
     }
-    return { p, total, toPar, money: computation.ledger[p.id] ?? 0 };
+    const chosenToPar = isElevens ? elevenChosen(round, computation, p.id).toPar : null;
+    return { p, total, toPar, chosenToPar, money: computation.ledger[p.id] ?? 0 };
   });
 
   return (
     <div className="border-y border-card-border bg-surface-2">
-      {rows.map(({ p, total, toPar, money }, i) => (
+      {rows.map(({ p, total, toPar, chosenToPar, money }, i) => (
         <div
           key={p.id}
           className="flex items-center justify-between gap-2 px-2 py-2"
@@ -569,6 +599,11 @@ function Totals({
             <span className="w-10 text-right font-bold" style={{ color: PRIMARY }}>
               {toPar === null ? "–" : formatToPar(toPar)}
             </span>
+            {isElevens && (
+              <span className="w-10 text-right font-extrabold" style={{ color: PRIMARY }}>
+                {chosenToPar === null ? "–" : formatToPar(chosenToPar)}
+              </span>
+            )}
             <span className="w-10 text-right font-bold" style={{ color: INK }}>
               {total || "–"}
             </span>

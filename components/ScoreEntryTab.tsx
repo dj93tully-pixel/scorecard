@@ -20,12 +20,14 @@ function HoleCard({
   pops,
   hole,
   note,
+  pickCounts,
   upsertEntry,
 }: {
   round: Round;
   pops: Record<string, Record<number, number>>;
   hole: number;
   note?: GameHoleResult;
+  pickCounts?: Record<string, number>; // 11s: each player's running picks (of 11)
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
   const { players, course } = round;
@@ -150,6 +152,23 @@ function HoleCard({
                 <span className="truncate font-medium text-text-primary">
                   {p.name || "Unnamed"}
                 </span>
+                {eleven &&
+                  (() => {
+                    const c = pickCounts?.[p.id] ?? 0;
+                    return (
+                      <span
+                        className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${
+                          c === 11
+                            ? "bg-positive/15 text-positive"
+                            : c > 11
+                              ? "bg-negative/15 text-negative"
+                              : "bg-surface-2 text-text-muted"
+                        }`}
+                      >
+                        {c}/11
+                      </span>
+                    );
+                  })()}
                 {myPops > 0 && (
                   <span className="inline-flex shrink-0 gap-0.5">
                     {Array.from({ length: myPops }).map((_, i) => (
@@ -254,6 +273,15 @@ export function ScoreEntryTab({
   const resultByHole = new Map(result.holeResults.map((r) => [r.hole, r]));
   const isElevens = gameTypeOf(round) === "elevens";
 
+  // 11s: each player's running number of declared (checked) holes, of 11.
+  const pickCounts: Record<string, number> = {};
+  if (isElevens) {
+    for (const p of round.players) pickCounts[p.id] = 0;
+    for (const e of round.entries) {
+      for (const p of round.players) if (e.elevenPicks?.[p.id]) pickCounts[p.id] += 1;
+    }
+  }
+
   return (
     <div className="space-y-3">
       {/* Quick hole jumper: one thin pinned row, scrolls sideways. */}
@@ -278,40 +306,6 @@ export function ScoreEntryTab({
         <span className="text-sm text-text-muted">{round.course.name}</span>
       </div>
 
-      {/* 11s: running pick count (need 11) + selected-hole score per player. */}
-      {isElevens && (
-        <div className="rounded-xl border border-card-border bg-card-bg px-3 py-2 text-xs">
-          <div className="mb-1 font-semibold uppercase tracking-wide text-text-muted">
-            Picks (need 11) · score
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {round.players.map((p) => {
-              const picks = Number(result.stats[p.id]?.picks ?? 0);
-              const sc = Number(result.stats[p.id]?.score ?? 0);
-              return (
-                <span key={p.id} className="tabular-nums">
-                  <span className="font-medium text-text-primary">
-                    {(p.name || "?").split(" ")[0]}
-                  </span>{" "}
-                  <span
-                    className={
-                      picks === 11
-                        ? "font-bold text-positive"
-                        : picks > 11
-                          ? "font-bold text-negative"
-                          : "text-text-muted"
-                    }
-                  >
-                    {picks}/11
-                  </span>
-                  <span className="text-text-faint"> · {sc}</span>
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {round.course.holes.map((h) => (
         <HoleCard
           key={h.number}
@@ -319,6 +313,7 @@ export function ScoreEntryTab({
           pops={pops}
           hole={h.number}
           note={resultByHole.get(h.number)}
+          pickCounts={pickCounts}
           upsertEntry={upsertEntry}
         />
       ))}
