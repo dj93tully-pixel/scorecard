@@ -518,6 +518,31 @@ describe("money — lone wolf", () => {
     expect(ledger.d).toBe(5);
     expect(ledgerSum(ledger)).toBe(0);
   });
+
+  it("a pushed lone hole carries the lone-multiplied bet, not the base stake", () => {
+    const round = makeRound(
+      [
+        {
+          hole: 17, // SI 17 → only Dan pops
+          wolfId: "a",
+          mode: "lone",
+          grossScores: { a: 4, b: 9, c: 9, d: 5 }, // Dan nets 4 → ties wolf → push
+        },
+        {
+          hole: 18,
+          wolfId: "a",
+          mode: "lone",
+          grossScores: { a: 3, b: 4, c: 5, d: 6 }, // wolf wins
+        },
+      ],
+      { carryover: true, stake: 5, loneMult: 2 }
+    );
+    const { results, ledger } = computeRound(round);
+    expect(results[0].winner).toBe("push");
+    expect(results[0].carriedToNext).toBe(10); // $5 × loneMult 2, not $5
+    expect(results[1].stakeApplied).toBe(15); // base 5 + carried 10
+    expect(ledgerSum(ledger)).toBe(0);
+  });
 });
 
 // ── Money: blind wolf ──────────────────────────────────────────────────────

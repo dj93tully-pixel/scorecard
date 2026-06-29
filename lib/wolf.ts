@@ -385,8 +385,16 @@ export function computeRound(round: Round): RoundComputation {
     let carriedToNext = 0;
     if (winner === "push") {
       if (settings.carryover) {
-        // Roll the whole accumulated pot forward.
-        carriedToNext = stakeApplied;
+        // Roll the whole accumulated pot forward. A lone/blind wolf doubles (or
+        // blind-multiplies) the bet, so a pushed lone hole carries that larger
+        // amount, not just the base field stake.
+        const lbMult =
+          entry.mode === "blind"
+            ? settings.blindMult
+            : entry.mode === "lone"
+              ? settings.loneMult
+              : 1;
+        carriedToNext = stakeApplied * lbMult;
       }
       // If carryover is off, the push simply voids this hole's stake.
     }
