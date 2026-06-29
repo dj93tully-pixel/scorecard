@@ -543,7 +543,10 @@ export function SetupTab({
               </Field>
             </>
           )}
-          {gameType !== "vegas" && gameType !== "stroke" && gameType !== "elevens" && (
+          {gameType !== "vegas" &&
+            gameType !== "stroke" &&
+            gameType !== "elevens" &&
+            gameType !== "fieldhammer" && (
             <Field label="Carryover ties">
               <input
                 type="checkbox"

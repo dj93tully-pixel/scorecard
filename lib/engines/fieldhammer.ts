@@ -6,7 +6,7 @@
 
 import { Round, PlayerId, computePops } from "../wolf";
 import { GameResult, GameHoleResult } from "./types";
-import { settleHole, PairKey, FHAction } from "../fieldHammer";
+import { settleHole, PairKey, FHAction, FHCarry } from "../fieldHammer";
 
 export function computeFieldHammer(round: Round): GameResult {
   const { players, course, settings } = round;
@@ -19,7 +19,7 @@ export function computeFieldHammer(round: Round): GameResult {
   for (const id of ids) ledger[id] = 0;
 
   const holeResults: GameHoleResult[] = [];
-  let carry: Record<PairKey, number> = {};
+  let carry: Record<PairKey, FHCarry> = {};
 
   for (const h of course.holes) {
     const e = entryByHole.get(h.number);
@@ -31,7 +31,6 @@ export function computeFieldHammer(round: Round): GameResult {
       actions: (e?.fhActions ?? {}) as Record<PlayerId, FHAction>,
       baseStake,
       carryIn: carry,
-      carryTies: settings.carryover,
     });
     for (const id of ids) ledger[id] += r.deltas[id];
     carry = r.carryOut;

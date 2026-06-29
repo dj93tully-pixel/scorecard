@@ -229,6 +229,7 @@ function PlayerNine({
   from,
   label,
   mode,
+  net = false,
 }: {
   round: Round;
   computation: CardComputation;
@@ -236,6 +237,7 @@ function PlayerNine({
   from: number;
   label: string;
   mode: "scores" | "money";
+  net?: boolean; // scores mode: show net (gross − pops) instead of gross
 }) {
   const nums = Array.from({ length: 9 }, (_, i) => from + i);
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
@@ -244,10 +246,15 @@ function PlayerNine({
   const grossOf = (h: number) => entryByHole.get(h)?.grossScores[player.id];
   const popsOf = (h: number) => computation.pops[player.id]?.[h] ?? 0;
   const moneyOf = (h: number) => resultByHole.get(h)?.deltas[player.id] ?? 0;
+  // Score shown per hole — gross, or net when the toggle is on.
+  const shownOf = (h: number) => {
+    const g = grossOf(h);
+    return typeof g === "number" ? (net ? g - popsOf(h) : g) : undefined;
+  };
   const parTotal = nums.reduce((s, n) => s + (parByHole.get(n) ?? 0), 0);
   const total =
     mode === "scores"
-      ? nums.reduce((s, n) => s + (grossOf(n) ?? 0), 0)
+      ? nums.reduce((s, n) => s + (shownOf(n) ?? 0), 0)
       : nums.reduce((s, n) => s + moneyOf(n), 0);
 
   return (
@@ -302,9 +309,14 @@ function PlayerNine({
                 </span>
               );
             }
-            const g = grossOf(n);
-            return typeof g === "number" ? (
-              <StrokeCell key={n} gross={g} rel={g - (parByHole.get(n) ?? g)} pops={popsOf(n)} />
+            const num = shownOf(n);
+            return typeof num === "number" ? (
+              <StrokeCell
+                key={n}
+                gross={num}
+                rel={num - (parByHole.get(n) ?? num)}
+                pops={net ? 0 : popsOf(n)}
+              />
             ) : popsOf(n) > 0 ? (
               <span key={n} style={{ fontSize: "11px", color: PRIMARY, fontWeight: 700 }}>
                 –
@@ -380,14 +392,19 @@ function LedgerCard({
 }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"scores" | "money">("scores");
+  const [scoreNet, setScoreNet] = useState(false);
   const touch = useRef<{ x: number; y: number } | null>(null);
 
   const money = computation.ledger[player.id] ?? 0;
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
   let toPar: number | null = null;
+  let total = 0; // gross total over played holes
   for (const e of round.entries) {
     const g = e.grossScores[player.id];
-    if (typeof g === "number") toPar = (toPar ?? 0) + g - (parByHole.get(e.hole) ?? g);
+    if (typeof g === "number") {
+      toPar = (toPar ?? 0) + g - (parByHole.get(e.hole) ?? g);
+      total += g;
+    }
   }
   const moneyColor = money > 0 ? "text-positive" : money < 0 ? "text-negative" : "text-text-muted";
   // 11s: net score over the player's chosen holes, shown as a blue badge.
@@ -427,6 +444,9 @@ function LedgerCard({
         <span className={`font-serif text-lg font-extrabold tabular-nums ${moneyColor}`}>
           {formatMoney(money)}
         </span>
+        <span className="shrink-0 text-[11px] font-bold tabular-nums text-text-muted">
+          TOT: {total || "–"}
+        </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`}
         />
@@ -452,15 +472,33 @@ function LedgerCard({
                   {v === "scores" ? "Scores" : "Money"}
                 </button>
               ))}
+              {view === "scores" && (
+                <div className="ml-1 inline-flex rounded-full bg-divider p-[2px] text-[9px] font-bold">
+                  {(["gross", "net"] as const).map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setScoreNet(g === "net")}
+                      style={
+                        scoreNet === (g === "net") ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined
+                      }
+                      className={`rounded-full px-2 py-0.5 uppercase ${
+                        scoreNet === (g === "net") ? "bg-white text-accent-on-light" : "text-text-faint"
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <span className="text-[10px] text-text-faint">swipe ←→</span>
           </div>
 
           <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
-            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode={view} />
+            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode={view} net={scoreNet} />
           </div>
           <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px" }}>
-            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode={view} />
+            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode={view} net={scoreNet} />
           </div>
         </div>
       )}

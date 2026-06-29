@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { settleHole, settleRound, settleUp } from "./fieldHammer";
+import { settleHole, settleRound } from "./fieldHammer";
 
 const sum = (l: Record<string, number>) =>
   Object.values(l).reduce((a, b) => a + b, 0);
@@ -78,26 +78,54 @@ describe("sledgehammer — settleHole", () => {
       actions: { A: "hammer", B: "forfeit", C: "double" },
       baseStake: 5,
     });
-    // A-B fold A+5; A-C tie at ×4 → push (carries 20); A-D A wins ×2 → +10;
-    // B-C/B-D fold; C-D C wins ×4 → +20.
+    // A-B fold A+5; A-C tie at ×4 → push (carries 20, owned by C — max stance);
+    // A-D A wins ×2 → +10; B-C/B-D fold; C-D C wins ×4 → +20.
     expect(deltas.A).toBe(15);
     expect(deltas.B).toBe(-15);
     expect(deltas.C).toBe(25);
     expect(deltas.D).toBe(-25);
-    expect(sum(deltas)).toBe(0);
-    expect(carryOut["A|C"]).toBe(20); // the hammered tie carries
+    expect(sum(deltas)).toBe(0); // no carry resolved this hole → still zero-sum
+    expect(carryOut["A|C"]).toEqual({ amount: 20, hammerer: "C" });
   });
 
-  it("a hammered tie carries the doubled bet; a plain tie washes (unless carryTies)", () => {
+  it("a hammered tie carries (one-sided to the hammerer); a plain tie washes", () => {
     const base = {
       players: ["A", "B"],
       grossScores: { A: 4, B: 4 },
       pops: { A: 0, B: 0 },
       baseStake: 5,
     };
-    expect(settleHole({ ...base, actions: { A: "hammer" } }).carryOut["A|B"]).toBe(10);
-    expect(settleHole({ ...base, actions: {} }).carryOut["A|B"]).toBe(0);
-    expect(settleHole({ ...base, actions: {}, carryTies: true }).carryOut["A|B"]).toBe(5);
+    expect(settleHole({ ...base, actions: { A: "hammer" } }).carryOut["A|B"]).toEqual({
+      amount: 10,
+      hammerer: "A",
+    });
+    expect(settleHole({ ...base, actions: {} }).carryOut["A|B"]).toBeUndefined();
+  });
+
+  it("the carry only affects the hammerer — the opponent never pays it", () => {
+    // A hammered & tied last hole (carry $10 owned by A). This hole A loses to B.
+    const aLoses = settleHole({
+      players: ["A", "B"],
+      grossScores: { A: 6, B: 4 },
+      pops: { A: 0, B: 0 },
+      actions: {},
+      baseStake: 5,
+      carryIn: { "A|B": { amount: 10, hammerer: "A" } },
+    });
+    expect(aLoses.deltas.A).toBe(-15); // base $5 to B + lost the $10 carry
+    expect(aLoses.deltas.B).toBe(5); // only collects the base — NOT the carry
+
+    // If B forfeits, B pays only the base; A still wins the carry it owns.
+    const bForfeits = settleHole({
+      players: ["A", "B"],
+      grossScores: {},
+      pops: { A: 0, B: 0 },
+      actions: { B: "forfeit" },
+      baseStake: 5,
+      carryIn: { "A|B": { amount: 10, hammerer: "A" } },
+    });
+    expect(bForfeits.deltas.B).toBe(-5); // base only — not the hammered push amount
+    expect(bForfeits.deltas.A).toBe(15); // base $5 + won its own $10 carry
   });
 
   it("an unscored hole preserves a carried bet (does not drop it)", () => {
@@ -107,57 +135,26 @@ describe("sledgehammer — settleHole", () => {
       pops: { A: 0, B: 0 },
       actions: {},
       baseStake: 5,
-      carryIn: { "A|B": 10 },
+      carryIn: { "A|B": { amount: 10, hammerer: "A" } },
     });
     expect(deltas.A).toBe(0);
-    expect(carryOut["A|B"]).toBe(10); // carry survives to the next hole
+    expect(carryOut["A|B"]).toEqual({ amount: 10, hammerer: "A" });
   });
 });
 
 describe("sledgehammer — settleRound", () => {
-  it("a hammered tie carries to the next played hole", () => {
+  it("a hammered tie carries to the next played hole (skipping unplayed ones)", () => {
     const players = ["A", "B"];
     const round = settleRound({
       players,
       baseStake: 5,
-      carryTies: false,
       holes: [
-        // hole 1: A hammers, tie → doubled bet ($10) carries.
         { number: 1, grossScores: { A: 4, B: 4 }, pops: { A: 0, B: 0 }, actions: { A: "hammer" } },
-        // hole 3 unscored between (preserved); hole 5 resolves with the carry.
         { number: 5, grossScores: { A: 4, B: 5 }, pops: { A: 0, B: 0 }, actions: {} },
       ],
     });
-    // hole 5 stake = base $5 + carried $10 = $15; A wins.
+    // hole 5: A wins base $5 from B, and wins its own $10 carry.
     expect(round.ledger.A).toBe(15);
-    expect(round.ledger.B).toBe(-15);
-    expect(sum(round.ledger)).toBe(0);
-  });
-
-  it("a full 4-player multi-hole round always sums to 0", () => {
-    const players = ["A", "B", "C", "D"];
-    const round = settleRound({
-      players,
-      baseStake: 5,
-      carryTies: false,
-      holes: [
-        { number: 1, grossScores: { A: 4, B: 5, C: 4, D: 6 }, pops: noPops(players), actions: { A: "hammer", B: "forfeit" } },
-        { number: 2, grossScores: { A: 5, B: 4, C: 6, D: 4 }, pops: noPops(players), actions: { C: "double" } },
-      ],
-    });
-    expect(sum(round.ledger)).toBe(0);
-  });
-});
-
-describe("sledgehammer — settleUp", () => {
-  it("rolls a ledger into minimal who-pays-whom transactions", () => {
-    const txns = settleUp({ A: 15, C: 25, B: -15, D: -25 });
-    const net: Record<string, number> = { A: 0, B: 0, C: 0, D: 0 };
-    for (const t of txns) {
-      net[t.from] -= t.amount;
-      net[t.to] += t.amount;
-    }
-    expect(net).toEqual({ A: 15, C: 25, B: -15, D: -25 });
-    expect(txns.length).toBeLessThanOrEqual(3);
+    expect(round.ledger.B).toBe(-5); // opponent never paid the carry
   });
 });
