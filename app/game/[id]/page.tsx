@@ -51,12 +51,37 @@ export default function GamePage() {
     return null;
   }, [round, isWolf, computation, gameResult]);
 
-  // Both engines feed the same Card view (standings + ledger + scorecard).
-  const cardComp: CardComputation | null = isWolf
-    ? computation
-    : gameResult
-      ? { ledger: gameResult.ledger, pops: gameResult.pops, results: gameResult.holeResults }
-      : null;
+  // Both engines feed the same Card view (standings + ledger + scorecard + the
+  // by-hole summary). For Wolf we synthesize each hole's note from its result.
+  const cardComp: CardComputation | null = useMemo(() => {
+    if (isWolf && computation) {
+      return {
+        ledger: computation.ledger,
+        pops: computation.pops,
+        results: computation.results.map((r) => ({
+          hole: r.hole,
+          deltas: r.deltas,
+          decided: r.winner !== "push",
+          detail:
+            r.winner !== "push"
+              ? ""
+              : r.teamABest === null || r.teamBBest === null
+                ? "—"
+                : r.carriedToNext > 0
+                  ? `Push — $${r.carriedToNext} carries`
+                  : "Push",
+        })),
+      };
+    }
+    if (!isWolf && gameResult) {
+      return {
+        ledger: gameResult.ledger,
+        pops: gameResult.pops,
+        results: gameResult.holeResults,
+      };
+    }
+    return null;
+  }, [isWolf, computation, gameResult]);
 
   const tabs: PillTab[] = [
     { id: "scores", label: "Scores" },
