@@ -501,7 +501,8 @@ function PlayerBar({
 // ── Traditional course-style scorecard: full grid, green header band, a colored
 //    tee-distance row per tee, shaded Par, Hcp, then player rows. Scorecard only.
 const GRID = "#D5D9DE";
-const HEADER_BG = "#1E7A46";
+const HEADER_BG = "#1E7A46"; // scorecard header (green)
+const LEDGER_HEADER = "#51607A"; // ledger header (slate gray-blue)
 
 function hexToRgb(hex?: string): [number, number, number] | null {
   if (!hex) return null;
@@ -556,10 +557,20 @@ function GridCell({
   );
 }
 
-// Header hole cell: white number on the green band, with press/hammer dots.
-function HeaderHoleCell({ n, hammered, pressed }: { n: number | string; hammered?: boolean; pressed?: boolean }) {
+// Header hole cell: white number on the header band, with press/hammer dots.
+function HeaderHoleCell({
+  n,
+  hammered,
+  pressed,
+  bg = HEADER_BG,
+}: {
+  n: number | string;
+  hammered?: boolean;
+  pressed?: boolean;
+  bg?: string;
+}) {
   return (
-    <div className="flex h-[26px] flex-col items-center justify-center" style={{ background: HEADER_BG }}>
+    <div className="flex h-[26px] flex-col items-center justify-center" style={{ background: bg }}>
       <span className="text-[10px] font-bold leading-none text-white">{n}</span>
       <span className="mt-0.5 flex h-1 items-center justify-center" style={{ gap: "0.5px" }}>
         {pressed && <span className="h-1 w-1 rounded-full" style={{ background: PRESS }} />}
@@ -701,11 +712,11 @@ function LedgerNine({
       <div style={{ minWidth: 330, border: `1px solid ${GRID}` }}>
         <div style={{ display: "grid", gridTemplateColumns: template, gap: "1px", background: GRID }}>
           {/* HEADER band */}
-          <GridCell bg={HEADER_BG} color="#fff" bold left>HOLE</GridCell>
+          <GridCell bg={LEDGER_HEADER} color="#fff" bold left>HOLE</GridCell>
           {holeNums.map((h) => (
-            <HeaderHoleCell key={`hd${h}`} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} />
+            <HeaderHoleCell key={`hd${h}`} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} bg={LEDGER_HEADER} />
           ))}
-          <GridCell bg={HEADER_BG} color="#fff" bold>{label}</GridCell>
+          <GridCell bg={LEDGER_HEADER} color="#fff" bold>{label}</GridCell>
 
           {/* PAR */}
           <GridCell bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
