@@ -72,6 +72,7 @@ export function computeSkins(round: Round): GameResult {
         decided: false,
         detail: `Push — $${carryUnit} carries`,
         deltas,
+        carry: carryUnit,
       });
     } else {
       // No carryover: a tied hole's skin is dead, nobody wins it.

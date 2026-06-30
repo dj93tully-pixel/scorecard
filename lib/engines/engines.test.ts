@@ -14,6 +14,7 @@ import { computeStroke } from "./strokeplay";
 import { computeElevens } from "./elevens";
 import { computeNassau } from "./nassau";
 import { withPresses, pressRange, combinedHoleResults } from "./press";
+import { carryByHole } from "../carry";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -540,6 +541,20 @@ describe("press", () => {
     expect(on.stats.a.press).toBe(10); // press: carry $5 + hole 2 $5 = 2 skins
     expect(on.ledger.a).toBe(20); // base 10 + press 10
     expect(sum(on.ledger)).toBe(0);
+  });
+
+  it("carryByHole splits a pushed hole's carry into normal / press / hammer", () => {
+    const round = makeRound(
+      "skins",
+      scratch(["a", "b"]),
+      [{ hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 4 }, hammer: 1, pressSeg: true }],
+      { skinValue: 5, carryover: true, hammerCarry: true }
+    );
+    const c = carryByHole(round).get(1)!;
+    expect(c.orig).toBe(5); // un-hammered base carry
+    expect(c.hammer).toBe(5); // extra from the ×2 hammer (base bet)
+    expect(c.press).toBe(5); // the press's own carry (pressHammerCarry off → base value)
+    expect(c.total).toBe(15);
   });
 
   it("'carryover hammers into press bets' rides the carry in at its hammered size", () => {

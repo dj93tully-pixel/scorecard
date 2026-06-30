@@ -104,7 +104,13 @@ export function computeSixes(round: Round): GameResult {
 
     if (hammerMult !== 1) for (const id of ids) deltas[id] *= hammerMult;
     for (const id of ids) ledger[id] += deltas[id];
-    holeResults.push({ hole: h.number, decided: winner !== "push", detail, deltas });
+    holeResults.push({
+      hole: h.number,
+      decided: winner !== "push",
+      detail,
+      deltas,
+      carry: winner === "push" ? carried : 0,
+    });
   });
 
   const stats: Record<PlayerId, Record<string, number>> = {};

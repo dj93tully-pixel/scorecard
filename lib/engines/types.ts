@@ -13,6 +13,8 @@ export interface GameHoleResult {
   detail: string;
   /** Money change per player for this hole; sums to 0. */
   deltas: Record<PlayerId, number>;
+  /** Dollar amount carrying forward from this hole when it pushes (0 otherwise). */
+  carry?: number;
 }
 
 export interface GameResult {

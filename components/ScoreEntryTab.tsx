@@ -10,6 +10,7 @@ import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
+import { carryByHole, HoleCarry } from "@/lib/carry";
 import { holeHighlight } from "@/lib/holeHighlight";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
@@ -23,6 +24,7 @@ function HoleCard({
   pops,
   hole,
   note,
+  carry,
   pickCounts,
   segCover,
   fullCover,
@@ -32,6 +34,7 @@ function HoleCard({
   pops: Record<string, Record<number, number>>;
   hole: number;
   note?: GameHoleResult;
+  carry?: HoleCarry; // push-carry split: normal / press / hammer
   pickCounts?: Record<string, number>; // 11s: each player's running picks (of 11)
   segCover?: number; // 9/6-presses covering this hole (for the ⚡9 ×N label)
   fullCover?: number; // 18-presses covering this hole (for the ⚡18 ×N label)
@@ -286,13 +289,34 @@ function HoleCard({
         })}
       </div>
 
-      {/* Per-player money is shown inline (left of each score). Here we only keep
-          the hole-status detail — a push/carry note when nobody won the hole.
-          Total/segment games (11s, Nassau) settle on totals, so no per-hole note. */}
+      {/* Push/carry note when nobody won the hole. When money carries, it's split
+          into the normal bet (grey), the press (orange) and the hammer (purple),
+          with a total beneath. Total/segment games (11s, Nassau) carry no note. */}
       {(() => {
-        if (noHoleMoney || !note || note.detail === "—") return null;
-        const anyWinner = players.some((p) => (note.deltas[p.id] ?? 0) > 0);
+        if (noHoleMoney) return null;
+        const anyWinner = note && players.some((p) => (note.deltas[p.id] ?? 0) > 0);
         if (anyWinner) return null;
+        const money = (n: number) => `$${Math.round(n * 100) / 100}`;
+        if (carry) {
+          const extra = carry.press > 0 || carry.hammer > 0;
+          return (
+            <div className="mt-2 text-right text-sm tabular-nums">
+              <div className="text-text-muted">Push — {money(carry.orig)} carries</div>
+              {carry.press > 0 && (
+                <div style={{ color: PRESS_COLOR }}>Press — {money(carry.press)} carries</div>
+              )}
+              {carry.hammer > 0 && (
+                <div style={{ color: HAMMER_COLOR }}>Hammer — {money(carry.hammer)} carries</div>
+              )}
+              {extra && (
+                <div className="ml-auto mt-1 w-fit border-t border-card-border pt-1 font-semibold text-text-primary">
+                  Total — {money(carry.total)} carries
+                </div>
+              )}
+            </div>
+          );
+        }
+        if (!note || note.detail === "—") return null;
         return <div className="mt-2 text-right text-sm text-text-muted">{note.detail}</div>;
       })()}
     </div>
@@ -336,6 +360,8 @@ export function ScoreEntryTab({
     return { ledger: g.ledger, holeResults: g.holeResults };
   });
   const resultByHole = new Map(combined.map((r) => [r.hole, r]));
+  // Per-hole carry split (normal / press / hammer) for the push-carry note.
+  const carries = carryByHole(round);
   // Per-scope press coverage per hole — for the ⚡9/⚡18 ×N labels + highlight.
   const pressCovers = pressCoverByHole(round);
   const isElevens = gameTypeOf(round) === "elevens";
@@ -380,6 +406,7 @@ export function ScoreEntryTab({
           pops={pops}
           hole={h.number}
           note={resultByHole.get(h.number)}
+          carry={carries.get(h.number)}
           pickCounts={pickCounts}
           segCover={pressCovers.get(h.number)?.seg ?? 0}
           fullCover={pressCovers.get(h.number)?.full ?? 0}
