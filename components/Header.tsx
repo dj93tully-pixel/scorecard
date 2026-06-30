@@ -90,9 +90,9 @@ export function Header() {
       <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-2">
         <BettorGolfMark size={32} className="shrink-0" />
         <div className="min-w-0 flex-1 leading-tight">
-          <h1 className="truncate text-lg font-bold">
+          <h1 className="truncate text-lg font-bold uppercase tracking-[0.18em]">
             {config.title ? (
-              <span className="uppercase tracking-[0.18em]">{config.title}</span>
+              <span>{config.title}</span>
             ) : (
               <>
                 <span style={{ color: "#12B886" }}>Bettor</span>
