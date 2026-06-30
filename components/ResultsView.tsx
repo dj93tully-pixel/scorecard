@@ -487,7 +487,7 @@ function PlayerBar({
         <span className="w-4 text-center font-serif text-base font-bold" style={{ color: MUTED }}>{rank}</span>
         <span className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="truncate font-semibold" style={{ color: INK }}>{player.name}</span>
-          <span className="shrink-0 font-serif text-sm font-bold tabular-nums" style={{ color: BLUE }}>
+          <span className="shrink-0 font-serif text-sm font-bold tabular-nums" style={{ color: net ? BLUE : INK }}>
             {toPar === null ? "–" : formatToPar(toPar)}
           </span>
           {results.isElevens && (
@@ -736,7 +736,7 @@ function ScorecardNine({
                 </GridCell>
                 {holeCells}
                 <GridCell bold color={INK}>{scoreTot || "–"}</GridCell>
-                <GridCell bold color={BLUE}>{anyScore ? formatToPar(toPar) : "–"}</GridCell>
+                <GridCell bold color={net ? BLUE : INK}>{anyScore ? formatToPar(toPar) : "–"}</GridCell>
               </Fragment>
             );
           })}
