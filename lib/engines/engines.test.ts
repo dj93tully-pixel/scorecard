@@ -428,7 +428,7 @@ describe("nassau", () => {
           wolfId: "",
           mode: "2v2" as const,
           grossScores,
-          ...(press && h === 15 ? { pressSeg: 1 } : {}),
+          ...(press && h === 15 ? { pressSeg: true } : {}),
         };
       });
     const opts = {
@@ -481,7 +481,7 @@ describe("press", () => {
         wolfId: "",
         mode: "2v2" as const,
         grossScores,
-        ...(h === 16 ? { pressSeg: 1 } : {}),
+        ...(h === 16 ? { pressSeg: true } : {}),
       };
     });
     const round = makeRound("stroke", scratch(["a", "b"]), entries, { stake: 1 });
@@ -500,7 +500,7 @@ describe("press", () => {
       wolfId: "",
       mode: "2v2" as const,
       grossScores: h === 14 ? { a: 4, b: 4 } : h === 15 ? { a: 3, b: 4 } : { a: 4, b: 4 },
-      ...(h === 14 ? { pressSeg: 1 } : {}),
+      ...(h === 14 ? { pressSeg: true } : {}),
     }));
     // Base carryover OFF (tie is dead → base is just hole 15's one skin).
     const on = makeRound("skins", scratch(["a", "b"]), entries, {
@@ -531,7 +531,7 @@ describe("press", () => {
         wolfId: "",
         mode: "2v2" as const,
         grossScores,
-        ...(h === 16 ? { pressSeg: 1 } : {}),
+        ...(h === 16 ? { pressSeg: true } : {}),
       };
     });
     const round = makeRound("stroke", scratch(["a", "b"]), entries, { stake: 1 });
@@ -544,7 +544,9 @@ describe("press", () => {
     expect(h18.deltas.b).toBe(-2);
   });
 
-  it("a stacked press settles that many copies of the bet", () => {
+  it("overlapping presses on different holes stack (double press)", () => {
+    // Press hole 16 AND hole 17 (each rest-of-nine). Only hole 18 separates a
+    // and b, and it's in both press ranges → both presses pay there.
     const entries = Array.from({ length: 18 }, (_, i) => {
       const h = i + 1;
       const grossScores = h === 18 ? { a: 4, b: 5 } : { a: 4, b: 4 };
@@ -553,13 +555,13 @@ describe("press", () => {
         wolfId: "",
         mode: "2v2" as const,
         grossScores,
-        ...(h === 16 ? { pressSeg: 2 } : {}), // double press
+        ...(h === 16 || h === 17 ? { pressSeg: true } : {}),
       };
     });
     const round = makeRound("stroke", scratch(["a", "b"]), entries, { stake: 1 });
     const r = withPresses(round, computeStroke);
-    expect(r.stats.a.press).toBe(2); // two copies of the +1 press
-    expect(r.ledger.a).toBe(3); // base +1 + press +2
+    expect(r.stats.a.press).toBe(2); // press(16) +1 and press(17) +1 on hole 18
+    expect(r.ledger.a).toBe(3); // base +1 + presses +2
     expect(sum(r.ledger)).toBe(0);
   });
 });

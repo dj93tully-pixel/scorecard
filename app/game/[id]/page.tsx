@@ -11,11 +11,8 @@ import {
   computePressMoney,
   decomposePresses,
   hasAnyPress,
-  listPresses,
-  pressSubRound,
   RunResult,
 } from "@/lib/engines/press";
-import { nassauPressLedger } from "@/lib/engines/nassau";
 import { ScoresTab } from "@/components/ScoresTab";
 import { CardTab, CardComputation, PressViews } from "@/components/CardTab";
 import { ScoreEntryTab } from "@/components/ScoreEntryTab";
@@ -225,18 +222,6 @@ export default function GamePage() {
     return out;
   }, [round, isWolf]);
 
-  // Per-press breakdown for the Card tab's Press view (one line per press).
-  const pressList = useMemo(() => {
-    if (!round || !hasAnyPress(round)) return [];
-    const single =
-      gameTypeOf(round) === "nassau"
-        ? (holes: Set<number>) => nassauPressLedger(round, holes)
-        : isWolf
-          ? (holes: Set<number>) => computeRound(pressSubRound(round, holes)).ledger
-          : (holes: Set<number>) => computeBaseGame(pressSubRound(round, holes)).ledger;
-    return listPresses(round, single);
-  }, [round, isWolf]);
-
   const tabs: PillTab[] = [
     { id: "scores", label: "Scores" },
     { id: "card", label: "Card" },
@@ -299,13 +284,7 @@ export default function GamePage() {
             <ScoreEntryTab round={round} upsertEntry={upsertEntry} />
           ))}
         {tab === "card" && cardComp && (
-          <CardTab
-            round={round}
-            computation={cardComp}
-            views={cardViews}
-            trend={cardTrend}
-            presses={pressList}
-          />
+          <CardTab round={round} computation={cardComp} views={cardViews} trend={cardTrend} />
         )}
       </div>
     </div>

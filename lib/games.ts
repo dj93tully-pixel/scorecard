@@ -58,18 +58,13 @@ interface EntryRow {
   meta: {
     elevenPicks?: HoleEntry["elevenPicks"];
     fhActions?: HoleEntry["fhActions"];
-    // Press counts. Older rows stored these as booleans → coerced to 0/1.
+    // Press flags. Some rows stored these as numbers (a brief stacking model) →
+    // coerced back to booleans.
     pressSeg?: number | boolean;
     pressFull?: number | boolean;
     /** Legacy: the original Nassau single-press flag (→ pressSeg). */
     nassauPress?: boolean;
   } | null;
-}
-
-/** Coerce a stored press value (number or legacy boolean) to a count. */
-function pressCount(v: number | boolean | undefined): number {
-  if (typeof v === "number") return v > 0 ? Math.floor(v) : 0;
-  return v ? 1 : 0;
 }
 
 function rowToEntry(r: EntryRow): HoleEntry {
@@ -83,8 +78,8 @@ function rowToEntry(r: EntryRow): HoleEntry {
     forfeit: r.forfeit ?? undefined,
     elevenPicks: r.meta?.elevenPicks ?? undefined,
     fhActions: r.meta?.fhActions ?? undefined,
-    pressSeg: pressCount(r.meta?.pressSeg ?? r.meta?.nassauPress),
-    pressFull: pressCount(r.meta?.pressFull),
+    pressSeg: !!(r.meta?.pressSeg ?? r.meta?.nassauPress),
+    pressFull: !!r.meta?.pressFull,
   };
 }
 
@@ -227,8 +222,8 @@ export async function saveEntry(gameId: string, entry: HoleEntry): Promise<void>
       meta: {
         elevenPicks: entry.elevenPicks ?? {},
         fhActions: entry.fhActions ?? {},
-        pressSeg: entry.pressSeg ?? 0,
-        pressFull: entry.pressFull ?? 0,
+        pressSeg: entry.pressSeg ?? false,
+        pressFull: entry.pressFull ?? false,
       },
       updated_at: new Date().toISOString(),
     },
