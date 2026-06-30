@@ -90,6 +90,26 @@ describe("buildResults (results page data)", () => {
     }
   });
 
+  it("exposes course tees with per-hole distances aligned to the holes", () => {
+    const round = makeRound("stroke", scratch(["a", "b"]), [], { stake: 1 });
+    round.course.tees = [
+      { name: "Blue", color: "#2D6CDF", yards: 6800, distances: Array.from({ length: 18 }, (_, i) => 300 + i) },
+      { name: "White", distances: Array.from({ length: 18 }, () => null) },
+    ];
+    const data = buildResults(round);
+    expect(data.tees).toHaveLength(2);
+    expect(data.tees[0].name).toBe("Blue");
+    expect(data.tees[0].color).toBe("#2D6CDF");
+    expect(data.tees[0].distanceByHole[1]).toBe(300);
+    expect(data.tees[0].distanceByHole[18]).toBe(317);
+    expect(data.tees[1].distanceByHole[1]).toBeNull();
+  });
+
+  it("no tees on the course → empty tees array", () => {
+    const round = makeRound("stroke", scratch(["a", "b"]), [], { stake: 1 });
+    expect(buildResults(round).tees).toEqual([]);
+  });
+
   it("plain stroke (no press/hammer): only the Total column, still reconciles", () => {
     const round = makeRound(
       "stroke",

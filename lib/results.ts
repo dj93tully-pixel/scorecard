@@ -51,12 +51,19 @@ export interface PlayerResults {
   grand: number; // sum of total
 }
 
+export interface ResultTee {
+  name: string;
+  color?: string;
+  distanceByHole: Record<number, number | null>;
+}
+
 export interface ResultsData {
   players: PlayerResults[];
   betTypes: BetType[]; // the non-total bet types that EXIST (Total is always shown)
   hammerHoles: number[]; // holes that had a hammer (purple marker on the card)
   pressHoles: number[]; // union of every press's holes
   presses: PressInfo[]; // each individual press (Press tab sub-selector)
+  tees: ResultTee[]; // course tee yardages (scorecard distance rows)
 }
 
 const zeroHammer = (round: Round): Round => ({
@@ -207,5 +214,13 @@ export function buildResults(round: Round): ResultsData {
       })
     : [];
 
-  return { players, betTypes, hammerHoles, pressHoles, presses };
+  const tees: ResultTee[] = (round.course.tees ?? []).map((t) => {
+    const distanceByHole: Record<number, number | null> = {};
+    holes.forEach((h, i) => {
+      distanceByHole[h.number] = t.distances?.[i] ?? null;
+    });
+    return { name: t.name, color: t.color, distanceByHole };
+  });
+
+  return { players, betTypes, hammerHoles, pressHoles, presses, tees };
 }

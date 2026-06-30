@@ -8,9 +8,9 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { ResultsData, PlayerResults, BetType } from "@/lib/results";
+import { ResultsData, PlayerResults, BetType, ResultTee } from "@/lib/results";
 import { formatToPar } from "@/lib/storage";
 
 const BLUE = "#3B78FF";
@@ -663,6 +663,175 @@ function AllPlayersNine({
   );
 }
 
+// ── Traditional course-style scorecard: full grid, green header band, a colored
+//    tee-distance row per tee, shaded Par, Hcp, then player rows. Scorecard only.
+const GRID = "#D5D9DE";
+const HEADER_BG = "#1E7A46";
+
+function hexToRgb(hex?: string): [number, number, number] | null {
+  if (!hex) return null;
+  const h = hex.replace("#", "");
+  if (h.length < 6) return null;
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+// Readable text color over a tee color (dark text on light tees, white on dark).
+function readable(hex?: string): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return "#FFFFFF";
+  return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2] > 150 ? "#1A1A1A" : "#FFFFFF";
+}
+// A very light tint of the tee color over white for the yardage band.
+function tintOf(hex?: string): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return "#F7F8FA";
+  const mix = (c: number) => Math.round(c * 0.12 + 255 * 0.88);
+  return `rgb(${mix(rgb[0])},${mix(rgb[1])},${mix(rgb[2])})`;
+}
+
+function ScorecardNine({
+  players,
+  holeNums,
+  net,
+  label,
+  hammerHoles,
+  pressHoles,
+  tees,
+}: {
+  players: PlayerResults[];
+  holeNums: number[];
+  net: boolean;
+  label: "OUT" | "IN";
+  hammerHoles: Set<number>;
+  pressHoles: Set<number>;
+  tees: ResultTee[];
+}) {
+  const template = `46px repeat(${holeNums.length}, minmax(0,1fr)) 28px 26px`;
+  const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
+  const siByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.si]) ?? []);
+  const parTotal = holeNums.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
+
+  const GCell = ({
+    children,
+    bg,
+    color,
+    bold,
+    left,
+    style,
+  }: {
+    children: React.ReactNode;
+    bg?: string;
+    color?: string;
+    bold?: boolean;
+    left?: boolean;
+    style?: React.CSSProperties;
+  }) => (
+    <div
+      className="flex h-[26px] items-center text-[10px] tabular-nums"
+      style={{
+        background: bg ?? "#FFFFFF",
+        color,
+        fontWeight: bold ? 700 : undefined,
+        justifyContent: left ? "flex-start" : "center",
+        paddingLeft: left ? "6px" : 0,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+
+  return (
+    <div className="overflow-x-auto">
+      <div style={{ minWidth: 340, border: `1px solid ${GRID}` }}>
+        <div style={{ display: "grid", gridTemplateColumns: template, gap: "1px", background: GRID }}>
+          {/* HEADER band */}
+          <GCell bg={HEADER_BG} color="#fff" bold left>HOLE</GCell>
+          {holeNums.map((h) => (
+            <div key={`hd${h}`} className="flex h-[26px] flex-col items-center justify-center" style={{ background: HEADER_BG }}>
+              <span className="text-[10px] font-bold leading-none text-white">{h}</span>
+              <span className="mt-0.5 flex h-1 items-center justify-center" style={{ gap: "0.5px" }}>
+                {pressHoles.has(h) && <span className="h-1 w-1 rounded-full" style={{ background: PRESS }} />}
+                {hammerHoles.has(h) && <span className="h-1 w-1 rounded-full" style={{ background: HAMMER }} />}
+              </span>
+            </div>
+          ))}
+          <GCell bg={HEADER_BG} color="#fff" bold>{label}</GCell>
+          <GCell bg={HEADER_BG}> </GCell>
+
+          {/* TEE distance rows — one per tee, colored by tee */}
+          {tees.map((t) => {
+            const txt = readable(t.color);
+            const band = tintOf(t.color);
+            const nineTot = holeNums.reduce((s, h) => s + (t.distanceByHole[h] ?? 0), 0);
+            const labelStyle = txt === "#1A1A1A" ? { boxShadow: "inset 0 0 0 1px #C2CAD8" } : undefined;
+            return (
+              <Fragment key={`tee-${t.name}`}>
+                <GCell bg={t.color ?? "#9098A4"} color={txt} bold left style={labelStyle}>
+                  <span className="truncate">{t.name}</span>
+                </GCell>
+                {holeNums.map((h) => (
+                  <GCell key={`${t.name}-${h}`} bg={band} color="#525861">{t.distanceByHole[h] ?? ""}</GCell>
+                ))}
+                <GCell bg={band} color="#525861" bold>{nineTot || ""}</GCell>
+                <GCell bg={band}> </GCell>
+              </Fragment>
+            );
+          })}
+
+          {/* PAR */}
+          <GCell bg="#E8EBF0" color={MUTED} bold left>Par</GCell>
+          {holeNums.map((h) => (
+            <GCell key={`par${h}`} bg="#E8EBF0" color={INK} bold>{parByHole.get(h)}</GCell>
+          ))}
+          <GCell bg="#E8EBF0" color={INK} bold>{parTotal}</GCell>
+          <GCell bg="#E8EBF0"> </GCell>
+
+          {/* HCP */}
+          <GCell bg="#F4F6F8" color={MUTED} left>Hcp</GCell>
+          {holeNums.map((h) => (
+            <GCell key={`hcp${h}`} bg="#F4F6F8" color={MUTED}>{siByHole.get(h)}</GCell>
+          ))}
+          <GCell bg="#F4F6F8"> </GCell>
+          <GCell bg="#F4F6F8"> </GCell>
+
+          {/* PLAYER rows */}
+          {players.map((p) => {
+            const idxByHole = new Map(p.holes.map((c, i) => [c.hole, i]));
+            let scoreTot = 0;
+            let toPar = 0;
+            let anyScore = false;
+            const holeCells = holeNums.map((h) => {
+              const i = idxByHole.get(h);
+              const c = i === undefined ? undefined : p.holes[i];
+              const s = c ? (net ? c.net : c.gross) : null;
+              if (s !== null) {
+                scoreTot += s;
+                toPar += s - (c?.par ?? 0);
+                anyScore = true;
+              }
+              return (
+                <GCell key={`${p.id}-${h}`}>
+                  <ScoreCell score={s} par={c?.par ?? 4} pop={c?.pop ?? 0} />
+                </GCell>
+              );
+            });
+            return (
+              <Fragment key={p.id}>
+                <GCell left>
+                  <span className="truncate text-[11px] font-semibold" style={{ color: INK }}>{p.name}</span>
+                </GCell>
+                {holeCells}
+                <GCell bold color={INK}>{scoreTot || "–"}</GCell>
+                <GCell bold color={BLUE}>{anyScore ? formatToPar(toPar) : "–"}</GCell>
+              </Fragment>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ResultsView({ results }: { results: ResultsData }) {
   const standings = useMemo(
     () => [...results.players].sort((a, b) => b.grand - a.grand),
@@ -733,15 +902,11 @@ export function ResultsView({ results }: { results: ResultsData }) {
         </div>
       </section>
 
-      {/* One giant all-players scorecard — same transparent, borderless-sides look */}
+      {/* Traditional course-style all-players scorecard */}
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Scorecard</h2>
-        <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
-          <AllPlayersNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} mode="scores" />
-          <div style={{ borderTop: `1px solid ${BORDER}` }}>
-            <AllPlayersNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} mode="scores" />
-          </div>
-        </div>
+        <ScorecardNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} tees={results.tees} />
+        <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} tees={results.tees} />
       </section>
     </div>
   );

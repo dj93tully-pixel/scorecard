@@ -16,9 +16,18 @@ export interface CourseHole {
   strokeIndex: number; // 1..18, each used once
 }
 
+/** A set of tees (color box) with its per-hole yardages, for the scorecard. */
+export interface CourseTee {
+  name: string; // e.g. "Black", "Blue", "White"
+  color?: string; // hex; undefined → neutral gray in the UI
+  yards?: number | null; // total yardage
+  distances: (number | null)[]; // per hole, aligned to holes order
+}
+
 export interface Course {
   name: string;
   holes: CourseHole[];
+  tees?: CourseTee[]; // optional — older saved courses won't have it
 }
 
 export interface Player {

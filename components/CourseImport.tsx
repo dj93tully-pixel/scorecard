@@ -17,9 +17,11 @@ interface SearchResult {
 
 interface TeeDetail {
   name: string;
+  color?: string;
   yards: number | null;
   par: number | null;
   holes: { number: number; par: number; strokeIndex: number }[];
+  distances: (number | null)[];
 }
 
 interface CourseDetail {
@@ -104,6 +106,13 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
     const course: Course = {
       name: detail.name,
       holes: tee.holes.slice(0, 18),
+      // Keep every tee's colour + per-hole yardages for the scorecard.
+      tees: detail.tees.map((t) => ({
+        name: t.name,
+        color: t.color,
+        yards: t.yards,
+        distances: t.distances.slice(0, 18),
+      })),
     };
     onImport(course);
   }
@@ -197,7 +206,13 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
                 className="flex w-full items-center justify-between rounded-lg border border-card-border px-3 py-3 text-left"
               >
                 <span>
-                  <span className="block font-semibold">{tee.name}</span>
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <span
+                      className="inline-block h-3 w-3 shrink-0 rounded-full border border-card-border"
+                      style={{ background: tee.color ?? "#9098A4" }}
+                    />
+                    {tee.name}
+                  </span>
                   <span className="block text-xs text-text-muted">
                     {tee.holes.length} holes
                     {tee.par ? ` · Par ${tee.par}` : ""}

@@ -12,11 +12,16 @@ interface RawHole {
   handicap?: number; // stroke index in the upstream schema
   hole?: number;
   number?: number;
+  yardage?: number; // per-hole distance (upstream field)
+  yards?: number;
+  length?: number;
 }
 
 interface RawTee {
   tee_name?: string;
   name?: string;
+  tee_color?: string;
+  color?: string;
   total_yards?: number;
   par_total?: number;
   holes?: RawHole[];
@@ -29,6 +34,41 @@ function mapHoles(holes: RawHole[]) {
     // Upstream `handicap` is the stroke index. Fall back to position if absent.
     strokeIndex: typeof h.handicap === "number" && h.handicap > 0 ? h.handicap : i + 1,
   }));
+}
+
+function mapDistances(holes: RawHole[]): (number | null)[] {
+  return holes.map((h) => {
+    const y = h.yardage ?? h.yards ?? h.length;
+    return typeof y === "number" && y > 0 ? y : null;
+  });
+}
+
+// Common tee names → a representative colour. Falls back to undefined (the UI
+// then uses a neutral gray). Accepts a hex `tee_color` from the API if present.
+const TEE_COLORS: Record<string, string> = {
+  black: "#1A1A1A",
+  championship: "#1A1A1A",
+  tournament: "#1A1A1A",
+  blue: "#2D6CDF",
+  white: "#FFFFFF",
+  gold: "#C99A2E",
+  yellow: "#E6C12F",
+  green: "#2E8B45",
+  red: "#D2342B",
+  silver: "#AEB4BD",
+  gray: "#9098A4",
+  grey: "#9098A4",
+  purple: "#7C3AED",
+  orange: "#E8590C",
+  combo: "#9098A4",
+  forward: "#D2342B",
+};
+
+function teeColor(raw: string | undefined, name: string): string | undefined {
+  if (raw && /^#?[0-9a-fA-F]{6}$/.test(raw)) return raw.startsWith("#") ? raw : `#${raw}`;
+  const key = name.toLowerCase();
+  for (const [word, hex] of Object.entries(TEE_COLORS)) if (key.includes(word)) return hex;
+  return undefined;
 }
 
 export async function GET(
@@ -96,12 +136,17 @@ export async function GET(
     const seen = new Set<string>();
     const tees = teeGroups
       .filter((tee) => Array.isArray(tee.holes) && tee.holes.length > 0)
-      .map((tee) => ({
-        name: tee.tee_name ?? tee.name ?? "Tee",
-        yards: tee.total_yards ?? null,
-        par: tee.par_total ?? null,
-        holes: mapHoles(tee.holes as RawHole[]),
-      }))
+      .map((tee) => {
+        const name = tee.tee_name ?? tee.name ?? "Tee";
+        return {
+          name,
+          color: teeColor(tee.tee_color ?? tee.color, name),
+          yards: tee.total_yards ?? null,
+          par: tee.par_total ?? null,
+          holes: mapHoles(tee.holes as RawHole[]),
+          distances: mapDistances(tee.holes as RawHole[]),
+        };
+      })
       .filter((tee) => {
         const key = tee.name.toLowerCase();
         if (seen.has(key)) return false;
