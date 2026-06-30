@@ -119,7 +119,7 @@ function HoleCard({
             <>
               <button
                 onClick={() => commit({ pressSeg: !pressSeg })}
-                aria-label={`Press — new bet on the rest of this ${segLabel === "6" ? "six" : "nine"}`}
+                aria-label={`Press — new bet on the rest of this ${gt === "sixes" ? "six" : "nine"}`}
                 style={pressSeg ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
                 className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
                   pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
