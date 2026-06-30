@@ -6,7 +6,7 @@
 "use client";
 
 import { CSSProperties, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Zap } from "lucide-react";
 import { Round, Player } from "@/lib/wolf";
 import { gameTypeOf } from "@/lib/gametypes";
 import { pressedHoles } from "@/lib/engines/press";
@@ -37,6 +37,13 @@ export interface PressViews {
   original: CardComputation;
   press: CardComputation;
   total: CardComputation;
+}
+
+// One individual press as its own card view (for the Press tab's sub-selector).
+export interface PressCardView {
+  label: string; // e.g. "9", "9×2", "18"
+  holes: Set<number>; // the holes it covers
+  comp: CardComputation;
 }
 
 const INK = "#16181D";
@@ -559,11 +566,13 @@ export function CardTab({
   computation,
   views,
   trend,
+  pressCards,
 }: {
   round: Round;
   computation: CardComputation;
   views?: PressViews;
   trend?: Record<string, number>[]; // money after each played hole (trendline)
+  pressCards?: PressCardView[]; // individual presses (Press-tab sub-selector)
 }) {
   const front = Array.from({ length: 9 }, (_, i) => i + 1);
   const back = Array.from({ length: 9 }, (_, i) => i + 10);
@@ -575,7 +584,12 @@ export function CardTab({
   // When there are presses, switch the whole card between the original bet, the
   // press bets, and their total. Without presses there's just the one view.
   const [bet, setBet] = useState<"total" | "press" | "original">("total");
-  const active = views ? views[bet] : computation;
+  // Within the Press tab: "total" (all presses) or a single press by index.
+  const [pressView, setPressView] = useState<number | "total">("total");
+
+  const onePress =
+    bet === "press" && typeof pressView === "number" ? pressCards?.[pressView] : undefined;
+  const active = onePress ? onePress.comp : views ? views[bet] : computation;
 
   const standings = [...round.players].sort(
     (a, b) => (active.ledger[b.id] ?? 0) - (active.ledger[a.id] ?? 0)
@@ -586,8 +600,9 @@ export function CardTab({
   const showLedger = gt !== "elevens" && gt !== "nassau";
 
   // On the Press view, the full scorecard shows but only the pressed holes carry
-  // data — the rest are left blank.
-  const activeHoles = views && bet === "press" ? pressedHoles(round) : undefined;
+  // data — a single press scopes to its own holes, "total" to all pressed holes.
+  const activeHoles =
+    bet === "press" ? (onePress ? onePress.holes : pressedHoles(round)) : undefined;
 
   return (
     <div className="space-y-6">
@@ -612,6 +627,44 @@ export function CardTab({
               </button>
             ))}
           </div>
+
+          {/* Press tab: pick the combined presses or an individual press. */}
+          {bet === "press" && pressCards && pressCards.length > 0 && (
+            <div className="mt-2 flex gap-1 overflow-x-auto">
+              <button
+                onClick={() => setPressView("total")}
+                style={
+                  pressView === "total"
+                    ? { background: "#E8590C", borderColor: "#E8590C" }
+                    : undefined
+                }
+                className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${
+                  pressView === "total"
+                    ? "text-on-dark"
+                    : "border-card-border bg-card-bg text-text-muted"
+                }`}
+              >
+                Total
+              </button>
+              {pressCards.map((pc, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPressView(i)}
+                  style={
+                    pressView === i ? { background: "#E8590C", borderColor: "#E8590C" } : undefined
+                  }
+                  className={`flex shrink-0 items-center gap-0.5 rounded-full border px-2.5 py-1 text-xs font-bold ${
+                    pressView === i
+                      ? "text-on-dark"
+                      : "border-card-border bg-card-bg text-text-muted"
+                  }`}
+                >
+                  <Zap className="h-3 w-3" />
+                  {pc.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

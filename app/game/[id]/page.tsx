@@ -10,9 +10,12 @@ import { computeGame, computeBaseGame, gameTypeOf } from "@/lib/gametypes";
 import {
   computePressMoney,
   decomposePresses,
+  eachPress,
   hasAnyPress,
+  pressSubRound,
   RunResult,
 } from "@/lib/engines/press";
+import { nassauPressLedger } from "@/lib/engines/nassau";
 import { ScoresTab } from "@/components/ScoresTab";
 import { CardTab, CardComputation, PressViews } from "@/components/CardTab";
 import { ScoreEntryTab } from "@/components/ScoreEntryTab";
@@ -222,6 +225,47 @@ export default function GamePage() {
     return out;
   }, [round, isWolf]);
 
+  // Each individual press as its own card view, for the sub-selector inside the
+  // Press tab (Total · ⚡9 · ⚡9×2 · ⚡18 …).
+  const pressCards = useMemo(() => {
+    if (!round || !hasAnyPress(round)) return [];
+    const gt = gameTypeOf(round);
+    const pops = (isWolf ? computation?.pops : gameResult?.pops) ?? {};
+    const run = (holes: Set<number>): RunResult => {
+      if (gt === "nassau") return { ledger: nassauPressLedger(round, holes), holeResults: [] };
+      if (isWolf) {
+        const c = computeRound(pressSubRound(round, holes));
+        return {
+          ledger: c.ledger,
+          holeResults: c.results.map((rr) => ({
+            hole: rr.hole,
+            deltas: rr.deltas,
+            detail: "",
+            decided: rr.winner !== "push",
+          })),
+        };
+      }
+      const g = computeBaseGame(pressSubRound(round, holes));
+      return { ledger: g.ledger, holeResults: g.holeResults };
+    };
+    let segK = 0;
+    let fullK = 0;
+    return eachPress(round, run).map((pr) => {
+      const num = pr.scope === "full" ? 18 : gt === "sixes" ? 6 : 9;
+      const k = pr.scope === "seg" ? ++segK : ++fullK;
+      return {
+        label: `${num}${k > 1 ? `×${k}` : ""}`,
+        holes: new Set(pr.holes),
+        comp: {
+          ledger: pr.result.ledger,
+          pops,
+          results: pr.result.holeResults,
+          stats: {},
+        } as CardComputation,
+      };
+    });
+  }, [round, isWolf, computation, gameResult]);
+
   const tabs: PillTab[] = [
     { id: "scores", label: "Scores" },
     { id: "card", label: "Card" },
@@ -284,7 +328,13 @@ export default function GamePage() {
             <ScoreEntryTab round={round} upsertEntry={upsertEntry} />
           ))}
         {tab === "card" && cardComp && (
-          <CardTab round={round} computation={cardComp} views={cardViews} trend={cardTrend} />
+          <CardTab
+            round={round}
+            computation={cardComp}
+            views={cardViews}
+            trend={cardTrend}
+            pressCards={pressCards}
+          />
         )}
       </div>
     </div>

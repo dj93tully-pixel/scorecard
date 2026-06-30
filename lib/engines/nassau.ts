@@ -32,6 +32,52 @@ import { pressRange, pressScopesOf } from "./press";
 
 type SegKey = "front" | "back" | "overall";
 
+/**
+ * One Nassau press's money over a set of holes — a single better-ball (teams)
+ * match: most holes won takes the stake, split within the side. Robin format has
+ * no press. Used for the Card tab's per-press sub-views.
+ */
+export function nassauPressLedger(
+  round: Round,
+  holes: Set<number>
+): Record<PlayerId, number> {
+  const { players, course, settings } = round;
+  const ids = players.map((p) => p.id);
+  const ledger: Record<PlayerId, number> = {};
+  for (const id of ids) ledger[id] = 0;
+  if ((settings.nassauFormat ?? "teams") !== "teams") return ledger;
+  const { A, B } = splitTeams(round);
+  if (A.length === 0 || B.length === 0) return ledger;
+
+  const pops = computePops(players, course, settings.handicapMode);
+  const stake = settings.stake || 1;
+  const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
+  const netOn = (id: PlayerId, hole: number): number | null => {
+    const g = entryByHole.get(hole)?.grossScores[id];
+    return typeof g === "number" ? g - (pops[id]?.[hole] ?? 0) : null;
+  };
+  const teamNet = (team: PlayerId[], hole: number): number | null => {
+    const nets = team.map((id) => netOn(id, hole)).filter((n): n is number => n !== null);
+    return nets.length ? Math.min(...nets) : null;
+  };
+
+  let aWon = 0;
+  let bWon = 0;
+  for (const n of holes) {
+    const na = teamNet(A, n);
+    const nb = teamNet(B, n);
+    if (na === null || nb === null) continue;
+    if (na < nb) aWon++;
+    else if (nb < na) bWon++;
+  }
+  if (aWon === bWon) return ledger;
+  const win = aWon > bWon ? A : B;
+  const lose = aWon > bWon ? B : A;
+  for (const id of win) ledger[id] += stake / win.length;
+  for (const id of lose) ledger[id] -= stake / lose.length;
+  return ledger;
+}
+
 export function computeNassau(round: Round): GameResult {
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);

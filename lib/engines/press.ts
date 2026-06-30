@@ -83,7 +83,7 @@ export function pressScopesOf(e: {
  * carries (or not) on the `pressCarryover` setting — independent of the base
  * bet's carryover.
  */
-function pressSubRound(round: Round, holes: Set<number>): Round {
+export function pressSubRound(round: Round, holes: Set<number>): Round {
   return {
     ...round,
     settings: {
@@ -211,6 +211,31 @@ export function combinedHoleResults(
     if (pr) for (const id of Object.keys(pr)) deltas[id] = (deltas[id] ?? 0) + (pr[id] ?? 0);
     return { hole: hr.hole, deltas, detail: hr.detail ?? "", decided: hr.decided ?? false };
   });
+}
+
+export interface PressItem {
+  hole: number; // where it was started
+  scope: PressScope;
+  holes: number[]; // the holes it covers
+  result: RunResult; // its own ledger + per-hole money
+}
+
+/**
+ * Each individual press settled on its own — for the Card tab's per-press
+ * sub-views inside the Press tab. `run(holes)` settles one press over its holes.
+ */
+export function eachPress(
+  round: Round,
+  run: (holes: Set<number>) => RunResult
+): PressItem[] {
+  const out: PressItem[] = [];
+  for (const e of round.entries) {
+    for (const scope of pressScopesOf(e)) {
+      const list = pressRange(round, e.hole, scope);
+      out.push({ hole: e.hole, scope, holes: list, result: run(new Set(list)) });
+    }
+  }
+  return out;
 }
 
 export interface PressSplit {
