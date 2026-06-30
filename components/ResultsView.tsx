@@ -77,7 +77,7 @@ function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boole
 
 // Concentric rings = strokes from par (cap 4). Under par = circles, over = squares.
 const RING_GAP = "#F4F6FA"; // gap colour between rings
-function ringStyle(rel: number): React.CSSProperties {
+function ringStyle(rel: number, ring: string = INK): React.CSSProperties {
   if (rel === 0) return {};
   const n = Math.min(Math.abs(rel), 4);
   const layers: string[] = [];
@@ -88,7 +88,7 @@ function ringStyle(rel: number): React.CSSProperties {
       layers.push(`0 0 0 ${spread}px ${RING_GAP}`);
     }
     spread += 1.1;
-    layers.push(`0 0 0 ${spread}px ${INK}`);
+    layers.push(`0 0 0 ${spread}px ${ring}`);
   }
   return { boxShadow: layers.join(", "), borderRadius: rel < 0 ? "50%" : "3px" };
 }
@@ -107,12 +107,13 @@ function ScoreCell({ score, par, pop }: { score: number | null; par: number; pop
     fontSize: "11px",
     fontWeight: 700,
   } as const;
-  // 4+ over par: solid dark square, white number.
+  const ink = pop > 0 ? BLUE : INK; // pops turn the number AND the box/circle blue
+  // 4+ over par: solid square, white number.
   if (rel > 3) {
-    return <span style={{ ...base, color: "#FFFFFF", background: INK, borderRadius: "3px" }}>{score}</span>;
+    return <span style={{ ...base, color: "#FFFFFF", background: ink, borderRadius: "3px" }}>{score}</span>;
   }
   return (
-    <span style={{ ...base, color: pop > 0 ? BLUE : INK, ...ringStyle(rel) }}>
+    <span style={{ ...base, color: ink, ...ringStyle(rel, ink) }}>
       {score}
     </span>
   );
