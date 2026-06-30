@@ -138,6 +138,8 @@ function Nine({
   hammerHoles,
   pressHoles,
   activeHoles,
+  pickShade = INK,
+  hideMoney = false,
 }: {
   cells: { cell: PlayerResults["holes"][number]; m: number }[];
   net: boolean;
@@ -145,6 +147,8 @@ function Nine({
   hammerHoles: Set<number>;
   pressHoles: Set<number>;
   activeHoles: Set<number> | null; // press view: only these holes carry data
+  pickShade?: string; // 11s: this player's pick-dot shade
+  hideMoney?: boolean; // 11s: drop the per-hole money row
 }) {
   const template = `34px repeat(${cells.length}, minmax(0,1fr)) 34px`;
   const on = (h: number) => !activeHoles || activeHoles.has(h);
@@ -189,7 +193,7 @@ function Nine({
             <div key={x.cell.hole} className="flex items-center justify-center" style={{ height: 9 }}>
               {on(x.cell.hole) && (
                 <span className="flex items-center" style={{ gap: 1 }}>
-                  {x.cell.picked && <span style={{ width: 4, height: 4, borderRadius: "50%", background: INK }} />}
+                  {x.cell.picked && <span style={{ width: 4, height: 4, borderRadius: "50%", background: pickShade }} />}
                   {pressHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: PRESS }} />}
                   {hammerHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: HAMMER }} />}
                 </span>
@@ -218,25 +222,27 @@ function Nine({
             <span className="text-xs font-bold" style={{ color: INK }}>{scoreTotal || "–"}</span>
           </Cell>
         </div>
-        {/* money */}
-        <div className="grid items-center" style={{ gridTemplateColumns: template, borderTop: `1px solid ${BORDER}` }}>
-          <Cell>
-            <span className="text-[10px] font-semibold" style={{ color: MUTED }}>$</span>
-          </Cell>
-          {cells.map((x) => {
-            const show = on(x.cell.hole) && x.m !== 0;
-            return (
-              <Cell key={x.cell.hole}>
-                <span className="text-[9px] font-bold tabular-nums" style={{ color: show ? moneyColor(x.m) : "#C4C8CE" }}>
-                  {show ? money1(x.m) : "·"}
-                </span>
-              </Cell>
-            );
-          })}
-          <Cell>
-            <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(moneyTotal) }}>{dollars(moneyTotal)}</span>
-          </Cell>
-        </div>
+        {/* money (hidden for 11s — it settles on the sum of picked holes) */}
+        {!hideMoney && (
+          <div className="grid items-center" style={{ gridTemplateColumns: template, borderTop: `1px solid ${BORDER}` }}>
+            <Cell>
+              <span className="text-[10px] font-semibold" style={{ color: MUTED }}>$</span>
+            </Cell>
+            {cells.map((x) => {
+              const show = on(x.cell.hole) && x.m !== 0;
+              return (
+                <Cell key={x.cell.hole}>
+                  <span className="text-[9px] font-bold tabular-nums" style={{ color: show ? moneyColor(x.m) : "#C4C8CE" }}>
+                    {show ? money1(x.m) : "·"}
+                  </span>
+                </Cell>
+              );
+            })}
+            <Cell>
+              <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(moneyTotal) }}>{dollars(moneyTotal)}</span>
+            </Cell>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -297,6 +303,7 @@ function Detail({
   setFilter,
   pressSel,
   setPressSel,
+  pickShade,
 }: {
   player: PlayerResults;
   results: ResultsData;
@@ -305,6 +312,7 @@ function Detail({
   setFilter: (f: Filter) => void;
   pressSel: number | "all";
   setPressSel: (s: number | "all") => void;
+  pickShade: string;
 }) {
   const { betTypes, presses, pressHoles, hammerHoles } = results;
   const tiles: Filter[] = [...betTypes, "total"];
@@ -406,9 +414,9 @@ function Detail({
 
       {/* horizontal scorecard */}
       <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
-        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} activeHoles={activeHoles} />
+        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
         <div style={{ borderTop: `1px solid ${BORDER}` }}>
-          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} activeHoles={activeHoles} />
+          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
         </div>
         <div
           className="grid items-center text-xs font-bold tabular-nums"
@@ -449,6 +457,7 @@ function PlayerBar({
   setFilter,
   pressSel,
   setPressSel,
+  pickShade,
 }: {
   player: PlayerResults;
   rank: number;
@@ -460,14 +469,17 @@ function PlayerBar({
   setFilter: (f: Filter) => void;
   pressSel: number | "all";
   setPressSel: (s: number | "all") => void;
+  pickShade: string;
 }) {
-  // Score to par, following the gross/net toggle. For 11s the tally is only over
-  // the holes the player picked (the 11s game is the sum of those holes).
+  // Full-round score to par, following the gross/net toggle.
   let toPar: number | null = null;
+  // 11s: the player's score is the sum of net/gross-to-par over their picked holes.
+  let elevenToPar: number | null = null;
   for (const c of player.holes) {
-    if (results.isElevens && !c.picked) continue;
     const s = net ? c.net : c.gross;
-    if (s !== null) toPar = (toPar ?? 0) + s - c.par;
+    if (s === null) continue;
+    toPar = (toPar ?? 0) + s - c.par;
+    if (c.picked) elevenToPar = (elevenToPar ?? 0) + s - c.par;
   }
   return (
     <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER, borderLeft: `4px solid ${open ? BLUE : "#AFC6FF"}` }}>
@@ -478,6 +490,14 @@ function PlayerBar({
           <span className="shrink-0 font-serif text-sm font-bold tabular-nums" style={{ color: BLUE }}>
             {toPar === null ? "–" : formatToPar(toPar)}
           </span>
+          {results.isElevens && (
+            <span
+              className="shrink-0 self-center rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums"
+              style={{ background: BLUE, color: "#fff" }}
+            >
+              {elevenToPar === null ? "–" : formatToPar(elevenToPar)}
+            </span>
+          )}
         </span>
         <span className="font-serif text-lg font-extrabold tabular-nums" style={{ color: moneyColor(player.grand) }}>
           {money1(player.grand)}
@@ -493,6 +513,7 @@ function PlayerBar({
           setFilter={setFilter}
           pressSel={pressSel}
           setPressSel={setPressSel}
+          pickShade={pickShade}
         />
       )}
     </div>
@@ -567,8 +588,11 @@ function HeaderHoleCell({ n, bg = HEADER_BG }: { n: number | string; bg?: string
   );
 }
 
+// Per-player pick-dot shades (11s) — distinct so you can tell whose pick is whose.
+const PICK_SHADES = ["#16181D", "#2563EB", "#0D9488", "#B45309", "#7C3AED", "#BE185D"];
+
 // A very thin row directly under the header for the press (orange) / hammer
-// (purple) dots, so they read on white instead of being lost on the header band.
+// (purple) dots — plus 11s pick dots (one per player who picked, in their shade).
 // Returns the cells as direct children of the surrounding grid. `trailing` =
 // number of empty cells after the holes (OUT, and +/- on the scorecard).
 function DotsRowFragment({
@@ -576,11 +600,13 @@ function DotsRowFragment({
   hammerHoles,
   pressHoles,
   trailing,
+  pickers,
 }: {
   holeNums: number[];
   hammerHoles: Set<number>;
   pressHoles: Set<number>;
   trailing: number;
+  pickers?: { picked: Set<number>; shade: string }[];
 }) {
   const blank = (k: string) => <div key={k} style={{ background: "#FFFFFF", height: 9 }} />;
   return (
@@ -589,6 +615,11 @@ function DotsRowFragment({
       {holeNums.map((h) => (
         <div key={`dot${h}`} className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 9 }}>
           <span className="flex items-center" style={{ gap: 1 }}>
+            {pickers?.map((pk, i) =>
+              pk.picked.has(h) ? (
+                <span key={`p${i}`} style={{ width: 3, height: 3, borderRadius: "50%", background: pk.shade }} />
+              ) : null
+            )}
             {pressHoles.has(h) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: PRESS }} />}
             {hammerHoles.has(h) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: HAMMER }} />}
           </span>
@@ -620,6 +651,11 @@ function ScorecardNine({
   const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
   const siByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.si]) ?? []);
   const parTotal = holeNums.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
+  // 11s pick dots — one per player who picked, in their standings-order shade.
+  const pickers = players.map((p, i) => ({
+    picked: new Set(p.holes.filter((c) => c.picked).map((c) => c.hole)),
+    shade: PICK_SHADES[i % PICK_SHADES.length],
+  }));
 
   return (
     <div className="overflow-x-auto">
@@ -669,8 +705,8 @@ function ScorecardNine({
           <GridCell bg="#F4F6F8"> </GridCell>
           <GridCell bg="#F4F6F8"> </GridCell>
 
-          {/* press / hammer dots — their own thin row, below Hcp */}
-          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={2} />
+          {/* press / hammer dots + 11s pick dots — their own thin row, below Hcp */}
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={2} pickers={pickers} />
 
           {/* PLAYER rows */}
           {players.map((p) => {
@@ -689,10 +725,7 @@ function ScorecardNine({
               }
               return (
                 <GridCell key={`${p.id}-${h}`}>
-                  <span className="flex flex-col items-center justify-center">
-                    <ScoreCell score={s} par={c?.par ?? 4} pop={c?.pop ?? 0} />
-                    {c?.picked && <span style={{ width: 3, height: 3, borderRadius: "50%", background: INK, marginTop: 1 }} />}
-                  </span>
+                  <ScoreCell score={s} par={c?.par ?? 4} pop={c?.pop ?? 0} />
                 </GridCell>
               );
             });
@@ -822,7 +855,7 @@ export function ResultsView({ results }: { results: ResultsData }) {
         <GrossNetToggle net={net} onChange={setNet} />
       </div>
       <div className="space-y-2">
-        {standings.map((p) => {
+        {standings.map((p, idx) => {
           const rank = 1 + standings.filter((q) => q.grand > p.grand).length;
           return (
             <PlayerBar
@@ -837,6 +870,7 @@ export function ResultsView({ results }: { results: ResultsData }) {
               setFilter={setFilter}
               pressSel={pressSel}
               setPressSel={setPressSel}
+              pickShade={PICK_SHADES[idx % PICK_SHADES.length]}
             />
           );
         })}
