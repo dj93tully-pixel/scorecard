@@ -501,7 +501,7 @@ function PlayerBar({
 // ── Traditional course-style scorecard: full grid, green header band, a colored
 //    tee-distance row per tee, shaded Par, Hcp, then player rows. Scorecard only.
 const GRID = "#D5D9DE";
-const HEADER_BG = "#16181D";
+const HEADER_BG = "#1E7A46";
 
 function hexToRgb(hex?: string): [number, number, number] | null {
   if (!hex) return null;
@@ -601,7 +601,7 @@ function ScorecardNine({
             <HeaderHoleCell key={`hd${h}`} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} />
           ))}
           <GridCell bg={HEADER_BG} color="#fff" bold>{label}</GridCell>
-          <GridCell bg={HEADER_BG}> </GridCell>
+          <GridCell bg={HEADER_BG} color="#fff" bold>+/-</GridCell>
 
           {/* TEE distance rows — one per tee, colored by tee */}
           {tees.map((t) => {
