@@ -37,6 +37,7 @@ export interface HoleCell {
   par: number;
   gross: number | null;
   net: number | null;
+  pop: number; // handicap strokes received on this hole
 }
 
 export interface PlayerResults {
@@ -143,8 +144,9 @@ export function buildResults(round: Round): ResultsData {
     const holeCells: HoleCell[] = holes.map((h) => {
       const g = entryByHole.get(h.number)?.grossScores[p.id];
       const gross = typeof g === "number" ? g : null;
-      const net = gross === null ? null : gross - (pops[p.id]?.[h.number] ?? 0);
-      return { hole: h.number, par: h.par, gross, net };
+      const pop = pops[p.id]?.[h.number] ?? 0;
+      const net = gross === null ? null : gross - pop;
+      return { hole: h.number, par: h.par, gross, net, pop };
     });
     const total = holes.map((_, i) => orig[p.id][i] + prs[p.id][i] + ham[p.id][i]);
     const grand = total.reduce((s, v) => s + v, 0);

@@ -66,10 +66,12 @@ function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boole
   );
 }
 
-// ── Score cell — circle (under par) / square (over par) / plain (par) ────────
-function ScoreCell({ score, par }: { score: number | null; par: number }) {
+// ── Score cell — circle (under par) / square (over par) / plain (par). Text is
+//    blue when the player got a pop (handicap stroke) on the hole. ────────────
+function ScoreCell({ score, par, pop }: { score: number | null; par: number; pop: number }) {
   if (score === null) return <span style={{ color: "#C4C8CE" }}>–</span>;
   const rel = score - par;
+  const color = pop > 0 ? BLUE : INK;
   const base = {
     display: "inline-flex",
     alignItems: "center",
@@ -78,16 +80,15 @@ function ScoreCell({ score, par }: { score: number | null; par: number }) {
     height: "19px",
     fontSize: "11px",
     fontWeight: 700,
-    color: INK,
+    color,
   } as const;
   if (rel === 0) return <span style={base}>{score}</span>;
   return (
     <span
       style={{
         ...base,
-        border: `1.5px solid ${rel > 0 ? INK : BLUE}`,
+        border: `1.5px solid ${color}`,
         borderRadius: rel > 0 ? "3px" : "50%",
-        color: rel > 0 ? INK : BLUE,
       }}
     >
       {score}
@@ -183,7 +184,7 @@ function Nine({
           {cells.map((x) =>
             on(x.cell.hole) ? (
               <Cell key={x.cell.hole}>
-                <ScoreCell score={scoreOf(x.cell)} par={x.cell.par} />
+                <ScoreCell score={scoreOf(x.cell)} par={x.cell.par} pop={x.cell.pop} />
               </Cell>
             ) : (
               <Cell key={x.cell.hole}>
@@ -558,7 +559,7 @@ function AllPlayersNine({
                 if (s !== null) scoreTot += s;
                 return (
                   <Cell key={h}>
-                    <ScoreCell score={s} par={c?.par ?? 4} />
+                    <ScoreCell score={s} par={c?.par ?? 4} pop={c?.pop ?? 0} />
                   </Cell>
                 );
               })}
