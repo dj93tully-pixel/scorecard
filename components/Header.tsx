@@ -97,7 +97,7 @@ export function Header() {
               ) : (
                 <>
                   <span style={{ color: "#FFFFFF" }}>HACKER</span>
-                  <span style={{ color: "#19E59A" }}>TRACKER</span>
+                  <span style={{ color: "#20EBA0" }}>TRACKER</span>
                 </>
               )}
             </h1>
