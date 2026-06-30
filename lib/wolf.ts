@@ -107,7 +107,9 @@ export type GameTypeId =
   | "stroke"
   | "elevens"
   | "fieldhammer"
-  | "nassau";
+  | "nassau"
+  | "stableford"
+  | "modifiedstableford";
 
 export interface HoleEntry {
   hole: number; // 1..18

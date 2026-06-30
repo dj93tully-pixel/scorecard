@@ -11,6 +11,7 @@ import { computeBestBall } from "./bestball";
 import { computeVegas } from "./vegas";
 import { computeSixes } from "./sixes";
 import { computeStroke } from "./strokeplay";
+import { computeStableford, computeModifiedStableford } from "./stableford";
 import { computeElevens } from "./elevens";
 import { computeNassau } from "./nassau";
 import { withPresses, pressRange, combinedHoleResults } from "./press";
@@ -230,6 +231,66 @@ describe("stroke play", () => {
     const { ledger } = computeStroke(round);
     expect(ledger.a).toBe(8); // 4 strokes × $2
     expect(ledger.d).toBe(-8);
+    expect(sum(ledger)).toBe(0);
+  });
+});
+
+// ── Stableford ────────────────────────────────────────────────────────────────
+
+describe("stableford", () => {
+  // Par 4 everywhere, scratch → net = gross. a birdie(3), b/c par(2), d bogey(1).
+  const entries = [
+    { hole: 18, wolfId: "", mode: "2v2" as const, grossScores: { a: 3, b: 4, c: 4, d: 5 } },
+  ];
+
+  it("pays the points difference vs the field; zero-sum", () => {
+    const round = makeRound("stableford", scratch(["a", "b", "c", "d"]), entries, { stake: 1 });
+    const { ledger, stats } = computeStableford(round);
+    expect(stats.a.points).toBe(3); // birdie
+    expect(stats.d.points).toBe(1); // bogey
+    expect(ledger.a).toBe(4); // (3-2)+(3-2)+(3-1)
+    expect(ledger.b).toBe(0);
+    expect(ledger.d).toBe(-4);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("scales by the per-point value", () => {
+    const round = makeRound("stableford", scratch(["a", "b", "c", "d"]), entries, { stake: 2 });
+    const { ledger } = computeStableford(round);
+    expect(ledger.a).toBe(8);
+    expect(ledger.d).toBe(-8);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("caps a double bogey or worse at 0 points", () => {
+    const round = makeRound(
+      "stableford",
+      scratch(["a", "b"]),
+      [{ hole: 18, wolfId: "", mode: "2v2", grossScores: { a: 6, b: 7 } }], // both ≥ double bogey
+      { stake: 1 }
+    );
+    const { ledger, stats } = computeStableford(round);
+    expect(stats.a.points).toBe(0);
+    expect(stats.b.points).toBe(0);
+    expect(sum(ledger)).toBe(0);
+  });
+});
+
+describe("modified stableford", () => {
+  it("uses the PGA point table (eagle 5, birdie 2, bogey −1, double+ −3)", () => {
+    const round = makeRound(
+      "modifiedstableford",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 18, wolfId: "", mode: "2v2", grossScores: { a: 2, b: 3, c: 5, d: 6 } }],
+      { stake: 1 }
+    );
+    const { ledger, stats } = computeModifiedStableford(round);
+    expect(stats.a.points).toBe(5); // eagle
+    expect(stats.b.points).toBe(2); // birdie
+    expect(stats.c.points).toBe(-1); // bogey
+    expect(stats.d.points).toBe(-3); // double bogey
+    // a: (5-2)+(5-(-1))+(5-(-3)) = 3+6+8 = 17
+    expect(ledger.a).toBe(17);
     expect(sum(ledger)).toBe(0);
   });
 });

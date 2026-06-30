@@ -50,6 +50,17 @@ export function SetupTab({
   const meta = gameTypeMeta(round);
   const gameType = round.gameType ?? "wolf";
   const isWolf = gameType === "wolf";
+  // Carry/hammer-carry rules only apply to the per-hole carry games. Total/points
+  // and segment games (stroke, points-Stableford, 11s, Nassau, Field Hammer) hide them.
+  const showCarry = ![
+    "vegas",
+    "stroke",
+    "elevens",
+    "fieldhammer",
+    "nassau",
+    "stableford",
+    "modifiedstableford",
+  ].includes(gameType);
   const nassauFormat = settings.nassauFormat ?? "teams";
   // Nassau in team format uses the same A/B assignment UI as Best Ball / Vegas.
   const showTeams = meta.hasTeams || (gameType === "nassau" && nassauFormat === "teams");
@@ -469,6 +480,8 @@ export function SetupTab({
             gameType === "bestball" ||
             gameType === "sixes" ||
             gameType === "stroke" ||
+            gameType === "stableford" ||
+            gameType === "modifiedstableford" ||
             gameType === "elevens" ||
             gameType === "fieldhammer" ||
             gameType === "nassau") && (
@@ -476,11 +489,13 @@ export function SetupTab({
               label={
                 gameType === "stroke" || gameType === "elevens"
                   ? "$ per stroke"
-                  : gameType === "fieldhammer"
-                    ? "Base stake — $/pairing"
-                    : gameType === "nassau"
-                      ? "$ per bet (F/B/18)"
-                      : "Stake — $/hole"
+                  : gameType === "stableford" || gameType === "modifiedstableford"
+                    ? "$ per point"
+                    : gameType === "fieldhammer"
+                      ? "Base stake — $/pairing"
+                      : gameType === "nassau"
+                        ? "$ per bet (F/B/18)"
+                        : "Stake — $/hole"
               }
             >
               <input
@@ -563,11 +578,7 @@ export function SetupTab({
               </Field>
             </>
           )}
-          {gameType !== "vegas" &&
-            gameType !== "stroke" &&
-            gameType !== "elevens" &&
-            gameType !== "fieldhammer" &&
-            gameType !== "nassau" && (
+          {showCarry && (
             <Field label="Carryover ties">
               <input
                 type="checkbox"
@@ -577,11 +588,7 @@ export function SetupTab({
               />
             </Field>
           )}
-          {gameType !== "vegas" &&
-            gameType !== "stroke" &&
-            gameType !== "elevens" &&
-            gameType !== "fieldhammer" &&
-            gameType !== "nassau" && (
+          {showCarry && (
             <Field label="Carryover hammered value">
               <input
                 type="checkbox"
@@ -591,11 +598,7 @@ export function SetupTab({
               />
             </Field>
           )}
-          {gameType !== "vegas" &&
-            gameType !== "stroke" &&
-            gameType !== "elevens" &&
-            gameType !== "fieldhammer" &&
-            gameType !== "nassau" && (
+          {showCarry && (
             <Field label="Carryover ties into press bets">
               <input
                 type="checkbox"
@@ -605,11 +608,7 @@ export function SetupTab({
               />
             </Field>
           )}
-          {gameType !== "vegas" &&
-            gameType !== "stroke" &&
-            gameType !== "elevens" &&
-            gameType !== "fieldhammer" &&
-            gameType !== "nassau" && (
+          {showCarry && (
             <Field label="Carryover hammers into press bets">
               <input
                 type="checkbox"

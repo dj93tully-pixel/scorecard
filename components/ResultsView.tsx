@@ -9,7 +9,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ArrowRight } from "lucide-react";
 import { ResultsData, PlayerResults, BetType, ResultTee } from "@/lib/results";
 import { formatToPar } from "@/lib/storage";
 
@@ -51,6 +51,88 @@ const FILTER_LABEL: Record<Filter, string> = {
 
 const moneyColor = (v: number) => (v > 0 ? GREEN : v < 0 ? RED : MUTED);
 const dollars = (v: number) => (v === 0 ? "—" : money1(v));
+
+// ── Settle up: net everyone's totals into the fewest payments ─────────────────
+interface Payment {
+  from: string; // who pays
+  to: string; // who collects
+  amount: number; // dollars (positive)
+}
+
+// Greedily match the biggest debtor to the biggest creditor until everyone's
+// square. Works in integer cents so floats don't drift. Money is zero-sum, so the
+// books always balance.
+function settleUp(players: PlayerResults[]): Payment[] {
+  const creditors: { name: string; amt: number }[] = [];
+  const debtors: { name: string; amt: number }[] = [];
+  for (const p of players) {
+    const cents = Math.round(p.grand * 100);
+    if (cents > 0) creditors.push({ name: p.name, amt: cents });
+    else if (cents < 0) debtors.push({ name: p.name, amt: -cents });
+  }
+  creditors.sort((a, b) => b.amt - a.amt);
+  debtors.sort((a, b) => b.amt - a.amt);
+
+  const out: Payment[] = [];
+  let ci = 0;
+  let di = 0;
+  while (ci < creditors.length && di < debtors.length) {
+    const c = creditors[ci];
+    const d = debtors[di];
+    const pay = Math.min(c.amt, d.amt);
+    if (pay > 0) out.push({ from: d.name, to: c.name, amount: pay / 100 });
+    c.amt -= pay;
+    d.amt -= pay;
+    if (c.amt === 0) ci++;
+    if (d.amt === 0) di++;
+  }
+  return out;
+}
+
+// Plain positive dollar amount: $5, $2.50.
+function payAmount(v: number): string {
+  return `$${Number.isInteger(v) ? v : v.toFixed(2)}`;
+}
+
+function SettleUp({ players }: { players: PlayerResults[] }) {
+  const payments = useMemo(() => settleUp(players), [players]);
+  return (
+    <section className="space-y-3">
+      <h2 className="text-xl font-bold">Settle up</h2>
+      {payments.length === 0 ? (
+        <div
+          className="rounded-xl border bg-white px-4 py-4 text-center text-sm"
+          style={{ borderColor: BORDER, color: MUTED }}
+        >
+          All square — nobody owes anything.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {payments.map((pmt, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3"
+              style={{ borderColor: BORDER }}
+            >
+              <span className="flex min-w-0 items-center gap-2 text-sm">
+                <span className="truncate font-semibold" style={{ color: INK }}>
+                  {pmt.from}
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0" style={{ color: MUTED }} />
+                <span className="truncate font-semibold" style={{ color: INK }}>
+                  {pmt.to}
+                </span>
+              </span>
+              <span className="shrink-0 font-serif text-base font-extrabold tabular-nums" style={{ color: GREEN }}>
+                {payAmount(pmt.amount)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 
 // ── Gross / Net segmented toggle ─────────────────────────────────────────────
 function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boolean) => void }) {
@@ -898,6 +980,9 @@ export function ResultsView({ results }: { results: ResultsData }) {
         <ScorecardNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} tees={results.tees} />
         <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} tees={results.tees} />
       </section>
+
+      {/* Who pays whom — net every player's total into the fewest payments. */}
+      <SettleUp players={results.players} />
     </div>
   );
 }

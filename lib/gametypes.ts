@@ -11,6 +11,7 @@ import { computeBestBall } from "./engines/bestball";
 import { computeVegas } from "./engines/vegas";
 import { computeSixes } from "./engines/sixes";
 import { computeStroke } from "./engines/strokeplay";
+import { computeStableford, computeModifiedStableford } from "./engines/stableford";
 import { computeElevens } from "./engines/elevens";
 import { computeFieldHammer } from "./engines/fieldhammer";
 import { computeNassau } from "./engines/nassau";
@@ -98,6 +99,26 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     statColumns: [{ key: "strokes", label: "Net", kind: "number" }],
     defaultSettings: { stake: 1 },
   },
+  stableford: {
+    id: "stableford",
+    label: "Stableford",
+    blurb: "Points by net score vs par; play the field per point, like a dollar a point.",
+    players: { min: 2, max: 6 },
+    hasTeams: false,
+    rotatesTeams: false,
+    statColumns: [{ key: "points", label: "Points", kind: "number" }],
+    defaultSettings: { stake: 1 },
+  },
+  modifiedstableford: {
+    id: "modifiedstableford",
+    label: "Modified Stableford",
+    blurb: "PGA-style points (eagle 5, birdie 2, bogey −1); paid per point vs the field.",
+    players: { min: 2, max: 6 },
+    hasTeams: false,
+    rotatesTeams: false,
+    statColumns: [{ key: "points", label: "Points", kind: "plusminus" }],
+    defaultSettings: { stake: 1 },
+  },
   elevens: {
     id: "elevens",
     label: "11s",
@@ -141,6 +162,8 @@ export const GAME_TYPE_LIST: GameTypeMeta[] = [
   GAME_TYPES.vegas,
   GAME_TYPES.sixes,
   GAME_TYPES.stroke,
+  GAME_TYPES.stableford,
+  GAME_TYPES.modifiedstableford,
   GAME_TYPES.elevens,
   GAME_TYPES.fieldhammer,
   GAME_TYPES.nassau,
@@ -170,6 +193,10 @@ export function computeBaseGame(round: Round): GameResult {
       return computeSixes(round);
     case "stroke":
       return computeStroke(round);
+    case "stableford":
+      return computeStableford(round);
+    case "modifiedstableford":
+      return computeModifiedStableford(round);
     case "fieldhammer":
       return computeFieldHammer(round);
     case "elevens":
@@ -195,6 +222,10 @@ export function computeGame(round: Round): GameResult {
       return withPresses(round, computeSixes);
     case "stroke":
       return withPresses(round, computeStroke);
+    case "stableford":
+      return withPresses(round, computeStableford);
+    case "modifiedstableford":
+      return withPresses(round, computeModifiedStableford);
     case "fieldhammer":
       return withPresses(round, computeFieldHammer);
     // 11s has no press; Nassau settles its own (match play per segment).

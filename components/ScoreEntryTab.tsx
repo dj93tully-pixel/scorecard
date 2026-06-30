@@ -71,7 +71,12 @@ function HoleCard({
   // Hammer applies everywhere except stroke play and 11s (which has neither).
   const gt = gameTypeOf(round);
   const forfeitable = gt === "bestball" || gt === "sixes";
-  const hammerable = gt !== "stroke" && gt !== "elevens" && gt !== "nassau";
+  const hammerable =
+    gt !== "stroke" &&
+    gt !== "elevens" &&
+    gt !== "nassau" &&
+    gt !== "stableford" &&
+    gt !== "modifiedstableford";
   const eleven = gt === "elevens";
   // Segment/total games settle on totals, not per hole — no per-hole money note.
   const noHoleMoney = gt === "elevens" || gt === "nassau";
