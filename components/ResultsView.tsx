@@ -371,8 +371,11 @@ function Detail({
             <button
               key={t}
               onClick={() => {
-                setFilter(t);
-                if (t === "press") setPressSel("all");
+                // Tapping an already-active tile (other than Total) deselects it
+                // back to Total — a toggle.
+                const next = on && t !== "total" ? "total" : t;
+                setFilter(next);
+                if (next === "press") setPressSel("all");
               }}
               className="flex min-w-[68px] flex-1 flex-col items-start rounded-lg border px-2.5 py-1.5"
               style={{ borderColor: on ? BLUE : BORDER, background: on ? TILE_ACTIVE : "#FFFFFF" }}
