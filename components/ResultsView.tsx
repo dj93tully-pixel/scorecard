@@ -75,31 +75,44 @@ function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boole
   );
 }
 
-// ── Score cell — circle (under par) / square (over par) / plain (par). Text is
-//    blue when the player got a pop (handicap stroke) on the hole. ────────────
+// Concentric rings = strokes from par (cap 4). Under par = circles, over = squares.
+const RING_GAP = "#F4F6FA"; // gap colour between rings
+function ringStyle(rel: number): React.CSSProperties {
+  if (rel === 0) return {};
+  const n = Math.min(Math.abs(rel), 4);
+  const layers: string[] = [];
+  let spread = 0;
+  for (let i = 0; i < n; i++) {
+    if (i > 0) {
+      spread += 1.3;
+      layers.push(`0 0 0 ${spread}px ${RING_GAP}`);
+    }
+    spread += 1.1;
+    layers.push(`0 0 0 ${spread}px ${INK}`);
+  }
+  return { boxShadow: layers.join(", "), borderRadius: rel < 0 ? "50%" : "3px" };
+}
+
+// ── Score cell — concentric circles (under par) / squares (over par); 4+ over is
+//    a solid dark square. Text is blue when the player got a pop on the hole. ──
 function ScoreCell({ score, par, pop }: { score: number | null; par: number; pop: number }) {
   if (score === null) return <span style={{ color: "#C4C8CE" }}>–</span>;
   const rel = score - par;
-  const color = pop > 0 ? BLUE : INK;
   const base = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "19px",
-    height: "19px",
+    width: "17px",
+    height: "17px",
     fontSize: "11px",
     fontWeight: 700,
-    color,
   } as const;
-  if (rel === 0) return <span style={base}>{score}</span>;
+  // 4+ over par: solid dark square, white number.
+  if (rel > 3) {
+    return <span style={{ ...base, color: "#FFFFFF", background: INK, borderRadius: "3px" }}>{score}</span>;
+  }
   return (
-    <span
-      style={{
-        ...base,
-        border: `1.5px solid ${color}`,
-        borderRadius: rel > 0 ? "3px" : "50%",
-      }}
-    >
+    <span style={{ ...base, color: pop > 0 ? BLUE : INK, ...ringStyle(rel) }}>
       {score}
     </span>
   );
