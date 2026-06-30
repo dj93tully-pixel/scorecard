@@ -734,7 +734,7 @@ function LedgerNine({
               const m = i === undefined ? 0 : p.money.total[i];
               tot += m;
               return (
-                <GridCell key={`${p.id}-${h}`} color={m === 0 ? "#C4C8CE" : moneyColor(m)} bold>
+                <GridCell key={`${p.id}-${h}`} color={m === 0 ? "#C4C8CE" : moneyColor(m)} style={{ fontWeight: 600 }}>
                   {ledgerFmt(m)}
                 </GridCell>
               );
@@ -745,7 +745,8 @@ function LedgerNine({
                   <span className="truncate text-[11px] font-semibold" style={{ color: INK }}>{p.name}</span>
                 </GridCell>
                 {cells}
-                <GridCell bold color={moneyColor(tot)}>{ledgerFmt(tot, "—")}</GridCell>
+                {/* the sum column — heavier weight than the per-hole cells */}
+                <GridCell color={moneyColor(tot)} style={{ fontWeight: 800 }}>{ledgerFmt(tot, "—")}</GridCell>
               </Fragment>
             );
           })}
