@@ -502,7 +502,7 @@ function PlayerBar({
 //    tee-distance row per tee, shaded Par, Hcp, then player rows. Scorecard only.
 const GRID = "#D5D9DE";
 const HEADER_BG = "#1E7A46"; // scorecard header (green)
-const LEDGER_HEADER = "#51607A"; // ledger header (slate gray-blue)
+const LEDGER_HEADER = "#1E3A6E"; // ledger header (navy blue)
 
 function hexToRgb(hex?: string): [number, number, number] | null {
   if (!hex) return null;
@@ -557,26 +557,44 @@ function GridCell({
   );
 }
 
-// Header hole cell: white number on the header band, with press/hammer dots.
-function HeaderHoleCell({
-  n,
-  hammered,
-  pressed,
-  bg = HEADER_BG,
-}: {
-  n: number | string;
-  hammered?: boolean;
-  pressed?: boolean;
-  bg?: string;
-}) {
+// Header hole cell: white number on the header band.
+function HeaderHoleCell({ n, bg = HEADER_BG }: { n: number | string; bg?: string }) {
   return (
-    <div className="flex h-[26px] flex-col items-center justify-center" style={{ background: bg }}>
+    <div className="flex h-[26px] items-center justify-center" style={{ background: bg }}>
       <span className="text-[10px] font-bold leading-none text-white">{n}</span>
-      <span className="mt-0.5 flex h-1 items-center justify-center" style={{ gap: "0.5px" }}>
-        {pressed && <span className="h-1 w-1 rounded-full" style={{ background: PRESS }} />}
-        {hammered && <span className="h-1 w-1 rounded-full" style={{ background: HAMMER }} />}
-      </span>
     </div>
+  );
+}
+
+// A very thin row directly under the header for the press (orange) / hammer
+// (purple) dots, so they read on white instead of being lost on the header band.
+// Returns the cells as direct children of the surrounding grid. `trailing` =
+// number of empty cells after the holes (OUT, and +/- on the scorecard).
+function DotsRowFragment({
+  holeNums,
+  hammerHoles,
+  pressHoles,
+  trailing,
+}: {
+  holeNums: number[];
+  hammerHoles: Set<number>;
+  pressHoles: Set<number>;
+  trailing: number;
+}) {
+  const blank = (k: string) => <div key={k} style={{ background: "#FFFFFF", height: 9 }} />;
+  return (
+    <>
+      {blank("lead")}
+      {holeNums.map((h) => (
+        <div key={`dot${h}`} className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 9 }}>
+          <span className="flex items-center" style={{ gap: 1 }}>
+            {pressHoles.has(h) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: PRESS }} />}
+            {hammerHoles.has(h) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: HAMMER }} />}
+          </span>
+        </div>
+      ))}
+      {Array.from({ length: trailing }, (_, i) => blank(`t${i}`))}
+    </>
   );
 }
 
@@ -609,10 +627,13 @@ function ScorecardNine({
           {/* HEADER band */}
           <GridCell bg={HEADER_BG} color="#fff" bold left>HOLE</GridCell>
           {holeNums.map((h) => (
-            <HeaderHoleCell key={`hd${h}`} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} />
+            <HeaderHoleCell key={`hd${h}`} n={h} />
           ))}
           <GridCell bg={HEADER_BG} color="#fff" bold>{label}</GridCell>
           <GridCell bg={HEADER_BG} color="#fff" bold>+/-</GridCell>
+
+          {/* press / hammer dots — their own thin row under the header */}
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={2} />
 
           {/* TEE distance rows — one per tee, colored by tee */}
           {tees.map((t) => {
@@ -714,9 +735,12 @@ function LedgerNine({
           {/* HEADER band */}
           <GridCell bg={LEDGER_HEADER} color="#fff" bold left>HOLE</GridCell>
           {holeNums.map((h) => (
-            <HeaderHoleCell key={`hd${h}`} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} bg={LEDGER_HEADER} />
+            <HeaderHoleCell key={`hd${h}`} n={h} bg={LEDGER_HEADER} />
           ))}
           <GridCell bg={LEDGER_HEADER} color="#fff" bold>{label}</GridCell>
+
+          {/* press / hammer dots — their own thin row under the header */}
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={1} />
 
           {/* PAR */}
           <GridCell bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
