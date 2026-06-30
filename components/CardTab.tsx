@@ -443,16 +443,21 @@ function GrossNetToggle({
   );
 }
 
-// ── Nassau bet-breakdown matrix (rows = Front/Back/Overall, cols = Original/
-//    Press/Total) so a player's money visibly adds up both ways. Values come
+// ── Nassau bet-breakdown matrix — ONE per player, rendered as its own block on
+//    the Card tab right below that player's standings row (not inside the card).
+//    Rows = Front/Back/Overall, columns = Original/Press/Total, with a totals row
+//    and a shaded Total column so the money reconciles both ways. Values come
 //    straight from the Nassau engine's per-player stats — presentation only.
-function NassauMatrix({
+//    Columns: Total always shows; Original/Press only when the round has presses
+//    (with no presses Original == Total, so we show just the Total column).
+function NassauMatrixBlock({
   stats,
-  bet,
+  hasPress,
 }: {
   stats: Record<string, number | string> | undefined;
-  bet: "total" | "press" | "original";
+  hasPress: boolean;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
   const num = (k: string) => Number(stats?.[k] ?? 0);
   const rows = [
     { label: "Front", orig: num("front"), press: num("pressFront") },
@@ -461,52 +466,99 @@ function NassauMatrix({
   ];
   const origTot = rows.reduce((s, r) => s + r.orig, 0);
   const pressTot = rows.reduce((s, r) => s + r.press, 0);
+  const grand = origTot + pressTot;
 
-  // Switching the bet toggle narrows the matrix to that single column.
-  const showOrig = bet !== "press";
-  const showPress = bet !== "original";
-  const showTotal = bet === "total";
-
-  const money = (v: number, strong = false) => (
-    <td
-      className="px-2 py-1.5 text-right tabular-nums"
-      style={{ color: v > 0 ? POS : v < 0 ? NEG : "#C4C8CE", fontWeight: strong ? 800 : 600 }}
-    >
-      {v === 0 ? "–" : formatMoney(v)}
-    </td>
-  );
+  const TINT = "#EEF2FB"; // shaded Total column
+  const cols: ("orig" | "press" | "total")[] = hasPress
+    ? ["orig", "press", "total"]
+    : ["total"];
+  const template = `minmax(0,1fr) ${cols.map(() => "4.25rem").join(" ")}`;
+  const head: Record<string, string> = { orig: "Original", press: "Press", total: "Total" };
+  const colorOf = (v: number) => (v > 0 ? POS : v < 0 ? NEG : MUTED);
+  const fmt = (v: number) => (v === 0 ? "—" : formatMoney(v));
+  const valueOf = (r: { orig: number; press: number }, c: string) =>
+    c === "orig" ? r.orig : c === "press" ? r.press : r.orig + r.press;
+  const totalOf = (c: string) => (c === "orig" ? origTot : c === "press" ? pressTot : grand);
 
   return (
-    <table className="w-full border-collapse text-[11px]">
-      <thead>
-        <tr className="text-[9px] font-semibold uppercase tracking-wide text-text-faint">
-          <th className="px-2 py-1 text-left" />
-          {showOrig && <th className="px-2 py-1 text-right font-semibold">Original</th>}
-          {showPress && <th className="px-2 py-1 text-right font-semibold">Press</th>}
-          {showTotal && <th className="px-2 py-1 text-right font-semibold">Total</th>}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.label} style={{ borderTop: `0.5px solid ${HAIRLINE}` }}>
-            <td className="px-2 py-1.5 text-left font-semibold" style={{ color: INK }}>
-              {r.label}
-            </td>
-            {showOrig && money(r.orig)}
-            {showPress && money(r.press)}
-            {showTotal && money(r.orig + r.press, true)}
-          </tr>
+    <div className="overflow-hidden rounded-xl border border-card-border bg-card-bg">
+      {/* column headers */}
+      <div
+        className="grid text-[9px] font-semibold uppercase tracking-wide text-text-faint"
+        style={{ gridTemplateColumns: template }}
+      >
+        <div className="px-3 py-1.5 text-left">Segment</div>
+        {cols.map((c) => (
+          <div
+            key={c}
+            className="px-2 py-1.5 text-right"
+            style={{ background: c === "total" ? TINT : undefined }}
+          >
+            {head[c]}
+          </div>
         ))}
-        <tr style={{ borderTop: `1px solid ${STRONG}` }}>
-          <td className="px-2 py-1.5 text-left font-bold" style={{ color: INK }}>
+      </div>
+
+      {/* per-segment rows (collapsible) */}
+      {!collapsed &&
+        rows.map((r) => (
+          <div
+            key={r.label}
+            className="grid items-center"
+            style={{ gridTemplateColumns: template }}
+          >
+            <div className="px-3 py-1.5 text-left font-semibold" style={{ color: INK }}>
+              {r.label}
+            </div>
+            {cols.map((c) => {
+              const v = valueOf(r, c);
+              return (
+                <div
+                  key={c}
+                  className="px-2 py-1.5 text-right font-semibold tabular-nums"
+                  style={{ color: colorOf(v), background: c === "total" ? TINT : undefined }}
+                >
+                  {fmt(v)}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+      {/* totals row, with the divider line and the collapse control on it */}
+      <div className="relative" style={{ borderTop: `1px solid ${STRONG}` }}>
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          aria-label={collapsed ? "Show segments" : "Hide segments"}
+          className="absolute left-1/2 z-10 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border bg-white"
+          style={{ top: "-12px", borderColor: HAIRLINE, boxShadow: "0 1px 3px rgba(0,0,0,0.12)" }}
+        >
+          <ChevronDown
+            className={`h-3.5 w-3.5 text-text-muted transition-transform ${collapsed ? "" : "rotate-180"}`}
+          />
+        </button>
+        <div className="grid items-center" style={{ gridTemplateColumns: template }}>
+          <div className="px-3 py-2 text-left font-bold" style={{ color: INK }}>
             Total
-          </td>
-          {showOrig && money(origTot, true)}
-          {showPress && money(pressTot, true)}
-          {showTotal && money(origTot + pressTot, true)}
-        </tr>
-      </tbody>
-    </table>
+          </div>
+          {cols.map((c) => {
+            const v = totalOf(c);
+            const corner = c === "total";
+            return (
+              <div
+                key={c}
+                className={`px-2 py-2 text-right tabular-nums ${
+                  corner ? "text-sm font-extrabold" : "font-bold"
+                }`}
+                style={{ color: colorOf(v), background: corner ? TINT : undefined }}
+              >
+                {fmt(v)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -518,7 +570,6 @@ function LedgerCard({
   rankIndex,
   scoreNet,
   pressHoles,
-  bet,
 }: {
   round: Round;
   computation: CardComputation;
@@ -526,7 +577,6 @@ function LedgerCard({
   rankIndex: number; // 0-based; tied players share the same index
   scoreNet: boolean; // shared gross/net toggle (next to the Standings header)
   pressHoles?: Set<number> | null; // press view: limit the scorecard to these
-  bet: "total" | "press" | "original"; // which bet layer the card is showing
 }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"scores" | "money">("scores");
@@ -601,14 +651,6 @@ function LedgerCard({
           className="animate-fade-in"
           style={{ background: SURFACE2, borderTop: `1px solid ${STRONG}`, padding: "8px 10px 10px", touchAction: "pan-y" }}
         >
-          {isNassau && (
-            <div
-              className="mb-3 overflow-hidden rounded-lg border bg-card-bg"
-              style={{ borderColor: STRONG }}
-            >
-              <NassauMatrix stats={computation.stats?.[player.id]} bet={bet} />
-            </div>
-          )}
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {(scoresOnly ? (["scores"] as const) : (["scores", "money"] as const)).map((v) => (
@@ -675,6 +717,11 @@ export function CardTab({
   // skip the by-hole Ledger grid (standings + totals carry the money).
   const gt = gameTypeOf(round);
   const showLedger = gt !== "elevens" && gt !== "nassau";
+  // Nassau shows each player a Front/Back/Overall × Original/Press/Total matrix
+  // as its own block under that player's standings row. Press columns only when
+  // the round actually has presses.
+  const isNassau = gt === "nassau";
+  const hasPress = !!views;
 
   // On the Press view, the full scorecard shows but only the pressed holes carry
   // data — a single press scopes to its own holes, "total" to all pressed holes.
@@ -758,16 +805,19 @@ export function CardTab({
             (q) => (active.ledger[q.id] ?? 0) > m
           ).length;
           return (
-            <LedgerCard
-              key={p.id}
-              round={round}
-              computation={active}
-              player={p}
-              rankIndex={rankIndex}
-              scoreNet={scoreNet}
-              pressHoles={activeHoles}
-              bet={views ? bet : "total"}
-            />
+            <div key={p.id} className="space-y-1.5">
+              <LedgerCard
+                round={round}
+                computation={active}
+                player={p}
+                rankIndex={rankIndex}
+                scoreNet={scoreNet}
+                pressHoles={activeHoles}
+              />
+              {isNassau && (
+                <NassauMatrixBlock stats={active.stats?.[p.id]} hasPress={hasPress} />
+              )}
+            </div>
           );
         })}
       </section>
