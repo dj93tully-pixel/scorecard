@@ -96,7 +96,7 @@ function HoleCard({
       id={`hole-${hole}`}
       style={{
         scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)",
-        ...holeHighlight(segN + fullN > 0, hammer > 0),
+        ...holeHighlight(segN + fullN, hammer),
       }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
