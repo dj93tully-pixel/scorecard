@@ -35,6 +35,7 @@ export interface PressInfo {
 export interface HoleCell {
   hole: number;
   par: number;
+  si: number; // stroke index (the hole's handicap rating)
   gross: number | null;
   net: number | null;
   pop: number; // handicap strokes received on this hole
@@ -146,7 +147,7 @@ export function buildResults(round: Round): ResultsData {
       const gross = typeof g === "number" ? g : null;
       const pop = pops[p.id]?.[h.number] ?? 0;
       const net = gross === null ? null : gross - pop;
-      return { hole: h.number, par: h.par, gross, net, pop };
+      return { hole: h.number, par: h.par, si: h.strokeIndex, gross, net, pop };
     });
     const total = holes.map((_, i) => orig[p.id][i] + prs[p.id][i] + ham[p.id][i]);
     const grand = total.reduce((s, v) => s + v, 0);

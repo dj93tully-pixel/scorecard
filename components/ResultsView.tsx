@@ -493,6 +493,7 @@ function AllPlayersNine({
 }) {
   const template = `64px repeat(${holeNums.length}, minmax(0,1fr)) 34px`;
   const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
+  const siByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.si]) ?? []);
   const parTotal = holeNums.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
 
   const Cell = ({ children, tint, left }: { children: React.ReactNode; tint?: boolean; left?: boolean }) => (
@@ -573,6 +574,16 @@ function AllPlayersNine({
             </div>
           );
         })}
+        {/* handicap (stroke index) row at the bottom — scorecard only */}
+        {mode === "scores" && (
+          <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, color: MUTED, borderTop: `1px solid ${BORDER}` }}>
+            <Cell left>Hcp</Cell>
+            {holeNums.map((h) => (
+              <Cell key={h}>{siByHole.get(h)}</Cell>
+            ))}
+            <Cell> </Cell>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -606,16 +617,15 @@ export function ResultsView({ results }: { results: ResultsData }) {
 
   return (
     <div className="space-y-6">
-      {/* Gross/Net — pinned above the standings, stays while scrolling. */}
-      <div
-        className="sticky z-10 -mx-3 flex justify-end bg-page-bg px-3 py-2"
-        style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
-      >
-        <GrossNetToggle net={net} onChange={setNet} />
-      </div>
-
       <section className="space-y-3">
-        <h2 className="text-xl font-bold">Standings</h2>
+        {/* Standings header + Gross/Net — pinned so it stays while scrolling. */}
+        <div
+          className="sticky z-10 -mx-3 flex items-center justify-between bg-page-bg px-3 py-2"
+          style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
+        >
+          <h2 className="text-xl font-bold">Standings</h2>
+          <GrossNetToggle net={net} onChange={setNet} />
+        </div>
         <div className="space-y-2">
           {standings.map((p) => {
             const rank = 1 + standings.filter((q) => q.grand > p.grand).length;
@@ -638,10 +648,11 @@ export function ResultsView({ results }: { results: ResultsData }) {
         </div>
       </section>
 
-      {/* By-hole ledger (every player's total money per hole) */}
+      {/* By-hole ledger (every player's total money per hole). Transparent,
+          top/bottom hairlines only — blends into the page like before. */}
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Ledger</h2>
-        <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
+        <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
           <AllPlayersNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} mode="money" />
           <div style={{ borderTop: `1px solid ${BORDER}` }}>
             <AllPlayersNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} mode="money" />
@@ -649,10 +660,10 @@ export function ResultsView({ results }: { results: ResultsData }) {
         </div>
       </section>
 
-      {/* One giant all-players scorecard */}
+      {/* One giant all-players scorecard — same transparent, borderless-sides look */}
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Scorecard</h2>
-        <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
+        <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
           <AllPlayersNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} mode="scores" />
           <div style={{ borderTop: `1px solid ${BORDER}` }}>
             <AllPlayersNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} mode="scores" />
