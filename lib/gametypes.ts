@@ -46,7 +46,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     hasTeams: false,
     rotatesTeams: false,
     statColumns: [],
-    defaultSettings: {},
+    defaultSettings: { carryover: true, hammerCarry: true },
   },
   skins: {
     id: "skins",
@@ -56,7 +56,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     hasTeams: false,
     rotatesTeams: false,
     statColumns: [{ key: "skins", label: "Skins", kind: "number" }],
-    defaultSettings: { skinValue: 5, carryover: true },
+    defaultSettings: { skinValue: 5, carryover: true, hammerCarry: true },
   },
   bestball: {
     id: "bestball",
@@ -66,7 +66,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     hasTeams: true,
     rotatesTeams: false,
     statColumns: [{ key: "holesUp", label: "Holes", kind: "plusminus" }],
-    defaultSettings: {},
+    defaultSettings: { carryover: true, hammerCarry: true },
   },
   vegas: {
     id: "vegas",
@@ -86,7 +86,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     hasTeams: false,
     rotatesTeams: true,
     statColumns: [{ key: "holesWon", label: "Holes won", kind: "number" }],
-    defaultSettings: {},
+    defaultSettings: { carryover: true, hammerCarry: true },
   },
   stroke: {
     id: "stroke",

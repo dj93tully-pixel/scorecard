@@ -546,13 +546,14 @@ function tintOf(hex?: string): string {
   return `rgb(${mix(rgb[0])},${mix(rgb[1])},${mix(rgb[2])})`;
 }
 
-// Shared grid cell for the traditional scorecard + ledger.
+// Shared grid cell for the traditional scorecard + ledger. `h` = row height (px).
 function GridCell({
   children,
   bg,
   color,
   bold,
   left,
+  h = 26,
   style,
 }: {
   children: React.ReactNode;
@@ -560,12 +561,14 @@ function GridCell({
   color?: string;
   bold?: boolean;
   left?: boolean;
+  h?: number;
   style?: React.CSSProperties;
 }) {
   return (
     <div
-      className="flex h-[26px] items-center text-[10px] tabular-nums"
+      className="flex items-center text-[10px] tabular-nums"
       style={{
+        height: h,
         background: bg ?? "#FFFFFF",
         color,
         fontWeight: bold ? 700 : undefined,
@@ -690,20 +693,20 @@ function ScorecardNine({
           })}
 
           {/* PAR */}
-          <GridCell bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
+          <GridCell h={18} bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
           {holeNums.map((h) => (
-            <GridCell key={`par${h}`} bg="#E8EBF0" color={INK} bold>{parByHole.get(h)}</GridCell>
+            <GridCell key={`par${h}`} h={18} bg="#E8EBF0" color={INK} bold>{parByHole.get(h)}</GridCell>
           ))}
-          <GridCell bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
-          <GridCell bg="#E8EBF0"> </GridCell>
+          <GridCell h={18} bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
+          <GridCell h={18} bg="#E8EBF0"> </GridCell>
 
           {/* HCP */}
-          <GridCell bg="#F4F6F8" color={MUTED} left>Hcp</GridCell>
+          <GridCell h={18} bg="#F4F6F8" color={MUTED} left>Hcp</GridCell>
           {holeNums.map((h) => (
-            <GridCell key={`hcp${h}`} bg="#F4F6F8" color={MUTED}>{siByHole.get(h)}</GridCell>
+            <GridCell key={`hcp${h}`} h={18} bg="#F4F6F8" color={MUTED}>{siByHole.get(h)}</GridCell>
           ))}
-          <GridCell bg="#F4F6F8"> </GridCell>
-          <GridCell bg="#F4F6F8"> </GridCell>
+          <GridCell h={18} bg="#F4F6F8"> </GridCell>
+          <GridCell h={18} bg="#F4F6F8"> </GridCell>
 
           {/* press / hammer dots + 11s pick dots — their own thin row, below Hcp */}
           <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={2} pickers={pickers} />
@@ -777,11 +780,11 @@ function LedgerNine({
           <GridCell bg={LEDGER_HEADER} color="#fff" bold>{label}</GridCell>
 
           {/* PAR */}
-          <GridCell bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
+          <GridCell h={18} bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
           {holeNums.map((h) => (
-            <GridCell key={`par${h}`} bg="#E8EBF0" color={INK} bold>{parByHole.get(h)}</GridCell>
+            <GridCell key={`par${h}`} h={18} bg="#E8EBF0" color={INK} bold>{parByHole.get(h)}</GridCell>
           ))}
-          <GridCell bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
+          <GridCell h={18} bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
 
           {/* press / hammer dots — their own thin row, below Par */}
           <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={1} />
