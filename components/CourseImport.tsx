@@ -106,13 +106,15 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
     const course: Course = {
       name: detail.name,
       holes: tee.holes.slice(0, 18),
-      // Keep every tee's colour + per-hole yardages for the scorecard.
-      tees: detail.tees.map((t) => ({
-        name: t.name,
-        color: t.color,
-        yards: t.yards,
-        distances: t.distances.slice(0, 18),
-      })),
+      // Keep ONLY the selected tee's colour + per-hole yardages for the scorecard.
+      tees: [
+        {
+          name: tee.name,
+          color: tee.color,
+          yards: tee.yards,
+          distances: tee.distances.slice(0, 18),
+        },
+      ],
     };
     onImport(course);
   }
