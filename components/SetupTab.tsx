@@ -470,14 +470,17 @@ export function SetupTab({
             gameType === "sixes" ||
             gameType === "stroke" ||
             gameType === "elevens" ||
+            gameType === "fieldhammer" ||
             gameType === "nassau") && (
             <Field
               label={
                 gameType === "stroke" || gameType === "elevens"
                   ? "$ per stroke"
-                  : gameType === "nassau"
-                    ? "$ per bet (F/B/18)"
-                    : "Stake — $/hole"
+                  : gameType === "fieldhammer"
+                    ? "Base stake — $/pairing"
+                    : gameType === "nassau"
+                      ? "$ per bet (F/B/18)"
+                      : "Stake — $/hole"
               }
             >
               <input
@@ -563,6 +566,7 @@ export function SetupTab({
           {gameType !== "vegas" &&
             gameType !== "stroke" &&
             gameType !== "elevens" &&
+            gameType !== "fieldhammer" &&
             gameType !== "nassau" && (
             <Field label="Carryover ties">
               <input
@@ -576,6 +580,7 @@ export function SetupTab({
           {gameType !== "vegas" &&
             gameType !== "stroke" &&
             gameType !== "elevens" &&
+            gameType !== "fieldhammer" &&
             gameType !== "nassau" && (
             <Field label="Carry hammered value">
               <input
@@ -589,6 +594,7 @@ export function SetupTab({
           {gameType !== "vegas" &&
             gameType !== "stroke" &&
             gameType !== "elevens" &&
+            gameType !== "fieldhammer" &&
             gameType !== "nassau" && (
             <Field label="Press carryover ties">
               <input
