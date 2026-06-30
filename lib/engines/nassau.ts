@@ -92,10 +92,15 @@ export function computeNassau(round: Round): GameResult {
   const ledger: Record<PlayerId, number> = {};
   const base: Record<PlayerId, Record<SegKey, number>> = {};
   const press: Record<PlayerId, number> = {};
+  // Same press money as `press`, but split by which segment's press it was — a
+  // "seg" press on the front/back nine, or a "full" press (overall). Presentation
+  // only: feeds the Card tab's Front/Back/Overall × Original/Press/Total matrix.
+  const pressSeg: Record<PlayerId, Record<SegKey, number>> = {};
   for (const id of ids) {
     ledger[id] = 0;
     base[id] = { front: 0, back: 0, overall: 0 };
     press[id] = 0;
+    pressSeg[id] = { front: 0, back: 0, overall: 0 };
   }
 
   const netOn = (id: PlayerId, hole: number): number | null => {
@@ -185,10 +190,15 @@ export function computeNassau(round: Round): GameResult {
       settleBet(holeNums, (id, amt) => (base[id].overall += amt));
 
       // Presses: each flagged hole opens a fresh match-play bet over the rest of
-      // its nine ("seg") and/or the rest of the round ("full"), into `press`.
+      // its nine ("seg") and/or the rest of the round ("full"), into `press`. We
+      // also bucket it by segment (front/back for "seg", overall for "full").
       for (const e of round.entries) {
         for (const scope of pressScopesOf(e)) {
-          settleBet(pressRange(round, e.hole, scope), (id, amt) => (press[id] += amt));
+          const seg: SegKey = scope === "full" ? "overall" : e.hole <= 9 ? "front" : "back";
+          settleBet(pressRange(round, e.hole, scope), (id, amt) => {
+            press[id] += amt;
+            pressSeg[id][seg] += amt;
+          });
         }
       }
     }
@@ -210,6 +220,9 @@ export function computeNassau(round: Round): GameResult {
       overall: base[id].overall,
       original,
       press: press[id],
+      pressFront: pressSeg[id].front,
+      pressBack: pressSeg[id].back,
+      pressOverall: pressSeg[id].overall,
     };
   }
   return { ledger, pops, holeResults, stats };

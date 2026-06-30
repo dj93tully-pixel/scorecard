@@ -452,6 +452,18 @@ describe("nassau", () => {
     expect(withPress.stats.a.original).toBe(-4); // back −2 + overall −2
     expect(withPress.stats.a.press).toBe(2); // press won back
     expect(sum(withPress.ledger)).toBe(0);
+
+    // Matrix buckets: the hole-15 press is a back-nine "seg" press, so all of
+    // the press money lands in the Back row and the per-segment buckets sum to
+    // the combined press (so the Card matrix reconciles both ways).
+    expect(withPress.stats.a.pressBack).toBe(2);
+    expect(withPress.stats.a.pressFront).toBe(0);
+    expect(withPress.stats.a.pressOverall).toBe(0);
+    const segSum =
+      Number(withPress.stats.a.pressFront) +
+      Number(withPress.stats.a.pressBack) +
+      Number(withPress.stats.a.pressOverall);
+    expect(segSum).toBe(withPress.stats.a.press);
   });
 });
 

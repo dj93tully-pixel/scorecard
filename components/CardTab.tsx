@@ -443,6 +443,73 @@ function GrossNetToggle({
   );
 }
 
+// ── Nassau bet-breakdown matrix (rows = Front/Back/Overall, cols = Original/
+//    Press/Total) so a player's money visibly adds up both ways. Values come
+//    straight from the Nassau engine's per-player stats — presentation only.
+function NassauMatrix({
+  stats,
+  bet,
+}: {
+  stats: Record<string, number | string> | undefined;
+  bet: "total" | "press" | "original";
+}) {
+  const num = (k: string) => Number(stats?.[k] ?? 0);
+  const rows = [
+    { label: "Front", orig: num("front"), press: num("pressFront") },
+    { label: "Back", orig: num("back"), press: num("pressBack") },
+    { label: "Overall", orig: num("overall"), press: num("pressOverall") },
+  ];
+  const origTot = rows.reduce((s, r) => s + r.orig, 0);
+  const pressTot = rows.reduce((s, r) => s + r.press, 0);
+
+  // Switching the bet toggle narrows the matrix to that single column.
+  const showOrig = bet !== "press";
+  const showPress = bet !== "original";
+  const showTotal = bet === "total";
+
+  const money = (v: number, strong = false) => (
+    <td
+      className="px-2 py-1.5 text-right tabular-nums"
+      style={{ color: v > 0 ? POS : v < 0 ? NEG : "#C4C8CE", fontWeight: strong ? 800 : 600 }}
+    >
+      {v === 0 ? "–" : formatMoney(v)}
+    </td>
+  );
+
+  return (
+    <table className="w-full border-collapse text-[11px]">
+      <thead>
+        <tr className="text-[9px] font-semibold uppercase tracking-wide text-text-faint">
+          <th className="px-2 py-1 text-left" />
+          {showOrig && <th className="px-2 py-1 text-right font-semibold">Original</th>}
+          {showPress && <th className="px-2 py-1 text-right font-semibold">Press</th>}
+          {showTotal && <th className="px-2 py-1 text-right font-semibold">Total</th>}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.label} style={{ borderTop: `0.5px solid ${HAIRLINE}` }}>
+            <td className="px-2 py-1.5 text-left font-semibold" style={{ color: INK }}>
+              {r.label}
+            </td>
+            {showOrig && money(r.orig)}
+            {showPress && money(r.press)}
+            {showTotal && money(r.orig + r.press, true)}
+          </tr>
+        ))}
+        <tr style={{ borderTop: `1px solid ${STRONG}` }}>
+          <td className="px-2 py-1.5 text-left font-bold" style={{ color: INK }}>
+            Total
+          </td>
+          {showOrig && money(origTot, true)}
+          {showPress && money(pressTot, true)}
+          {showTotal && money(origTot + pressTot, true)}
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
 // ── Ledger badge that drops down to the player's detailed scorecard ─────────
 function LedgerCard({
   round,
@@ -451,6 +518,7 @@ function LedgerCard({
   rankIndex,
   scoreNet,
   pressHoles,
+  bet,
 }: {
   round: Round;
   computation: CardComputation;
@@ -458,6 +526,7 @@ function LedgerCard({
   rankIndex: number; // 0-based; tied players share the same index
   scoreNet: boolean; // shared gross/net toggle (next to the Standings header)
   pressHoles?: Set<number> | null; // press view: limit the scorecard to these
+  bet: "total" | "press" | "original"; // which bet layer the card is showing
 }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"scores" | "money">("scores");
@@ -532,6 +601,14 @@ function LedgerCard({
           className="animate-fade-in"
           style={{ background: SURFACE2, borderTop: `1px solid ${STRONG}`, padding: "8px 10px 10px", touchAction: "pan-y" }}
         >
+          {isNassau && (
+            <div
+              className="mb-3 overflow-hidden rounded-lg border bg-card-bg"
+              style={{ borderColor: STRONG }}
+            >
+              <NassauMatrix stats={computation.stats?.[player.id]} bet={bet} />
+            </div>
+          )}
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {(scoresOnly ? (["scores"] as const) : (["scores", "money"] as const)).map((v) => (
@@ -689,6 +766,7 @@ export function CardTab({
               rankIndex={rankIndex}
               scoreNet={scoreNet}
               pressHoles={activeHoles}
+              bet={views ? bet : "total"}
             />
           );
         })}
