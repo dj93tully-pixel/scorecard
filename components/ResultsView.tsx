@@ -32,13 +32,13 @@ function money1(v: number): string {
   return `${sign}$${Number.isInteger(abs) ? abs : abs.toFixed(1)}`;
 }
 
-// Accounting style for the ledger: no $ sign, negatives in parentheses.
-function accounting(v: number, zero = "·"): string {
+// Ledger style: signed +/- with no $ sign. +2.5 / -2.5, zero → placeholder.
+function ledgerFmt(v: number, zero = "·"): string {
   const r = Math.round(v * 10) / 10;
   if (r === 0) return zero;
   const abs = Math.abs(r);
   const body = Number.isInteger(abs) ? `${abs}` : abs.toFixed(1);
-  return r < 0 ? `(${body})` : body;
+  return r < 0 ? `-${body}` : `+${body}`;
 }
 
 type Filter = BetType | "total";
@@ -372,7 +372,7 @@ function Detail({
         <div className="mb-3 flex gap-1 overflow-x-auto">
           {(["all", ...presses.map((_, i) => i)] as (number | "all")[]).map((s) => {
             const on = pressSel === s;
-            const label = s === "all" ? "All presses" : presses[s as number].label;
+            const label = s === "all" ? "All" : presses[s as number].label;
             return (
               <button
                 key={String(s)}
@@ -501,10 +501,11 @@ function AllPlayersNine({
   mode: "scores" | "money";
 }) {
   const scores = mode === "scores";
+  const nineName = label === "OUT" ? "Front 9" : "Back 9";
   // Scorecard has an extra "+/-" column on the right; ledger does not.
   const template = scores
-    ? `54px repeat(${holeNums.length}, minmax(0,1fr)) 28px 32px`
-    : `64px repeat(${holeNums.length}, minmax(0,1fr)) 34px`;
+    ? `52px repeat(${holeNums.length}, minmax(0,1fr)) 24px 28px`
+    : `56px repeat(${holeNums.length}, minmax(0,1fr)) 30px`;
   const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
   const siByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.si]) ?? []);
   const parTotal = holeNums.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
@@ -520,11 +521,11 @@ function AllPlayersNine({
 
   return (
     <div className="overflow-x-auto">
-      <div style={{ minWidth: scores ? 384 : 360 }}>
+      <div style={{ minWidth: 330 }}>
         {/* hole numbers + press/hammer dots */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
           <Cell left>
-            <span className="text-[10px] font-bold" style={{ color: MUTED }}>{label}</span>
+            <span className="text-[10px] font-bold" style={{ color: MUTED }}>{nineName}</span>
           </Cell>
           {holeNums.map((h) => (
             <HoleHead key={h} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} />
@@ -536,6 +537,17 @@ function AllPlayersNine({
             </Cell>
           )}
         </div>
+        {/* handicap (stroke index) row — above par */}
+        {scores && (
+          <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, color: MUTED }}>
+            <Cell left>Hcp</Cell>
+            {holeNums.map((h) => (
+              <Cell key={h}>{siByHole.get(h)}</Cell>
+            ))}
+            <Cell> </Cell>
+            <Cell> </Cell>
+          </div>
+        )}
         {/* par band (scorecard only) */}
         {scores && (
           <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, background: "#F6F7F9", color: MUTED }}>
@@ -571,7 +583,7 @@ function AllPlayersNine({
                   return (
                     <Cell key={h}>
                       <span className="text-[9px] font-bold tabular-nums" style={{ color: m === 0 ? "#C4C8CE" : moneyColor(m) }}>
-                        {accounting(m)}
+                        {ledgerFmt(m)}
                       </span>
                     </Cell>
                   );
@@ -591,7 +603,7 @@ function AllPlayersNine({
               })}
               <Cell>
                 {mode === "money" ? (
-                  <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(moneyTot) }}>{accounting(moneyTot, "—")}</span>
+                  <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(moneyTot) }}>{ledgerFmt(moneyTot, "—")}</span>
                 ) : (
                   <span className="text-xs font-bold" style={{ color: INK }}>{scoreTot || "–"}</span>
                 )}
@@ -606,17 +618,6 @@ function AllPlayersNine({
             </div>
           );
         })}
-        {/* handicap (stroke index) row at the bottom — scorecard only */}
-        {scores && (
-          <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, color: MUTED, borderTop: `1px solid ${BORDER}` }}>
-            <Cell left>Hcp</Cell>
-            {holeNums.map((h) => (
-              <Cell key={h}>{siByHole.get(h)}</Cell>
-            ))}
-            <Cell> </Cell>
-            <Cell> </Cell>
-          </div>
-        )}
       </div>
     </div>
   );
