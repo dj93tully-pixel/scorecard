@@ -1,10 +1,10 @@
 import type { MetadataRoute } from "next";
 
-// Minimal PWA manifest so HackerTracker can be added to a phone's home screen.
+// Minimal PWA manifest so HACKERTRACKER can be added to a phone's home screen.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "HackerTracker",
-    short_name: "HackerTracker",
+    name: "HACKERTRACKER",
+    short_name: "HACKERTRACKER",
     description: "Track scores, pops, and golf money games live on the course.",
     start_url: "/",
     display: "standalone",
