@@ -443,15 +443,14 @@ function GrossNetToggle({
   );
 }
 
-// ── Nassau standings entry: ONE cohesive bar per player. Collapsed, the bar
-//    shows the bet-type TOTALS in columns (Original / Press / Total); expanded,
-//    the Front/Back/Overall rows drop in beneath, aligned under the same columns
-//    on a faint detail background — all one connected card. The Total column is
-//    tinted as the emphasised column. Columns: Total always; Original/Press only
-//    when the round has presses (no presses → just Total). Values come straight
-//    from the Nassau engine's per-player stats — presentation only.
+// ── Nassau standings entry: ONE cohesive card per player. The always-visible
+//    top shows the player (rank + name + to-par) and their Front/Back/Overall ×
+//    Original/Press/Total breakdown matrix (Total column tinted, totals row at
+//    the bottom). Tapping the card expands that player's hole-by-hole scorecard
+//    below — same card, no separate box. Columns: Total always; Original/Press
+//    only when the round has presses. Values come straight from the Nassau
+//    engine's per-player stats — presentation only.
 const NASSAU_TINT = "#EEF2FB"; // shaded Total column
-const NASSAU_SEG_BG = "#FAFBFC"; // expanded detail background
 
 function NassauLedgerBar({
   round,
@@ -493,9 +492,8 @@ function NassauLedgerBar({
   }
 
   const cols: ("orig" | "press" | "total")[] = hasPress ? ["orig", "press", "total"] : ["total"];
-  const labels: Record<string, string> = { orig: "Original", press: "Press", total: "Total" };
-  const width = (c: string) => (c === "total" ? "4.75rem" : "3.75rem");
-  const template = `minmax(0,1fr) ${cols.map(width).join(" ")} 1.5rem`;
+  const head: Record<string, string> = { orig: "Original", press: "Press", total: "Total" };
+  const template = `minmax(0,1fr) ${cols.map(() => "4.25rem").join(" ")}`;
   const colorOf = (v: number) => (v > 0 ? POS : v < 0 ? NEG : MUTED);
   const fmt = (v: number) => (v === 0 ? "—" : formatMoney(v));
   const segVal = (r: { orig: number; press: number }, c: string) =>
@@ -507,75 +505,46 @@ function NassauLedgerBar({
       className="overflow-hidden rounded-xl border border-l-4 border-card-border bg-card-bg"
       style={{ borderLeftColor: PRIMARY }}
     >
-      {/* Collapsed bar — bet-type totals in columns; whole bar toggles expand. */}
+      {/* Always-visible: player + the breakdown matrix. Tapping toggles the
+          hole-by-hole scorecard below. */}
       <button onClick={() => setOpen((v) => !v)} className="block w-full text-left">
-        {/* small gray column labels */}
-        <div className="grid" style={{ gridTemplateColumns: template }}>
-          <div className="px-3 pt-2" />
-          {cols.map((c) => (
-            <div
-              key={c}
-              className="px-1.5 pt-2 text-right text-[9px] font-semibold uppercase tracking-wide text-text-faint"
-              style={{ background: c === "total" ? NASSAU_TINT : undefined }}
-            >
-              {labels[c]}
-            </div>
-          ))}
-          <div className="pt-2" />
+        {/* rank + name + to-par + chevron */}
+        <div className="flex items-center gap-2 px-3 pb-1.5 pt-2.5">
+          <span className="w-4 shrink-0 text-center font-serif text-base font-bold text-text-faint">
+            {rankIndex + 1}
+          </span>
+          <span className="min-w-0 flex-1 truncate font-semibold">{player.name || "Unnamed"}</span>
+          <span className="shrink-0 font-serif text-sm font-bold tabular-nums text-primary">
+            {toPar === null ? "–" : formatToPar(toPar)}
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`}
+          />
         </div>
-        {/* rank + name + to-par, then the total values, then the chevron */}
-        <div className="grid items-center" style={{ gridTemplateColumns: template }}>
-          <div className="flex min-w-0 items-center gap-2 px-3 pb-2 pt-0.5">
-            <span className="w-4 shrink-0 text-center font-serif text-base font-bold text-text-faint">
-              {rankIndex + 1}
-            </span>
-            <span className="truncate font-semibold">{player.name || "Unnamed"}</span>
-            <span className="shrink-0 font-serif text-sm font-bold tabular-nums text-primary">
-              {toPar === null ? "–" : formatToPar(toPar)}
-            </span>
-          </div>
-          {cols.map((c) => {
-            const v = totVal(c);
-            const corner = c === "total";
-            return (
-              <div
-                key={c}
-                className={`px-1.5 pb-2 pt-0.5 text-right tabular-nums ${
-                  corner ? "font-serif text-lg font-extrabold" : "text-sm font-bold"
-                }`}
-                style={{ color: colorOf(v), background: corner ? NASSAU_TINT : undefined }}
-              >
-                {fmt(v)}
-              </div>
-            );
-          })}
-          <div className="flex items-center justify-center pb-2 pt-0.5">
-            <ChevronDown
-              className={`h-4 w-4 text-text-muted transition-transform ${open ? "rotate-180" : ""}`}
-            />
-          </div>
-        </div>
-      </button>
 
-      {/* Expanded detail — Front/Back/Overall under the same columns. */}
-      {open && (
-        <div style={{ background: NASSAU_SEG_BG, borderTop: `1px solid ${HAIRLINE}` }}>
-          <div className="grid" style={{ gridTemplateColumns: template }}>
-            <div className="px-3 pb-0.5 pt-2 text-[9px] font-semibold uppercase tracking-wide text-text-faint">
-              By segment
-            </div>
+        {/* breakdown matrix */}
+        <div className="pb-2.5">
+          {/* column headers */}
+          <div
+            className="grid text-[9px] font-semibold uppercase tracking-wide text-text-faint"
+            style={{ gridTemplateColumns: template }}
+          >
+            <div className="px-3 py-1 text-left">Segment</div>
             {cols.map((c) => (
               <div
                 key={c}
-                className="pt-2"
+                className="px-2 py-1 text-right"
                 style={{ background: c === "total" ? NASSAU_TINT : undefined }}
-              />
+              >
+                {head[c]}
+              </div>
             ))}
-            <div className="pt-2" />
           </div>
+
+          {/* Front / Back / Overall rows */}
           {segs.map((r) => (
             <div key={r.label} className="grid items-center" style={{ gridTemplateColumns: template }}>
-              <div className="px-3 py-1.5 pl-9 text-left text-xs font-semibold" style={{ color: INK }}>
+              <div className="px-3 py-1 text-left text-xs font-semibold" style={{ color: INK }}>
                 {r.label}
               </div>
               {cols.map((c) => {
@@ -583,27 +552,67 @@ function NassauLedgerBar({
                 return (
                   <div
                     key={c}
-                    className="px-1.5 py-1.5 text-right text-xs tabular-nums"
+                    className="px-2 py-1 text-right text-xs tabular-nums"
                     style={{ color: colorOf(v), background: c === "total" ? NASSAU_TINT : undefined }}
                   >
                     {fmt(v)}
                   </div>
                 );
               })}
-              <div className="py-1.5" />
             </div>
           ))}
-          {/* keep the Total column tint flush to the bottom edge */}
-          <div className="grid" style={{ gridTemplateColumns: template }}>
-            <div className="pb-2" />
-            {cols.map((c) => (
-              <div
-                key={c}
-                className="pb-2"
-                style={{ background: c === "total" ? NASSAU_TINT : undefined }}
-              />
-            ))}
-            <div className="pb-2" />
+
+          {/* totals row — divider above, bold corner total */}
+          <div
+            className="grid items-center"
+            style={{ gridTemplateColumns: template, borderTop: `1px solid ${STRONG}` }}
+          >
+            <div className="px-3 py-1.5 text-left text-xs font-bold" style={{ color: INK }}>
+              Total
+            </div>
+            {cols.map((c) => {
+              const v = totVal(c);
+              const corner = c === "total";
+              return (
+                <div
+                  key={c}
+                  className={`px-2 py-1.5 text-right tabular-nums ${
+                    corner ? "text-sm font-extrabold" : "text-xs font-bold"
+                  }`}
+                  style={{ color: colorOf(v), background: corner ? NASSAU_TINT : undefined }}
+                >
+                  {fmt(v)}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </button>
+
+      {/* Expanded: the player's hole-by-hole scorecard (same card). */}
+      {open && (
+        <div
+          className="animate-fade-in"
+          style={{ background: SURFACE2, borderTop: `1px solid ${STRONG}`, padding: "8px 10px 10px" }}
+        >
+          <div
+            style={{
+              borderTop: `0.5px solid ${HAIRLINE}`,
+              borderBottom: `0.5px solid ${HAIRLINE}`,
+              padding: "5px 4px 6px",
+              marginBottom: "6px",
+            }}
+          >
+            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode="scores" net={scoreNet} />
+          </div>
+          <div
+            style={{
+              borderTop: `0.5px solid ${HAIRLINE}`,
+              borderBottom: `0.5px solid ${HAIRLINE}`,
+              padding: "5px 4px 6px",
+            }}
+          >
+            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode="scores" net={scoreNet} />
           </div>
         </div>
       )}
