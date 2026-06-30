@@ -16,6 +16,7 @@ import {
 } from "@/lib/wolf";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
 import { carryByHole, HoleCarry } from "@/lib/carry";
+import { CarryNote } from "./CarryNote";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
 
@@ -322,26 +323,7 @@ function HoleBox({
         <div className="mt-2 text-right text-sm tabular-nums">
           {result.winner === "push" ? (
             carry ? (
-              (() => {
-                const money = (n: number) => `$${Math.round(n * 100) / 100}`;
-                const extra = carry.press > 0 || carry.hammer > 0;
-                return (
-                  <div>
-                    <div className="text-text-faint">Push — {money(carry.orig)} carries</div>
-                    {carry.press > 0 && (
-                      <div style={{ color: PRESS }}>Press — {money(carry.press)} carries</div>
-                    )}
-                    {carry.hammer > 0 && (
-                      <div style={{ color: HAMMER }}>Hammer — {money(carry.hammer)} carries</div>
-                    )}
-                    {extra && (
-                      <div className="ml-auto mt-1 w-fit border-t border-card-border pt-1 font-semibold text-text-primary">
-                        Total — {money(carry.total)} carries
-                      </div>
-                    )}
-                  </div>
-                );
-              })()
+              <CarryNote carry={carry} hammer={hammer} />
             ) : (
               <span className="text-text-faint">
                 {result.carriedToNext > 0 ? `Push — $${result.carriedToNext} carries` : "Push"}

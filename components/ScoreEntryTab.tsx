@@ -11,6 +11,7 @@ import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
 import { carryByHole, HoleCarry } from "@/lib/carry";
+import { CarryNote } from "./CarryNote";
 import { holeHighlight } from "@/lib/holeHighlight";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
@@ -296,26 +297,7 @@ function HoleCard({
         if (noHoleMoney) return null;
         const anyWinner = note && players.some((p) => (note.deltas[p.id] ?? 0) > 0);
         if (anyWinner) return null;
-        const money = (n: number) => `$${Math.round(n * 100) / 100}`;
-        if (carry) {
-          const extra = carry.press > 0 || carry.hammer > 0;
-          return (
-            <div className="mt-2 text-right text-sm tabular-nums">
-              <div className="text-text-muted">Push — {money(carry.orig)} carries</div>
-              {carry.press > 0 && (
-                <div style={{ color: PRESS_COLOR }}>Press — {money(carry.press)} carries</div>
-              )}
-              {carry.hammer > 0 && (
-                <div style={{ color: HAMMER_COLOR }}>Hammer — {money(carry.hammer)} carries</div>
-              )}
-              {extra && (
-                <div className="ml-auto mt-1 w-fit border-t border-card-border pt-1 font-semibold text-text-primary">
-                  Total — {money(carry.total)} carries
-                </div>
-              )}
-            </div>
-          );
-        }
+        if (carry) return <CarryNote carry={carry} hammer={hammer} />;
         if (!note || note.detail === "—") return null;
         return <div className="mt-2 text-right text-sm text-text-muted">{note.detail}</div>;
       })()}

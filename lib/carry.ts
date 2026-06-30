@@ -21,6 +21,11 @@ const noHammer = (round: Round): Round => ({
   entries: round.entries.map((e) => ({ ...e, hammer: 0 })),
 });
 
+// Highest hole number in the round — the base bet's carry on this hole is dead
+// (the round ends, nothing receives it).
+const lastHole = (round: Round): number =>
+  round.course.holes.reduce((m, h) => Math.max(m, h.number), 0);
+
 // Per-hole press carry — each press's own pending carry on the holes it covers,
 // keyed by hole number. `carryOf(sub)` returns that sub-round's carry per hole.
 function pressCarryByHole(
@@ -31,11 +36,15 @@ function pressCarryByHole(
   const out = new Map<number, number>();
   for (const e of round.entries) {
     for (const scope of pressScopesOf(e)) {
-      const holes = new Set(pressRange(round, e.hole, scope));
-      if (holes.size === 0) continue;
+      const range = pressRange(round, e.hole, scope);
+      if (range.length === 0) continue;
+      const holes = new Set(range);
+      // The carry on a press's FINAL hole is dead — the press ends there, so it
+      // never reaches a next hole (e.g. a 9-hole press that ends after hole 9).
+      const last = range[range.length - 1];
       const sub = carryOf(pressSubRound(round, holes, carryChain(round, e.hole, pushed)));
       for (const [h, c] of sub) {
-        if (!holes.has(h)) continue;
+        if (!holes.has(h) || h === last) continue;
         out.set(h, (out.get(h) ?? 0) + c);
       }
     }
@@ -47,6 +56,8 @@ export function carryByHole(round: Round): Map<number, HoleCarry> {
   const out = new Map<number, HoleCarry>();
   const gt = gameTypeOf(round);
 
+  const end = lastHole(round);
+
   if (gt === "wolf") {
     const withR = computeRound(round).results;
     const noByHole = new Map(computeRound(noHammer(round)).results.map((r) => [r.hole, r.carriedToNext]));
@@ -55,8 +66,9 @@ export function carryByHole(round: Round): Map<number, HoleCarry> {
       new Map(computeRound(sub).results.map((r) => [r.hole, r.carriedToNext]));
     const press = pressCarryByHole(round, pushed, carryOf);
     for (const r of withR) {
-      const orig = noByHole.get(r.hole) ?? 0;
-      const hammer = r.carriedToNext - orig;
+      // Base carry on the final hole is dead — the round ends there.
+      const orig = r.hole === end ? 0 : noByHole.get(r.hole) ?? 0;
+      const hammer = r.hole === end ? 0 : r.carriedToNext - orig;
       const p = press.get(r.hole) ?? 0;
       const total = orig + hammer + p;
       if (total > 0) out.set(r.hole, { orig, hammer, press: p, total });
@@ -76,8 +88,9 @@ export function carryByHole(round: Round): Map<number, HoleCarry> {
   const pressCarry = pressCarryByHole(round, pushed, carryOf);
 
   for (const r of baseWith) {
-    const orig = noByHole.get(r.hole) ?? 0;
-    const hammer = (r.carry ?? 0) - orig;
+    // Base carry on the final hole is dead — the round ends there.
+    const orig = r.hole === end ? 0 : noByHole.get(r.hole) ?? 0;
+    const hammer = r.hole === end ? 0 : (r.carry ?? 0) - orig;
     const press = pressCarry.get(r.hole) ?? 0;
     const total = orig + hammer + press;
     if (total > 0) out.set(r.hole, { orig, hammer, press, total });
