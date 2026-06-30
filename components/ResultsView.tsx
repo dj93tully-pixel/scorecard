@@ -287,6 +287,16 @@ function Detail({
   const tiles: Filter[] = [...betTypes, "total"];
   const hammerSet = useMemo(() => new Set(hammerHoles), [hammerHoles]);
   const pressSet = useMemo(() => new Set(pressHoles), [pressHoles]);
+  // Holes the hammer "affects": the hammered holes themselves, plus any hole the
+  // hammer money landed on (carryover). Money is zero-sum, so a hole counts if
+  // any player has a non-zero hammer delta there.
+  const hammerActive = useMemo(() => {
+    const s = new Set<number>(hammerHoles);
+    player.holes.forEach((c, i) => {
+      if (results.players.some((pl) => (pl.money.hammer[i] ?? 0) !== 0)) s.add(c.hole);
+    });
+    return s;
+  }, [hammerHoles, results.players, player.holes]);
 
   // Active money + (for press) the holes the press covers.
   let active: number[];
@@ -302,6 +312,9 @@ function Detail({
       activeHoles = new Set(presses[pressSel].holes);
       pill = presses[pressSel].label;
     }
+  } else if (filter === "hammer") {
+    active = player.money.hammer;
+    activeHoles = hammerActive; // only hammered + carryover holes show scores
   } else {
     active = player.money[filter];
   }
