@@ -248,13 +248,14 @@ export default function GamePage() {
       const g = computeBaseGame(pressSubRound(round, holes));
       return { ledger: g.ledger, holeResults: g.holeResults };
     };
-    let segK = 0;
-    let fullK = 0;
+    const counts: Record<string, number> = {};
     return eachPress(round, run).map((pr) => {
-      const num = pr.scope === "full" ? 18 : gt === "sixes" ? 6 : 9;
-      const k = pr.scope === "seg" ? ++segK : ++fullK;
+      const base =
+        pr.scope === "full" ? "18" : gt === "sixes" ? "6" : pr.hole <= 9 ? "F9" : "B9";
+      counts[base] = (counts[base] ?? 0) + 1;
+      const k = counts[base];
       return {
-        label: `${num}${k > 1 ? `×${k}` : ""}`,
+        label: `${base}${k > 1 ? `×${k}` : ""}`,
         holes: new Set(pr.holes),
         comp: {
           ledger: pr.result.ledger,

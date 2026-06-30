@@ -44,6 +44,7 @@ function HoleCard({
   const pressFull = existing?.pressFull ?? false;
   const segN = segCover ?? 0;
   const fullN = fullCover ?? 0;
+  const segLabel = hole <= 9 ? "F9" : "B9"; // rest of the front / back nine
   const base: HoleEntry = {
     hole,
     wolfId: "",
@@ -94,7 +95,7 @@ function HoleCard({
               pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
-            <Zap className="h-[15px] w-[15px]" />9{pressSeg && segN > 1 ? `×${segN}` : ""}
+            <Zap className="h-[15px] w-[15px]" />{segLabel}{pressSeg && segN > 1 ? `×${segN}` : ""}
           </button>
           {hole <= 9 && (
             <button

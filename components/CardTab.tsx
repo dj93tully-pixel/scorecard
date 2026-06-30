@@ -114,7 +114,7 @@ function BigNine({
   computation: CardComputation;
   holes: number[];
   title: string;
-  mode: "scores" | "money";
+  mode: "scores" | "money" | "binary";
   net?: boolean; // scores mode: show net (gross − pops) instead of gross
   activeHoles?: Set<number>; // press view: only these holes show data (rest blank)
 }) {
@@ -125,6 +125,21 @@ function BigNine({
   const grossOf = (pid: string, h: number) => entryByHole.get(h)?.grossScores[pid];
   const popsOf = (pid: string, h: number) => computation.pops[pid]?.[h] ?? 0;
   const moneyOf = (pid: string, h: number) => resultByHole.get(h)?.deltas[pid] ?? 0;
+  const netOf = (pid: string, h: number): number | null => {
+    const g = grossOf(pid, h);
+    return typeof g === "number" ? g - popsOf(pid, h) : null;
+  };
+  // Binary "won the hole": this player has the SOLE lowest net (1); a tie or a
+  // higher score is "–" (push or loss).
+  const wonHole = (pid: string, h: number): boolean => {
+    const mine = netOf(pid, h);
+    if (mine === null) return false;
+    const nets = round.players
+      .map((p) => netOf(p.id, h))
+      .filter((n): n is number => n !== null);
+    const min = Math.min(...nets);
+    return mine === min && nets.filter((n) => n === min).length === 1;
+  };
   const isActive = (h: number) => !activeHoles || activeHoles.has(h);
   const totalLabel = title === "Front" ? "OUT" : "IN";
   const parTotal = holes
@@ -133,7 +148,9 @@ function BigNine({
   const playerTotal = (pid: string) =>
     mode === "money"
       ? holes.filter(isActive).reduce((s, h) => s + moneyOf(pid, h), 0)
-      : holes.filter(isActive).reduce((s, h) => {
+      : mode === "binary"
+        ? holes.filter(isActive).filter((h) => wonHole(pid, h)).length
+        : holes.filter(isActive).reduce((s, h) => {
           const g = grossOf(pid, h);
           if (typeof g !== "number") return s;
           return s + (net ? g - popsOf(pid, h) : g);
@@ -188,6 +205,18 @@ function BigNine({
                   if (!isActive(h)) {
                     return <td key={h} className="px-1.5 py-2" />;
                   }
+                  if (mode === "binary") {
+                    const won = wonHole(p.id, h);
+                    return (
+                      <td
+                        key={h}
+                        className="px-1.5 py-2 text-sm font-bold tabular-nums"
+                        style={{ color: won ? POS : "#C4C8CE" }}
+                      >
+                        {won ? "1" : "–"}
+                      </td>
+                    );
+                  }
                   if (mode === "scores") {
                     const g = grossOf(p.id, h);
                     const pops = popsOf(p.id, h);
@@ -229,7 +258,13 @@ function BigNine({
                       : undefined
                   }
                 >
-                  {mode === "scores" ? tot || "" : tot === 0 ? "–" : formatMoney(tot)}
+                  {mode === "binary"
+                    ? tot
+                    : mode === "scores"
+                      ? tot || ""
+                      : tot === 0
+                        ? "–"
+                        : formatMoney(tot)}
                 </td>
               </tr>
             );
@@ -578,6 +613,22 @@ export function CardTab({
   const back = Array.from({ length: 9 }, (_, i) => i + 10);
   const [scoreView, setScoreView] = useState<"gross" | "net">("gross");
   const net = scoreView === "net";
+  // Swipe the scorecard to flip between scores and the binary "who won the hole".
+  const [cardMode, setCardMode] = useState<"scores" | "binary">("scores");
+  const scoreTouch = useRef<{ x: number; y: number } | null>(null);
+  function onScoreTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    scoreTouch.current = { x: t.clientX, y: t.clientY };
+  }
+  function onScoreTouchEnd(e: React.TouchEvent) {
+    const s = scoreTouch.current;
+    scoreTouch.current = null;
+    if (!s) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - s.x;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(t.clientY - s.y)) return;
+    setCardMode((m) => (m === "scores" ? "binary" : "scores"));
+  }
   // Shared gross/net toggle for the standings dropdowns — flipping it in any one
   // player's scorecard updates the blue +/- on every standings row.
   const [scoreNet, setScoreNet] = useState(false);
@@ -703,16 +754,23 @@ export function CardTab({
         </section>
       )}
 
-      {/* Big all-players scorecard */}
-      <section className="space-y-3">
+      {/* Big all-players scorecard — swipe to flip to "who won the hole" (1/–). */}
+      <section className="space-y-3" onTouchStart={onScoreTouchStart} onTouchEnd={onScoreTouchEnd}>
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold">Scorecard</h2>
-          <GrossNetToggle net={net} onChange={(n) => setScoreView(n ? "net" : "gross")} />
+          <h2 className="text-xl font-bold">{cardMode === "binary" ? "Holes won" : "Scorecard"}</h2>
+          {cardMode === "scores" ? (
+            <GrossNetToggle net={net} onChange={(n) => setScoreView(n ? "net" : "gross")} />
+          ) : (
+            <span className="text-xs font-semibold text-text-muted">1 = won · – = halve/loss</span>
+          )}
+          <span className="ml-auto text-[10px] text-text-faint">swipe ←→</span>
         </div>
-        <BigNine round={round} computation={active} holes={front} title="Front" mode="scores" net={net} activeHoles={activeHoles} />
-        <BigNine round={round} computation={active} holes={back} title="Back" mode="scores" net={net} activeHoles={activeHoles} />
+        <BigNine round={round} computation={active} holes={front} title="Front" mode={cardMode} net={net} activeHoles={activeHoles} />
+        <BigNine round={round} computation={active} holes={back} title="Back" mode={cardMode} net={net} activeHoles={activeHoles} />
         {/* Totals listed as part of the scorecard: name · total · +/- · money */}
-        <Totals round={round} computation={active} net={net} holes={activeHoles} />
+        {cardMode === "scores" && (
+          <Totals round={round} computation={active} net={net} holes={activeHoles} />
+        )}
       </section>
 
       {/* Money trendline over the holes played. */}
