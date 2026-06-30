@@ -12,6 +12,7 @@ import {
   ledgerSum,
   defaultWolfForHole,
 } from "./wolf";
+import { carryByHole } from "./carry";
 
 // ── Test fixtures ──────────────────────────────────────────────────────────
 
@@ -642,5 +643,30 @@ describe("full 18-hole round", () => {
       const sum = Object.values(res.deltas).reduce((x, y) => x + y, 0);
       expect(sum).toBe(0);
     }
+  });
+});
+
+// ── Carry breakdown (Score-tab note) ────────────────────────────────────────
+
+describe("carryByHole — wolf", () => {
+  it("splits a hammered pushed hole into normal / hammer", () => {
+    const round = makeRound(
+      [
+        {
+          hole: 1,
+          wolfId: "a",
+          mode: "2v2",
+          partnerId: "b",
+          grossScores: { a: 4, b: 5, c: 4, d: 5 }, // teams tie 4–4 → push
+          hammer: 1,
+        },
+      ],
+      { stake: 2, carryover: true, hammerCarry: true, handicapMode: "direct" }
+    );
+    const c = carryByHole(round).get(1)!;
+    expect(c.orig).toBe(2); // un-hammered base carry
+    expect(c.hammer).toBe(2); // extra from the ×2 hammer
+    expect(c.press).toBe(0);
+    expect(c.total).toBe(4);
   });
 });

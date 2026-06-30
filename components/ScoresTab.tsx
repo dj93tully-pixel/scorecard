@@ -15,6 +15,7 @@ import {
   computeRound,
 } from "@/lib/wolf";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
+import { carryByHole, HoleCarry } from "@/lib/carry";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
 
@@ -28,6 +29,7 @@ function HoleBox({
   computation,
   hole,
   deltas,
+  carry,
   segCover,
   fullCover,
   upsertEntry,
@@ -36,6 +38,7 @@ function HoleBox({
   computation: RoundComputation;
   hole: number;
   deltas: Record<string, number>; // per-hole money (base + press)
+  carry?: HoleCarry; // push-carry split: normal / press / hammer
   segCover?: number; // 9-presses covering this hole (for the ⚡9 ×N label)
   fullCover?: number; // 18-presses covering this hole (for the ⚡18 ×N label)
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
@@ -316,13 +319,34 @@ function HoleBox({
 
       {/* Result */}
       {result && (
-        <div className="mt-2 text-right text-sm">
+        <div className="mt-2 text-right text-sm tabular-nums">
           {result.winner === "push" ? (
-            <span className="text-text-faint">
-              {result.carriedToNext > 0
-                ? `Push — $${result.carriedToNext} carries`
-                : "Push"}
-            </span>
+            carry ? (
+              (() => {
+                const money = (n: number) => `$${Math.round(n * 100) / 100}`;
+                const extra = carry.press > 0 || carry.hammer > 0;
+                return (
+                  <div>
+                    <div className="text-text-faint">Push — {money(carry.orig)} carries</div>
+                    {carry.press > 0 && (
+                      <div style={{ color: PRESS }}>Press — {money(carry.press)} carries</div>
+                    )}
+                    {carry.hammer > 0 && (
+                      <div style={{ color: HAMMER }}>Hammer — {money(carry.hammer)} carries</div>
+                    )}
+                    {extra && (
+                      <div className="ml-auto mt-1 w-fit border-t border-card-border pt-1 font-semibold text-text-primary">
+                        Total — {money(carry.total)} carries
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            ) : (
+              <span className="text-text-faint">
+                {result.carriedToNext > 0 ? `Push — $${result.carriedToNext} carries` : "Push"}
+              </span>
+            )
           ) : (
             <span className="font-bold">
               {hammer > 0 && (
@@ -390,6 +414,8 @@ export function ScoresTab({
     }).map((r) => [r.hole, r.deltas])
   );
   const pressCovers = pressCoverByHole(round);
+  // Per-hole carry split (normal / press / hammer) for the push-carry note.
+  const carries = carryByHole(round);
 
   return (
     <div className="space-y-3">
@@ -423,6 +449,7 @@ export function ScoresTab({
           computation={computation}
           hole={h.number}
           deltas={moneyByHole.get(h.number) ?? {}}
+          carry={carries.get(h.number)}
           segCover={pressCovers.get(h.number)?.seg ?? 0}
           fullCover={pressCovers.get(h.number)?.full ?? 0}
           upsertEntry={upsertEntry}
