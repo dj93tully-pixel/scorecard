@@ -51,7 +51,7 @@ export function CarryNote({ carry, hammer }: { carry: HoleCarry; hammer: number 
         </Pill>
       )}
       <span className="text-sm font-semibold tabular-nums text-text-primary">
-        Total — {money(carry.total)} carries
+        Push: {money(carry.total)} carries
       </span>
     </div>
   );
