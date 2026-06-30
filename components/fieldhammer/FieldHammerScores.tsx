@@ -6,12 +6,19 @@
 
 "use client";
 
+import { useState } from "react";
 import { Hammer, Flag, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame } from "@/lib/gametypes";
-import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
+import {
+  combinedHoleResults,
+  eachPress,
+  pressSubRoundFor,
+  PressItem,
+} from "@/lib/engines/press";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
+import { HoleDeck, PressCard, PressPlayerPicker, pressScopeLabel } from "../PressDeck";
 
 const HAMMER_COLOR = "#7C3AED"; // purple
 const FORFEIT_COLOR = "#06B6A4"; // teal
@@ -22,16 +29,16 @@ function HoleCard({
   pops,
   hole,
   deltas,
-  segCover,
-  fullCover,
+  pressed,
+  holePresses,
   upsertEntry,
 }: {
   round: Round;
   pops: Record<string, Record<number, number>>;
   hole: number;
   deltas: Record<string, number>;
-  segCover?: number; // 9-presses covering this hole (for the ⚡9 ×N label)
-  fullCover?: number; // 18-presses covering this hole (for the ⚡18 ×N label)
+  pressed?: boolean; // this hole is covered by a press (highlight)
+  holePresses?: PressItem[]; // presses started on this hole + their money
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
   const { players, course } = round;
@@ -40,11 +47,9 @@ function HoleCard({
   const grossScores = existing?.grossScores ?? {};
   const fhActions = existing?.fhActions ?? {};
   const hammer = existing?.hammer ?? 0;
-  const pressSeg = existing?.pressSeg ?? false;
-  const pressFull = existing?.pressFull ?? false;
-  const segN = segCover ?? 0;
-  const fullN = fullCover ?? 0;
+  const presses = existing?.presses ?? [];
   const segLabel = hole <= 9 ? "F9" : "B9"; // rest of the front / back nine
+  const [pendingScope, setPendingScope] = useState<"seg" | "full" | null>(null);
   const base: HoleEntry = {
     hole,
     wolfId: "",
@@ -52,11 +57,18 @@ function HoleCard({
     grossScores,
     fhActions,
     hammer,
-    pressSeg,
-    pressFull,
+    presses,
   };
   const first = (id: string) =>
     (players.find((p) => p.id === id)?.name || "—").split(" ")[0];
+
+  const addPress = (ids: string[]) => {
+    if (pendingScope)
+      upsertEntry(hole, { presses: [...presses, { players: ids, scope: pendingScope }] }, base);
+    setPendingScope(null);
+  };
+  const removePress = (i: number) =>
+    upsertEntry(hole, { presses: presses.filter((_, idx) => idx !== i) }, base);
 
   const setHammer = (level: number) =>
     upsertEntry(hole, { hammer: hammer === level ? 0 : level }, base);
@@ -69,12 +81,12 @@ function HoleCard({
 
   const winners = players.filter((p) => (deltas[p.id] ?? 0) !== 0);
 
-  return (
+  const scoresCard = (
     <div
       id={`hole-${hole}`}
       style={{
         scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)",
-        ...holeHighlight(segN + fullN > 0, hammer > 0),
+        ...holeHighlight(!!pressed, hammer > 0),
       }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
@@ -88,25 +100,19 @@ function HoleCard({
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
           <button
-            onClick={() => upsertEntry(hole, { pressSeg: !pressSeg }, base)}
+            onClick={() => setPendingScope("seg")}
             aria-label="Press — new bet on the rest of this nine"
-            style={pressSeg ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
-            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
-              pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-            }`}
+            className="flex items-center gap-0.5 rounded-lg border border-card-border bg-card-bg px-2 py-1.5 text-[13px] font-bold text-text-muted"
           >
-            <Zap className="h-[15px] w-[15px]" />{segLabel}{pressSeg && segN > 1 ? `×${segN}` : ""}
+            <Zap className="h-[15px] w-[15px]" />{segLabel}
           </button>
           {hole <= 9 && (
             <button
-              onClick={() => upsertEntry(hole, { pressFull: !pressFull }, base)}
+              onClick={() => setPendingScope("full")}
               aria-label="Press — new bet on the rest of the round"
-              style={pressFull ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
-              className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
-                pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-              }`}
+              className="flex items-center gap-0.5 rounded-lg border border-card-border bg-card-bg px-2 py-1.5 text-[13px] font-bold text-text-muted"
             >
-              <Zap className="h-[15px] w-[15px]" />18{pressFull && fullN > 1 ? `×${fullN}` : ""}
+              <Zap className="h-[15px] w-[15px]" />18
             </button>
           )}
           <button
@@ -132,6 +138,16 @@ function HoleCard({
           </button>
         </div>
       </div>
+
+      {/* Player-scoped press: pick who's in (everyone preselected). */}
+      {pendingScope && (
+        <PressPlayerPicker
+          players={players}
+          scopeLabel={pressScopeLabel(hole, pendingScope, false)}
+          onAdd={addPress}
+          onCancel={() => setPendingScope(null)}
+        />
+      )}
 
       <div className="space-y-1.5">
         {players.map((p) => {
@@ -198,6 +214,20 @@ function HoleCard({
       )}
     </div>
   );
+
+  // Player-scoped presses stack behind the hole as read-only outcome cards.
+  const pressCards = (holePresses ?? []).map((pr, i) => (
+    <PressCard
+      key={i}
+      players={players}
+      members={pr.players ?? []}
+      scopeLabel={pressScopeLabel(pr.hole, pr.scope, false)}
+      holes={pr.holes}
+      ledger={pr.result.ledger}
+      onRemove={() => removePress(i)}
+    />
+  ));
+  return <HoleDeck front={scoresCard} cards={pressCards} />;
 }
 
 export function FieldHammerScores({
@@ -233,7 +263,20 @@ export function FieldHammerScores({
     return { ledger: g.ledger, holeResults: g.holeResults };
   });
   const deltasByHole = new Map(combined.map((r) => [r.hole, r.deltas]));
-  const pressCovers = pressCoverByHole(round);
+
+  // Player-scoped presses with their money, grouped by start hole; + coverage.
+  const fullPops = computePops(round.players, round.course, round.settings.handicapMode);
+  const pressByHole = new Map<number, PressItem[]>();
+  const coveredHoles = new Set<number>();
+  for (const pr of eachPress(round, (def) => ({
+    ledger: computeBaseGame(pressSubRoundFor(round, def, fullPops)).ledger,
+    holeResults: [],
+  }))) {
+    const arr = pressByHole.get(pr.hole) ?? [];
+    arr.push(pr);
+    pressByHole.set(pr.hole, arr);
+    for (const h of pr.holes) coveredHoles.add(h);
+  }
 
   return (
     <div className="space-y-3">
@@ -265,8 +308,8 @@ export function FieldHammerScores({
           pops={pops}
           hole={h.number}
           deltas={deltasByHole.get(h.number) ?? {}}
-          segCover={pressCovers.get(h.number)?.seg ?? 0}
-          fullCover={pressCovers.get(h.number)?.full ?? 0}
+          pressed={coveredHoles.has(h.number)}
+          holePresses={pressByHole.get(h.number) ?? []}
           upsertEntry={upsertEntry}
         />
       ))}

@@ -124,6 +124,13 @@ export interface HoleEntry {
    */
   pressSeg?: boolean;
   pressFull?: boolean;
+  /**
+   * Player-scoped presses (Stroke, Skins, Hammerskin). Each is a fresh same-stake
+   * bet among the listed players (a subset of the field, default everyone) over
+   * the rest of this hole's nine ("seg") or the round ("full"), settled on the
+   * SHARED net. A hole can hold several. Persisted in game_entries.meta.
+   */
+  presses?: { players: PlayerId[]; scope: "seg" | "full" }[];
 }
 
 export interface Round {

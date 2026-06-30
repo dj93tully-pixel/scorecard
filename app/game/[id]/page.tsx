@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Round, computeRound } from "@/lib/wolf";
+import { Round, computeRound, computePops } from "@/lib/wolf";
 import { useGame } from "@/lib/useGame";
 import { useHeader } from "@/lib/header-context";
 import { liveSummary, genericSummary } from "@/lib/live";
@@ -13,6 +13,8 @@ import {
   eachPress,
   hasAnyPress,
   pressSubRound,
+  pressSubRoundFor,
+  PressDef,
   RunResult,
 } from "@/lib/engines/press";
 import { nassauPressLedger } from "@/lib/engines/nassau";
@@ -231,10 +233,16 @@ export default function GamePage() {
     if (!round || !hasAnyPress(round)) return [];
     const gt = gameTypeOf(round);
     const pops = (isWolf ? computation?.pops : gameResult?.pops) ?? {};
-    const run = (holes: Set<number>): RunResult => {
-      if (gt === "nassau") return { ledger: nassauPressLedger(round, holes), holeResults: [] };
+    const fullPops = computePops(round.players, round.course, round.settings.handicapMode);
+    const first = (id: string) =>
+      (round.players.find((p) => p.id === id)?.name || "?").split(" ")[0];
+    const run = (def: PressDef): RunResult => {
+      if (gt === "nassau") {
+        return { ledger: nassauPressLedger(round, new Set(def.holes)), holeResults: [] };
+      }
+      const sub = pressSubRoundFor(round, def, fullPops);
       if (isWolf) {
-        const c = computeRound(pressSubRound(round, holes));
+        const c = computeRound(sub);
         return {
           ledger: c.ledger,
           holeResults: c.results.map((rr) => ({
@@ -245,27 +253,35 @@ export default function GamePage() {
           })),
         };
       }
-      const g = computeBaseGame(pressSubRound(round, holes));
+      const g = computeBaseGame(sub);
       return { ledger: g.ledger, holeResults: g.holeResults };
     };
     const counts: Record<string, number> = {};
     return eachPress(round, run).map((pr) => {
-      const base =
-        pr.scope === "full"
-          ? "18"
-          : gt === "sixes"
-            ? pr.hole <= 6
-              ? "F6"
-              : pr.hole <= 12
-                ? "M6"
-                : "B6"
-            : pr.hole <= 9
-              ? "F9"
-              : "B9";
-      counts[base] = (counts[base] ?? 0) + 1;
-      const k = counts[base];
+      const everyone = !pr.players || pr.players.length === round.players.length;
+      let label: string;
+      if (!everyone && pr.players) {
+        // Player-scoped press → label by participants.
+        label = pr.players.map(first).join("·");
+      } else {
+        const base =
+          pr.scope === "full"
+            ? "18"
+            : gt === "sixes"
+              ? pr.hole <= 6
+                ? "F6"
+                : pr.hole <= 12
+                  ? "M6"
+                  : "B6"
+              : pr.hole <= 9
+                ? "F9"
+                : "B9";
+        counts[base] = (counts[base] ?? 0) + 1;
+        const k = counts[base];
+        label = `${base}${k > 1 ? `×${k}` : ""}`;
+      }
       return {
-        label: `${base}${k > 1 ? `×${k}` : ""}`,
+        label,
         holes: new Set(pr.holes),
         comp: {
           ledger: pr.result.ledger,
