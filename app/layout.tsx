@@ -7,11 +7,11 @@ import { HeaderProvider } from "@/lib/header-context";
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: "TEEPARTY",
+  title: "BettorGolf",
   description: "Track scores, pops, and golf money games live on the course.",
   appleWebApp: {
     capable: true,
-    title: "TEEPARTY",
+    title: "BettorGolf",
     statusBarStyle: "default",
   },
   icons: {
