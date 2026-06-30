@@ -12,9 +12,25 @@
 
 import { Round, PlayerId, computeRound } from "./wolf";
 import { gameTypeOf, computeBaseGame, computeGame } from "./gametypes";
-import { decomposePresses, hasAnyPress, RunResult } from "./engines/press";
+import {
+  decomposePresses,
+  hasAnyPress,
+  pressedHoles,
+  pressSubRound,
+  eachPress,
+  RunResult,
+} from "./engines/press";
+import { nassauPressLedger } from "./engines/nassau";
 
 export type BetType = "original" | "press" | "hammer";
+
+// One individual press for the Press tab's sub-selector. money is per-player,
+// per-hole (aligned to the course holes; 0 outside the press's holes).
+export interface PressInfo {
+  label: string; // "F9", "B9", "18", "F9×2"…
+  holes: number[]; // holes it covers
+  money: Record<PlayerId, number[]>;
+}
 
 export interface HoleCell {
   hole: number;
@@ -36,6 +52,9 @@ export interface PlayerResults {
 export interface ResultsData {
   players: PlayerResults[];
   betTypes: BetType[]; // the non-total bet types that EXIST (Total is always shown)
+  hammerHoles: number[]; // holes that had a hammer (purple marker on the card)
+  pressHoles: number[]; // union of every press's holes
+  presses: PressInfo[]; // each individual press (Press tab sub-selector)
 }
 
 const zeroHammer = (round: Round): Round => ({
@@ -139,5 +158,51 @@ export function buildResults(round: Round): ResultsData {
     };
   });
 
-  return { players, betTypes };
+  const hammerHoles = round.entries.filter((e) => (e.hammer ?? 0) > 0).map((e) => e.hole);
+  const pressHoles = [...pressedHoles(round)].sort((a, b) => a - b);
+
+  // Individual presses, each settled over its own holes (same engine, read-only).
+  const idxOf = new Map(holes.map((h, i) => [h.number, i]));
+  const counts: Record<string, number> = {};
+  const presses: PressInfo[] = hasPress
+    ? eachPress(round, (hset): RunResult => {
+        if (gt === "nassau") return { ledger: nassauPressLedger(round, hset), holeResults: [] };
+        if (isWolf) {
+          const c = computeRound(pressSubRound(round, hset));
+          return { ledger: c.ledger, holeResults: c.results.map((rr) => ({ hole: rr.hole, deltas: rr.deltas })) };
+        }
+        const g = computeBaseGame(pressSubRound(round, hset));
+        return { ledger: g.ledger, holeResults: g.holeResults };
+      }).map((pr) => {
+        const lbl =
+          pr.scope === "full"
+            ? "18"
+            : gt === "sixes"
+              ? pr.hole <= 6
+                ? "F6"
+                : pr.hole <= 12
+                  ? "M6"
+                  : "B6"
+              : pr.hole <= 9
+                ? "F9"
+                : "B9";
+        counts[lbl] = (counts[lbl] ?? 0) + 1;
+        const k = counts[lbl];
+        const money: Record<PlayerId, number[]> = {};
+        for (const id of ids) money[id] = holes.map(() => 0);
+        if (gt === "nassau") {
+          const li = idxOf.get(pr.holes[pr.holes.length - 1] ?? -1);
+          if (li !== undefined) for (const id of ids) money[id][li] = pr.result.ledger[id] ?? 0;
+        } else {
+          for (const hr of pr.result.holeResults) {
+            const i = idxOf.get(hr.hole);
+            if (i === undefined) continue;
+            for (const id of ids) money[id][i] = hr.deltas[id] ?? 0;
+          }
+        }
+        return { label: `${lbl}${k > 1 ? `×${k}` : ""}`, holes: pr.holes, money };
+      })
+    : [];
+
+  return { players, betTypes, hammerHoles, pressHoles, presses };
 }
