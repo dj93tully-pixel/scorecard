@@ -78,38 +78,88 @@ export function pressScopesOf(e: {
   return out;
 }
 
+// Per-hole-carry games whose presses can absorb a duplicated carry (skins-style).
+const CARRY_GAMES = new Set(["skins", "bestball", "sixes", "wolf"]);
+
+/** Holes that were fully scored (all players have a gross). */
+function scoredHoles(round: Round): Set<number> {
+  const out = new Set<number>();
+  for (const e of round.entries) {
+    if (round.players.every((p) => typeof e.grossScores[p.id] === "number")) out.add(e.hole);
+  }
+  return out;
+}
+
+/** Holes that PUSHED in the base bet (played, no winner) — the carry chain source. */
+export function pushedFrom(
+  round: Round,
+  base: { hole: number; decided?: boolean }[]
+): Set<number> {
+  if (!CARRY_GAMES.has(round.gameType ?? "")) return new Set();
+  const scored = scoredHoles(round);
+  const out = new Set<number>();
+  for (const r of base) if (r.decided === false && scored.has(r.hole)) out.add(r.hole);
+  return out;
+}
+
 /**
- * A copy of the round scoped to a press's holes. The press is its own bet, so it
- * carries (or not) on the `pressCarryover` setting — independent of the base
- * bet's carryover.
+ * The carry chain entering a press started on `start`: the consecutive base
+ * pushes immediately before it. Only when BOTH "carryover" (so a carry exists)
+ * and "carryover ties into press bets" are on; otherwise empty.
  */
-export function pressSubRound(round: Round, holes: Set<number>): Round {
+export function carryChain(round: Round, start: number, pushed: Set<number>): number[] {
+  if (!(round.settings.carryover && (round.settings.pressCarryover ?? false))) return [];
+  const nums = round.course.holes.map((h) => h.number).sort((a, b) => a - b);
+  const chain: number[] = [];
+  for (let i = nums.indexOf(start) - 1; i >= 0; i--) {
+    if (pushed.has(nums[i])) chain.unshift(nums[i]);
+    else break;
+  }
+  return chain;
+}
+
+/**
+ * A copy of the round scoped to a press's holes (+ any carry-chain holes to
+ * duplicate the live push pot into the press). The press follows the MAIN
+ * "carryover" for its own ties, and "pressHammerCarry" for the hammered size of
+ * any carry it absorbs.
+ */
+export function pressSubRound(
+  round: Round,
+  holes: Set<number>,
+  carryHoles: Iterable<number> = []
+): Round {
+  const include = new Set(holes);
+  for (const h of carryHoles) include.add(h);
   return {
     ...round,
     settings: {
       ...round.settings,
-      carryover: round.settings.pressCarryover ?? true,
+      carryover: round.settings.carryover ?? false,
+      hammerCarry: round.settings.pressHammerCarry ?? false,
     },
-    entries: round.entries.filter((x) => holes.has(x.hole)),
+    entries: round.entries.filter((x) => include.has(x.hole)),
   };
 }
 
 /**
  * Total press money per player: for every flagged hole, re-settle the game over
- * the press's holes (via `computeLedger`) and sum the results. `computeLedger`
- * must be the RAW per-hole engine (not a press-wrapped one) to avoid recursion.
+ * the press's holes (via `run`) and sum the results. `run` must be the RAW
+ * per-hole engine (not a press-wrapped one) to avoid recursion; its holeResults
+ * are used to find base pushes (for the carry-into-press duplication).
  */
 export function computePressMoney(
   round: Round,
-  computeLedger: (r: Round) => Record<PlayerId, number>
+  run: (r: Round) => RunResult
 ): Record<PlayerId, number> {
   const out: Record<PlayerId, number> = {};
   for (const p of round.players) out[p.id] = 0;
+  const pushed = pushedFrom(round, run(round).holeResults);
   for (const e of round.entries) {
     for (const scope of pressScopesOf(e)) {
       const holes = new Set(pressRange(round, e.hole, scope));
       if (holes.size === 0) continue;
-      const l = computeLedger(pressSubRound(round, holes));
+      const l = run(pressSubRound(round, holes, carryChain(round, e.hole, pushed))).ledger;
       for (const p of round.players) out[p.id] += l[p.id] ?? 0;
     }
   }
@@ -126,7 +176,10 @@ export function withPresses(
   engine: (r: Round) => GameResult
 ): GameResult {
   const base = engine(round);
-  const press = computePressMoney(round, (r) => engine(r).ledger);
+  const press = computePressMoney(round, (r) => {
+    const g = engine(r);
+    return { ledger: g.ledger, holeResults: g.holeResults };
+  });
   const ledger: Record<PlayerId, number> = {};
   const stats: Record<PlayerId, Record<string, number | string>> = {};
   for (const p of round.players) {
@@ -162,6 +215,7 @@ export function decomposePresses(
 ): { base: RunResult; press: RunResult } {
   const ids = round.players.map((p) => p.id);
   const base = run(round);
+  const pushed = pushedFrom(round, base.holeResults);
 
   const pressLedger: Record<PlayerId, number> = {};
   for (const id of ids) pressLedger[id] = 0;
@@ -171,7 +225,7 @@ export function decomposePresses(
     for (const scope of pressScopesOf(e)) {
       const holes = new Set(pressRange(round, e.hole, scope));
       if (holes.size === 0) continue;
-      const r = run(pressSubRound(round, holes));
+      const r = run(pressSubRound(round, holes, carryChain(round, e.hole, pushed)));
       for (const id of ids) pressLedger[id] += r.ledger[id] ?? 0;
       for (const hr of r.holeResults) {
         if (!holes.has(hr.hole)) continue;
@@ -222,17 +276,20 @@ export interface PressItem {
 
 /**
  * Each individual press settled on its own — for the Card tab's per-press
- * sub-views inside the Press tab. `run(holes)` settles one press over its holes.
+ * sub-views inside the Press tab. `run(sub)` settles one press over a pre-built
+ * sub-round (which already includes any carry-into-press holes).
  */
 export function eachPress(
   round: Round,
-  run: (holes: Set<number>) => RunResult
+  run: (sub: Round) => RunResult
 ): PressItem[] {
+  const pushed = pushedFrom(round, run(round).holeResults);
   const out: PressItem[] = [];
   for (const e of round.entries) {
     for (const scope of pressScopesOf(e)) {
       const list = pressRange(round, e.hole, scope);
-      out.push({ hole: e.hole, scope, holes: list, result: run(new Set(list)) });
+      const sub = pressSubRound(round, new Set(list), carryChain(round, e.hole, pushed));
+      out.push({ hole: e.hole, scope, holes: list, result: run(sub) });
     }
   }
   return out;

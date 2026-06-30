@@ -52,19 +52,28 @@ export interface RoundSettings {
   loneMult: number; // default 1
   blindMult: number; // default 2
   blindEnabled: boolean;
-  carryover: boolean; // ties push; if true, roll stake into next hole
+  // "Carryover ties": ties push and roll into the next hole — applies to the base
+  // bet AND to presses (a press carries its own ties the same way).
+  carryover: boolean;
   /**
-   * When a HAMMERED hole pushes and carries, whether the carried amount includes
-   * the hammer multiplier (the doubled value rolls forward) or just the base
-   * stake. Defaults to false (carry the base stake only). Applies to Wolf, Skins,
-   * Best Ball, and Six-Six-Six.
+   * "Carryover hammered value": when a HAMMERED hole pushes and carries, whether
+   * the carried amount includes the hammer multiplier (the doubled value rolls
+   * forward) or just the base stake. Base bet only. Applies to Wolf, Skins, Best
+   * Ball, and Six-Six-Six.
    */
   hammerCarry?: boolean;
   /**
-   * Whether a PRESS bet carries its ties (rolls a pushed hole into the press's
-   * next hole), independent of the base bet's `carryover`. Defaults to true.
+   * "Carryover ties into press bets": when you open a press right after a push,
+   * whether the money carrying from that push is ALSO counted in the press bet
+   * (duplicated — it stays in the base bet too). Defaults to false.
    */
   pressCarryover?: boolean;
+  /**
+   * "Carryover hammers into press bets": when a carry duplicates into a press,
+   * whether it rides in at its hammered (doubled) size or the base value. This is
+   * the press-bet equivalent of `hammerCarry`. Defaults to false.
+   */
+  pressHammerCarry?: boolean;
   handicapMode: HandicapMode;
 
   // ── Fields for the non-Wolf game types (all optional; ignored by Wolf) ──
@@ -153,7 +162,8 @@ export const DEFAULT_SETTINGS: RoundSettings = {
   blindEnabled: true,
   carryover: false,
   hammerCarry: false,
-  pressCarryover: true,
+  pressCarryover: false,
+  pressHammerCarry: false,
   handicapMode: "offLow",
 };
 

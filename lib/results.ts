@@ -16,7 +16,6 @@ import {
   decomposePresses,
   hasAnyPress,
   pressedHoles,
-  pressSubRound,
   eachPress,
   RunResult,
 } from "./engines/press";
@@ -114,7 +113,7 @@ export function buildResults(round: Round): ResultsData {
     const run = (r: Round): RunResult => {
       if (isWolf) {
         const c = computeRound(r);
-        return { ledger: c.ledger, holeResults: c.results.map((rr) => ({ hole: rr.hole, deltas: rr.deltas })) };
+        return { ledger: c.ledger, holeResults: c.results.map((rr) => ({ hole: rr.hole, deltas: rr.deltas, decided: rr.winner !== "push" })) };
       }
       const g = computeBaseGame(r);
       return { ledger: g.ledger, holeResults: g.holeResults };
@@ -178,13 +177,15 @@ export function buildResults(round: Round): ResultsData {
   const idxOf = new Map(holes.map((h, i) => [h.number, i]));
   const counts: Record<string, number> = {};
   const presses: PressInfo[] = hasPress
-    ? eachPress(round, (hset): RunResult => {
-        if (gt === "nassau") return { ledger: nassauPressLedger(round, hset), holeResults: [] };
-        if (isWolf) {
-          const c = computeRound(pressSubRound(round, hset));
-          return { ledger: c.ledger, holeResults: c.results.map((rr) => ({ hole: rr.hole, deltas: rr.deltas })) };
+    ? eachPress(round, (sub): RunResult => {
+        if (gt === "nassau") {
+          return { ledger: nassauPressLedger(round, new Set(sub.entries.map((e) => e.hole))), holeResults: [] };
         }
-        const g = computeBaseGame(pressSubRound(round, hset));
+        if (isWolf) {
+          const c = computeRound(sub);
+          return { ledger: c.ledger, holeResults: c.results.map((rr) => ({ hole: rr.hole, deltas: rr.deltas, decided: rr.winner !== "push" })) };
+        }
+        const g = computeBaseGame(sub);
         return { ledger: g.ledger, holeResults: g.holeResults };
       }).map((pr) => {
         const lbl =
