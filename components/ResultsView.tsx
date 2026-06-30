@@ -501,7 +501,7 @@ function PlayerBar({
 // ── Traditional course-style scorecard: full grid, green header band, a colored
 //    tee-distance row per tee, shaded Par, Hcp, then player rows. Scorecard only.
 const GRID = "#D5D9DE";
-const HEADER_BG = "#1E7A46";
+const HEADER_BG = "#16181D";
 
 function hexToRgb(hex?: string): [number, number, number] | null {
   if (!hex) return null;
