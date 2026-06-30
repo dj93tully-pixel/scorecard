@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { BettorGolfMark } from "./BettorGolfMark";
+import { HackerTrackerMark } from "./HackerTrackerMark";
 import { useHeader } from "@/lib/header-context";
 
 // Ticker meta text — continuously scrolls in one direction, but only when it's
@@ -88,15 +88,15 @@ export function Header() {
       className="safe-top sticky top-0 z-30 bg-header-bg text-on-dark"
     >
       <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-2">
-        <BettorGolfMark size={32} className="shrink-0" />
+        <HackerTrackerMark size={32} className="shrink-0" />
         <div className="min-w-0 flex-1 leading-tight">
-          <h1 className="truncate text-lg font-bold uppercase tracking-[0.18em]">
+          <h1 className="truncate text-lg font-bold tracking-tight">
             {config.title ? (
               <span>{config.title}</span>
             ) : (
               <>
-                <span style={{ color: "#12B886" }}>Bettor</span>
-                <span style={{ color: "#FFFFFF" }}>Golf</span>
+                <span style={{ color: "#FFFFFF" }}>Hacker</span>
+                <span style={{ color: "#3B78FF" }}>Tracker</span>
               </>
             )}
           </h1>
