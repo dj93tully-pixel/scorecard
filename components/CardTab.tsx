@@ -443,121 +443,170 @@ function GrossNetToggle({
   );
 }
 
-// ── Nassau bet-breakdown matrix — ONE per player, rendered as its own block on
-//    the Card tab right below that player's standings row (not inside the card).
-//    Rows = Front/Back/Overall, columns = Original/Press/Total, with a totals row
-//    and a shaded Total column so the money reconciles both ways. Values come
-//    straight from the Nassau engine's per-player stats — presentation only.
-//    Columns: Total always shows; Original/Press only when the round has presses
-//    (with no presses Original == Total, so we show just the Total column).
-function NassauMatrixBlock({
+// ── Nassau standings entry: ONE cohesive bar per player. Collapsed, the bar
+//    shows the bet-type TOTALS in columns (Original / Press / Total); expanded,
+//    the Front/Back/Overall rows drop in beneath, aligned under the same columns
+//    on a faint detail background — all one connected card. The Total column is
+//    tinted as the emphasised column. Columns: Total always; Original/Press only
+//    when the round has presses (no presses → just Total). Values come straight
+//    from the Nassau engine's per-player stats — presentation only.
+const NASSAU_TINT = "#EEF2FB"; // shaded Total column
+const NASSAU_SEG_BG = "#FAFBFC"; // expanded detail background
+
+function NassauLedgerBar({
+  round,
+  computation,
+  player,
+  rankIndex,
+  scoreNet,
   stats,
   hasPress,
 }: {
+  round: Round;
+  computation: CardComputation;
+  player: Player;
+  rankIndex: number;
+  scoreNet: boolean;
   stats: Record<string, number | string> | undefined;
   hasPress: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [open, setOpen] = useState(false);
   const num = (k: string) => Number(stats?.[k] ?? 0);
-  const rows = [
+  const segs = [
     { label: "Front", orig: num("front"), press: num("pressFront") },
     { label: "Back", orig: num("back"), press: num("pressBack") },
     { label: "Overall", orig: num("overall"), press: num("pressOverall") },
   ];
-  const origTot = rows.reduce((s, r) => s + r.orig, 0);
-  const pressTot = rows.reduce((s, r) => s + r.press, 0);
+  const origTot = segs.reduce((s, r) => s + r.orig, 0);
+  const pressTot = segs.reduce((s, r) => s + r.press, 0);
   const grand = origTot + pressTot;
 
-  const TINT = "#EEF2FB"; // shaded Total column
-  const cols: ("orig" | "press" | "total")[] = hasPress
-    ? ["orig", "press", "total"]
-    : ["total"];
-  const template = `minmax(0,1fr) ${cols.map(() => "4.25rem").join(" ")}`;
-  const head: Record<string, string> = { orig: "Original", press: "Press", total: "Total" };
+  // Blue to-par badge — full round, following the shared gross/net toggle.
+  const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
+  let toPar: number | null = null;
+  for (const e of round.entries) {
+    const g = e.grossScores[player.id];
+    if (typeof g === "number") {
+      const s = scoreNet ? g - (computation.pops[player.id]?.[e.hole] ?? 0) : g;
+      toPar = (toPar ?? 0) + s - (parByHole.get(e.hole) ?? s);
+    }
+  }
+
+  const cols: ("orig" | "press" | "total")[] = hasPress ? ["orig", "press", "total"] : ["total"];
+  const labels: Record<string, string> = { orig: "Original", press: "Press", total: "Total" };
+  const width = (c: string) => (c === "total" ? "4.75rem" : "3.75rem");
+  const template = `minmax(0,1fr) ${cols.map(width).join(" ")} 1.5rem`;
   const colorOf = (v: number) => (v > 0 ? POS : v < 0 ? NEG : MUTED);
   const fmt = (v: number) => (v === 0 ? "—" : formatMoney(v));
-  const valueOf = (r: { orig: number; press: number }, c: string) =>
+  const segVal = (r: { orig: number; press: number }, c: string) =>
     c === "orig" ? r.orig : c === "press" ? r.press : r.orig + r.press;
-  const totalOf = (c: string) => (c === "orig" ? origTot : c === "press" ? pressTot : grand);
+  const totVal = (c: string) => (c === "orig" ? origTot : c === "press" ? pressTot : grand);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-card-border bg-card-bg">
-      {/* column headers */}
-      <div
-        className="grid text-[9px] font-semibold uppercase tracking-wide text-text-faint"
-        style={{ gridTemplateColumns: template }}
-      >
-        <div className="px-3 py-1.5 text-left">Segment</div>
-        {cols.map((c) => (
-          <div
-            key={c}
-            className="px-2 py-1.5 text-right"
-            style={{ background: c === "total" ? TINT : undefined }}
-          >
-            {head[c]}
-          </div>
-        ))}
-      </div>
-
-      {/* per-segment rows (collapsible) */}
-      {!collapsed &&
-        rows.map((r) => (
-          <div
-            key={r.label}
-            className="grid items-center"
-            style={{ gridTemplateColumns: template }}
-          >
-            <div className="px-3 py-1.5 text-left font-semibold" style={{ color: INK }}>
-              {r.label}
+    <div
+      className="overflow-hidden rounded-xl border border-l-4 border-card-border bg-card-bg"
+      style={{ borderLeftColor: PRIMARY }}
+    >
+      {/* Collapsed bar — bet-type totals in columns; whole bar toggles expand. */}
+      <button onClick={() => setOpen((v) => !v)} className="block w-full text-left">
+        {/* small gray column labels */}
+        <div className="grid" style={{ gridTemplateColumns: template }}>
+          <div className="px-3 pt-2" />
+          {cols.map((c) => (
+            <div
+              key={c}
+              className="px-1.5 pt-2 text-right text-[9px] font-semibold uppercase tracking-wide text-text-faint"
+              style={{ background: c === "total" ? NASSAU_TINT : undefined }}
+            >
+              {labels[c]}
             </div>
-            {cols.map((c) => {
-              const v = valueOf(r, c);
-              return (
-                <div
-                  key={c}
-                  className="px-2 py-1.5 text-right font-semibold tabular-nums"
-                  style={{ color: colorOf(v), background: c === "total" ? TINT : undefined }}
-                >
-                  {fmt(v)}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-
-      {/* totals row, with the divider line and the collapse control on it */}
-      <div className="relative" style={{ borderTop: `1px solid ${STRONG}` }}>
-        <button
-          onClick={() => setCollapsed((v) => !v)}
-          aria-label={collapsed ? "Show segments" : "Hide segments"}
-          className="absolute left-1/2 z-10 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border bg-white"
-          style={{ top: "-12px", borderColor: HAIRLINE, boxShadow: "0 1px 3px rgba(0,0,0,0.12)" }}
-        >
-          <ChevronDown
-            className={`h-3.5 w-3.5 text-text-muted transition-transform ${collapsed ? "" : "rotate-180"}`}
-          />
-        </button>
+          ))}
+          <div className="pt-2" />
+        </div>
+        {/* rank + name + to-par, then the total values, then the chevron */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
-          <div className="px-3 py-2 text-left font-bold" style={{ color: INK }}>
-            Total
+          <div className="flex min-w-0 items-center gap-2 px-3 pb-2 pt-0.5">
+            <span className="w-4 shrink-0 text-center font-serif text-base font-bold text-text-faint">
+              {rankIndex + 1}
+            </span>
+            <span className="truncate font-semibold">{player.name || "Unnamed"}</span>
+            <span className="shrink-0 font-serif text-sm font-bold tabular-nums text-primary">
+              {toPar === null ? "–" : formatToPar(toPar)}
+            </span>
           </div>
           {cols.map((c) => {
-            const v = totalOf(c);
+            const v = totVal(c);
             const corner = c === "total";
             return (
               <div
                 key={c}
-                className={`px-2 py-2 text-right tabular-nums ${
-                  corner ? "text-sm font-extrabold" : "font-bold"
+                className={`px-1.5 pb-2 pt-0.5 text-right tabular-nums ${
+                  corner ? "font-serif text-lg font-extrabold" : "text-sm font-bold"
                 }`}
-                style={{ color: colorOf(v), background: corner ? TINT : undefined }}
+                style={{ color: colorOf(v), background: corner ? NASSAU_TINT : undefined }}
               >
                 {fmt(v)}
               </div>
             );
           })}
+          <div className="flex items-center justify-center pb-2 pt-0.5">
+            <ChevronDown
+              className={`h-4 w-4 text-text-muted transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </div>
         </div>
-      </div>
+      </button>
+
+      {/* Expanded detail — Front/Back/Overall under the same columns. */}
+      {open && (
+        <div style={{ background: NASSAU_SEG_BG, borderTop: `1px solid ${HAIRLINE}` }}>
+          <div className="grid" style={{ gridTemplateColumns: template }}>
+            <div className="px-3 pb-0.5 pt-2 text-[9px] font-semibold uppercase tracking-wide text-text-faint">
+              By segment
+            </div>
+            {cols.map((c) => (
+              <div
+                key={c}
+                className="pt-2"
+                style={{ background: c === "total" ? NASSAU_TINT : undefined }}
+              />
+            ))}
+            <div className="pt-2" />
+          </div>
+          {segs.map((r) => (
+            <div key={r.label} className="grid items-center" style={{ gridTemplateColumns: template }}>
+              <div className="px-3 py-1.5 pl-9 text-left text-xs font-semibold" style={{ color: INK }}>
+                {r.label}
+              </div>
+              {cols.map((c) => {
+                const v = segVal(r, c);
+                return (
+                  <div
+                    key={c}
+                    className="px-1.5 py-1.5 text-right text-xs tabular-nums"
+                    style={{ color: colorOf(v), background: c === "total" ? NASSAU_TINT : undefined }}
+                  >
+                    {fmt(v)}
+                  </div>
+                );
+              })}
+              <div className="py-1.5" />
+            </div>
+          ))}
+          {/* keep the Total column tint flush to the bottom edge */}
+          <div className="grid" style={{ gridTemplateColumns: template }}>
+            <div className="pb-2" />
+            {cols.map((c) => (
+              <div
+                key={c}
+                className="pb-2"
+                style={{ background: c === "total" ? NASSAU_TINT : undefined }}
+              />
+            ))}
+            <div className="pb-2" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -804,20 +853,27 @@ export function CardTab({
           const rankIndex = standings.filter(
             (q) => (active.ledger[q.id] ?? 0) > m
           ).length;
-          return (
-            <div key={p.id} className="space-y-1.5">
-              <LedgerCard
-                round={round}
-                computation={active}
-                player={p}
-                rankIndex={rankIndex}
-                scoreNet={scoreNet}
-                pressHoles={activeHoles}
-              />
-              {isNassau && (
-                <NassauMatrixBlock stats={active.stats?.[p.id]} hasPress={hasPress} />
-              )}
-            </div>
+          return isNassau ? (
+            <NassauLedgerBar
+              key={p.id}
+              round={round}
+              computation={active}
+              player={p}
+              rankIndex={rankIndex}
+              scoreNet={scoreNet}
+              stats={active.stats?.[p.id]}
+              hasPress={hasPress}
+            />
+          ) : (
+            <LedgerCard
+              key={p.id}
+              round={round}
+              computation={active}
+              player={p}
+              rankIndex={rankIndex}
+              scoreNet={scoreNet}
+              pressHoles={activeHoles}
+            />
           );
         })}
       </section>
