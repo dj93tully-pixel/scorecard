@@ -32,6 +32,15 @@ function money1(v: number): string {
   return `${sign}$${Number.isInteger(abs) ? abs : abs.toFixed(1)}`;
 }
 
+// Accounting style for the ledger: no $ sign, negatives in parentheses.
+function accounting(v: number, zero = "·"): string {
+  const r = Math.round(v * 10) / 10;
+  if (r === 0) return zero;
+  const abs = Math.abs(r);
+  const body = Number.isInteger(abs) ? `${abs}` : abs.toFixed(1);
+  return r < 0 ? `(${body})` : body;
+}
+
 type Filter = BetType | "total";
 const FILTER_LABEL: Record<Filter, string> = {
   total: "Total",
@@ -491,7 +500,11 @@ function AllPlayersNine({
   pressHoles: Set<number>;
   mode: "scores" | "money";
 }) {
-  const template = `64px repeat(${holeNums.length}, minmax(0,1fr)) 34px`;
+  const scores = mode === "scores";
+  // Scorecard has an extra "+/-" column on the right; ledger does not.
+  const template = scores
+    ? `54px repeat(${holeNums.length}, minmax(0,1fr)) 28px 32px`
+    : `64px repeat(${holeNums.length}, minmax(0,1fr)) 34px`;
   const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
   const siByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.si]) ?? []);
   const parTotal = holeNums.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
@@ -507,7 +520,7 @@ function AllPlayersNine({
 
   return (
     <div className="overflow-x-auto">
-      <div style={{ minWidth: 360 }}>
+      <div style={{ minWidth: scores ? 384 : 360 }}>
         {/* hole numbers + press/hammer dots */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
           <Cell left>
@@ -517,15 +530,21 @@ function AllPlayersNine({
             <HoleHead key={h} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} />
           ))}
           <HoleHead n={label} />
+          {scores && (
+            <Cell>
+              <span className="text-[10px] font-bold" style={{ color: MUTED }}>+/-</span>
+            </Cell>
+          )}
         </div>
         {/* par band (scorecard only) */}
-        {mode === "scores" && (
+        {scores && (
           <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, background: "#F6F7F9", color: MUTED }}>
             <Cell left tint>Par</Cell>
             {holeNums.map((h) => (
               <Cell key={h} tint>{parByHole.get(h)}</Cell>
             ))}
             <Cell tint>{parTotal}</Cell>
+            <Cell tint> </Cell>
           </div>
         )}
         {/* a row per player */}
@@ -533,6 +552,8 @@ function AllPlayersNine({
           const idxByHole = new Map(p.holes.map((c, i) => [c.hole, i]));
           let scoreTot = 0;
           let moneyTot = 0;
+          let toPar = 0;
+          let anyScore = false;
           return (
             <div
               key={p.id}
@@ -550,14 +571,18 @@ function AllPlayersNine({
                   return (
                     <Cell key={h}>
                       <span className="text-[9px] font-bold tabular-nums" style={{ color: m === 0 ? "#C4C8CE" : moneyColor(m) }}>
-                        {m === 0 ? "·" : money1(m)}
+                        {accounting(m)}
                       </span>
                     </Cell>
                   );
                 }
                 const c = i === undefined ? undefined : p.holes[i];
                 const s = c ? (net ? c.net : c.gross) : null;
-                if (s !== null) scoreTot += s;
+                if (s !== null) {
+                  scoreTot += s;
+                  toPar += s - (c?.par ?? 0);
+                  anyScore = true;
+                }
                 return (
                   <Cell key={h}>
                     <ScoreCell score={s} par={c?.par ?? 4} pop={c?.pop ?? 0} />
@@ -566,21 +591,29 @@ function AllPlayersNine({
               })}
               <Cell>
                 {mode === "money" ? (
-                  <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(moneyTot) }}>{dollars(moneyTot)}</span>
+                  <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(moneyTot) }}>{accounting(moneyTot, "—")}</span>
                 ) : (
                   <span className="text-xs font-bold" style={{ color: INK }}>{scoreTot || "–"}</span>
                 )}
               </Cell>
+              {scores && (
+                <Cell>
+                  <span className="text-[11px] font-bold tabular-nums" style={{ color: BLUE }}>
+                    {anyScore ? formatToPar(toPar) : "–"}
+                  </span>
+                </Cell>
+              )}
             </div>
           );
         })}
         {/* handicap (stroke index) row at the bottom — scorecard only */}
-        {mode === "scores" && (
+        {scores && (
           <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, color: MUTED, borderTop: `1px solid ${BORDER}` }}>
             <Cell left>Hcp</Cell>
             {holeNums.map((h) => (
               <Cell key={h}>{siByHole.get(h)}</Cell>
             ))}
+            <Cell> </Cell>
             <Cell> </Cell>
           </div>
         )}
@@ -617,36 +650,35 @@ export function ResultsView({ results }: { results: ResultsData }) {
 
   return (
     <div className="space-y-6">
-      <section className="space-y-3">
-        {/* Standings header + Gross/Net — pinned so it stays while scrolling. */}
-        <div
-          className="sticky z-10 -mx-3 flex items-center justify-between bg-page-bg px-3 py-2"
-          style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
-        >
-          <h2 className="text-xl font-bold">Standings</h2>
-          <GrossNetToggle net={net} onChange={setNet} />
-        </div>
-        <div className="space-y-2">
-          {standings.map((p) => {
-            const rank = 1 + standings.filter((q) => q.grand > p.grand).length;
-            return (
-              <PlayerBar
-                key={p.id}
-                player={p}
-                rank={rank}
-                open={openId === p.id}
-                onToggle={() => toggle(p.id)}
-                results={results}
-                net={net}
-                filter={filter}
-                setFilter={setFilter}
-                pressSel={pressSel}
-                setPressSel={setPressSel}
-              />
-            );
-          })}
-        </div>
-      </section>
+      {/* Standings header + Gross/Net — pinned for the whole card tab, since the
+          toggle affects every section below, not just the standings. */}
+      <div
+        className="sticky z-20 -mx-3 flex items-center justify-between bg-page-bg px-3 py-2"
+        style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
+      >
+        <h2 className="text-xl font-bold">Standings</h2>
+        <GrossNetToggle net={net} onChange={setNet} />
+      </div>
+      <div className="space-y-2">
+        {standings.map((p) => {
+          const rank = 1 + standings.filter((q) => q.grand > p.grand).length;
+          return (
+            <PlayerBar
+              key={p.id}
+              player={p}
+              rank={rank}
+              open={openId === p.id}
+              onToggle={() => toggle(p.id)}
+              results={results}
+              net={net}
+              filter={filter}
+              setFilter={setFilter}
+              pressSel={pressSel}
+              setPressSel={setPressSel}
+            />
+          );
+        })}
+      </div>
 
       {/* By-hole ledger (every player's total money per hole). Transparent,
           top/bottom hairlines only — blends into the page like before. */}
