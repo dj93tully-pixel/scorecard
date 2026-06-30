@@ -11,7 +11,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { ResultsData, PlayerResults, BetType } from "@/lib/results";
-import { formatMoney, formatToPar } from "@/lib/storage";
+import { formatToPar } from "@/lib/storage";
 
 const BLUE = "#3B78FF";
 const GREEN = "#16A06A";
@@ -20,8 +20,17 @@ const MUTED = "#9098A4";
 const BORDER = "#EAECEF";
 const INK = "#16181D";
 const HAMMER = "#7C3AED"; // purple — matches the Scores tab hammer accent
+const PRESS = "#E8590C"; // orange — matches the press accent
 const TOTAL_TINT = "#EEF4F0";
 const TILE_ACTIVE = "#EAF1FF";
+
+// Money to at most one decimal: $2.50 → $2.5, $5 → $5.
+function money1(v: number): string {
+  const r = Math.round(v * 10) / 10;
+  const sign = r > 0 ? "+" : r < 0 ? "-" : "";
+  const abs = Math.abs(r);
+  return `${sign}$${Number.isInteger(abs) ? abs : abs.toFixed(1)}`;
+}
 
 type Filter = BetType | "total";
 const FILTER_LABEL: Record<Filter, string> = {
@@ -32,7 +41,7 @@ const FILTER_LABEL: Record<Filter, string> = {
 };
 
 const moneyColor = (v: number) => (v > 0 ? GREEN : v < 0 ? RED : MUTED);
-const dollars = (v: number) => (v === 0 ? "—" : formatMoney(v));
+const dollars = (v: number) => (v === 0 ? "—" : money1(v));
 
 // ── Gross / Net segmented toggle ─────────────────────────────────────────────
 function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boolean) => void }) {
@@ -86,17 +95,26 @@ function ScoreCell({ score, par }: { score: number | null; par: number }) {
   );
 }
 
-// Hole-number cell with a purple dot when the hole was hammered.
-function HoleHead({ n, hammered }: { n: number | string; hammered: boolean }) {
+// Hole-number cell. Orange dot = pressed, purple dot = hammered; both sit nearly
+// touching when a hole was both.
+function HoleHead({
+  n,
+  hammered,
+  pressed,
+}: {
+  n: number | string;
+  hammered?: boolean;
+  pressed?: boolean;
+}) {
   return (
     <div className="flex h-7 flex-col items-center justify-center">
       <span className="text-[10px] font-bold leading-none" style={{ color: MUTED }}>
         {n}
       </span>
-      <span
-        className="mt-0.5 h-1 w-1 rounded-full"
-        style={{ background: hammered ? HAMMER : "transparent" }}
-      />
+      <span className="mt-0.5 flex h-1 items-center justify-center" style={{ gap: "0.5px" }}>
+        {pressed && <span className="h-1 w-1 rounded-full" style={{ background: PRESS }} />}
+        {hammered && <span className="h-1 w-1 rounded-full" style={{ background: HAMMER }} />}
+      </span>
     </div>
   );
 }
@@ -107,12 +125,14 @@ function Nine({
   net,
   label,
   hammerHoles,
+  pressHoles,
   activeHoles,
 }: {
   cells: { cell: PlayerResults["holes"][number]; m: number }[];
   net: boolean;
   label: "OUT" | "IN";
   hammerHoles: Set<number>;
+  pressHoles: Set<number>;
   activeHoles: Set<number> | null; // press view: only these holes carry data
 }) {
   const template = `34px repeat(${cells.length}, minmax(0,1fr)) 34px`;
@@ -132,13 +152,18 @@ function Nine({
   return (
     <div className="overflow-x-auto">
       <div style={{ minWidth: 320 }}>
-        {/* hole numbers (+ purple hammer dots) */}
+        {/* hole numbers (+ press/hammer dots) */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
-          <HoleHead n={label} hammered={false} />
+          <HoleHead n={label} />
           {cells.map((x) => (
-            <HoleHead key={x.cell.hole} n={x.cell.hole} hammered={hammerHoles.has(x.cell.hole)} />
+            <HoleHead
+              key={x.cell.hole}
+              n={x.cell.hole}
+              hammered={hammerHoles.has(x.cell.hole)}
+              pressed={pressHoles.has(x.cell.hole)}
+            />
           ))}
-          <HoleHead n={label} hammered={false} />
+          <HoleHead n={label} />
         </div>
         {/* par band */}
         <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, background: "#F6F7F9", color: MUTED }}>
@@ -180,7 +205,7 @@ function Nine({
             return (
               <Cell key={x.cell.hole}>
                 <span className="text-[9px] font-bold tabular-nums" style={{ color: show ? moneyColor(x.m) : "#C4C8CE" }}>
-                  {show ? formatMoney(x.m) : "·"}
+                  {show ? money1(x.m) : "·"}
                 </span>
               </Cell>
             );
@@ -229,7 +254,7 @@ function Trendline({ money }: { money: number[] }) {
       <polyline points={linePts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
       <circle cx={x(n - 1)} cy={y(final)} r={3} fill={color} />
       <text x={x(n - 1) + 6} y={y(final) + 4} fontSize={11} fontWeight={700} fill={color}>
-        {formatMoney(final)}
+        {money1(final)}
       </text>
       {[0, Math.floor((n - 1) / 2), n - 1].map((i, k) => (
         <text key={k} x={x(i)} y={H - 4} fontSize={9} fontWeight={600} fill={MUTED} textAnchor="middle">
@@ -261,6 +286,7 @@ function Detail({
   const { betTypes, presses, pressHoles, hammerHoles } = results;
   const tiles: Filter[] = [...betTypes, "total"];
   const hammerSet = useMemo(() => new Set(hammerHoles), [hammerHoles]);
+  const pressSet = useMemo(() => new Set(pressHoles), [pressHoles]);
 
   // Active money + (for press) the holes the press covers.
   let active: number[];
@@ -344,9 +370,9 @@ function Detail({
 
       {/* horizontal scorecard */}
       <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
-        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} activeHoles={activeHoles} />
+        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} activeHoles={activeHoles} />
         <div style={{ borderTop: `1px solid ${BORDER}` }}>
-          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} activeHoles={activeHoles} />
+          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} activeHoles={activeHoles} />
         </div>
         <div
           className="grid items-center text-xs font-bold tabular-nums"
@@ -414,7 +440,7 @@ function PlayerBar({
           </span>
         </span>
         <span className="font-serif text-lg font-extrabold tabular-nums" style={{ color: moneyColor(player.grand) }}>
-          {formatMoney(player.grand)}
+          {money1(player.grand)}
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} style={{ color: MUTED }} />
       </button>
@@ -433,19 +459,23 @@ function PlayerBar({
   );
 }
 
-// ── One nine of the giant all-players scorecard ──────────────────────────────
+// ── One nine of an all-players grid: scores (Scorecard) or money (Ledger) ─────
 function AllPlayersNine({
   players,
   holeNums,
   net,
   label,
   hammerHoles,
+  pressHoles,
+  mode,
 }: {
   players: PlayerResults[];
   holeNums: number[];
   net: boolean;
   label: "OUT" | "IN";
   hammerHoles: Set<number>;
+  pressHoles: Set<number>;
+  mode: "scores" | "money";
 }) {
   const template = `64px repeat(${holeNums.length}, minmax(0,1fr)) 34px`;
   const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
@@ -463,28 +493,31 @@ function AllPlayersNine({
   return (
     <div className="overflow-x-auto">
       <div style={{ minWidth: 360 }}>
-        {/* hole numbers + hammer dots */}
+        {/* hole numbers + press/hammer dots */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
           <Cell left>
             <span className="text-[10px] font-bold" style={{ color: MUTED }}>{label}</span>
           </Cell>
           {holeNums.map((h) => (
-            <HoleHead key={h} n={h} hammered={hammerHoles.has(h)} />
+            <HoleHead key={h} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} />
           ))}
-          <HoleHead n={label} hammered={false} />
+          <HoleHead n={label} />
         </div>
-        {/* par band */}
-        <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, background: "#F6F7F9", color: MUTED }}>
-          <Cell left tint>Par</Cell>
-          {holeNums.map((h) => (
-            <Cell key={h} tint>{parByHole.get(h)}</Cell>
-          ))}
-          <Cell tint>{parTotal}</Cell>
-        </div>
+        {/* par band (scorecard only) */}
+        {mode === "scores" && (
+          <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, background: "#F6F7F9", color: MUTED }}>
+            <Cell left tint>Par</Cell>
+            {holeNums.map((h) => (
+              <Cell key={h} tint>{parByHole.get(h)}</Cell>
+            ))}
+            <Cell tint>{parTotal}</Cell>
+          </div>
+        )}
         {/* a row per player */}
         {players.map((p, idx) => {
-          const byHole = new Map(p.holes.map((c) => [c.hole, c]));
-          let tot = 0;
+          const idxByHole = new Map(p.holes.map((c, i) => [c.hole, i]));
+          let scoreTot = 0;
+          let moneyTot = 0;
           return (
             <div
               key={p.id}
@@ -495,9 +528,21 @@ function AllPlayersNine({
                 <span className="truncate text-[11px] font-semibold" style={{ color: INK }}>{p.name}</span>
               </Cell>
               {holeNums.map((h) => {
-                const c = byHole.get(h);
+                const i = idxByHole.get(h);
+                if (mode === "money") {
+                  const m = i === undefined ? 0 : p.money.total[i];
+                  moneyTot += m;
+                  return (
+                    <Cell key={h}>
+                      <span className="text-[9px] font-bold tabular-nums" style={{ color: m === 0 ? "#C4C8CE" : moneyColor(m) }}>
+                        {m === 0 ? "·" : money1(m)}
+                      </span>
+                    </Cell>
+                  );
+                }
+                const c = i === undefined ? undefined : p.holes[i];
                 const s = c ? (net ? c.net : c.gross) : null;
-                if (s !== null) tot += s;
+                if (s !== null) scoreTot += s;
                 return (
                   <Cell key={h}>
                     <ScoreCell score={s} par={c?.par ?? 4} />
@@ -505,7 +550,11 @@ function AllPlayersNine({
                 );
               })}
               <Cell>
-                <span className="text-xs font-bold" style={{ color: INK }}>{tot || "–"}</span>
+                {mode === "money" ? (
+                  <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(moneyTot) }}>{dollars(moneyTot)}</span>
+                ) : (
+                  <span className="text-xs font-bold" style={{ color: INK }}>{scoreTot || "–"}</span>
+                )}
               </Cell>
             </div>
           );
@@ -521,11 +570,13 @@ export function ResultsView({ results }: { results: ResultsData }) {
     [results.players]
   );
   const [net, setNet] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(() => standings[0]?.id ?? null);
+  // No bar is open by default — the player must tap one.
+  const [openId, setOpenId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("total");
   const [pressSel, setPressSel] = useState<number | "all">("all");
 
   const hammerSet = useMemo(() => new Set(results.hammerHoles), [results.hammerHoles]);
+  const pressSet = useMemo(() => new Set(results.pressHoles), [results.pressHoles]);
   const front = useMemo(() => standings[0]?.holes.filter((c) => c.hole <= 9).map((c) => c.hole) ?? [], [standings]);
   const back = useMemo(() => standings[0]?.holes.filter((c) => c.hole >= 10).map((c) => c.hole) ?? [], [standings]);
 
@@ -541,11 +592,16 @@ export function ResultsView({ results }: { results: ResultsData }) {
 
   return (
     <div className="space-y-6">
+      {/* Gross/Net — pinned above the standings, stays while scrolling. */}
+      <div
+        className="sticky z-10 -mx-3 flex justify-end bg-page-bg px-3 py-2"
+        style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
+      >
+        <GrossNetToggle net={net} onChange={setNet} />
+      </div>
+
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Standings</h2>
-          <GrossNetToggle net={net} onChange={setNet} />
-        </div>
+        <h2 className="text-xl font-bold">Standings</h2>
         <div className="space-y-2">
           {standings.map((p) => {
             const rank = 1 + standings.filter((q) => q.grand > p.grand).length;
@@ -568,13 +624,24 @@ export function ResultsView({ results }: { results: ResultsData }) {
         </div>
       </section>
 
+      {/* By-hole ledger (every player's total money per hole) */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-bold">Ledger</h2>
+        <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
+          <AllPlayersNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} mode="money" />
+          <div style={{ borderTop: `1px solid ${BORDER}` }}>
+            <AllPlayersNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} mode="money" />
+          </div>
+        </div>
+      </section>
+
       {/* One giant all-players scorecard */}
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Scorecard</h2>
         <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
-          <AllPlayersNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} />
+          <AllPlayersNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} mode="scores" />
           <div style={{ borderTop: `1px solid ${BORDER}` }}>
-            <AllPlayersNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} />
+            <AllPlayersNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} mode="scores" />
           </div>
         </div>
       </section>
