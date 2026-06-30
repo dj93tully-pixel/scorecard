@@ -105,6 +105,25 @@ describe("buildResults (results page data)", () => {
     expect(data.tees[1].distanceByHole[1]).toBeNull();
   });
 
+  it("11s: flags isElevens and marks each player's picked holes", () => {
+    const round = makeRound(
+      "elevens",
+      scratch(["a", "b"]),
+      [
+        { hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 5 }, elevenPicks: { a: true } },
+        { hole: 2, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 4 }, elevenPicks: { b: true } },
+      ],
+      { stake: 1 }
+    );
+    const data = buildResults(round);
+    expect(data.isElevens).toBe(true);
+    const a = data.players.find((p) => p.id === "a")!;
+    const b = data.players.find((p) => p.id === "b")!;
+    expect(a.holes.find((c) => c.hole === 1)!.picked).toBe(true);
+    expect(a.holes.find((c) => c.hole === 2)!.picked).toBe(false);
+    expect(b.holes.find((c) => c.hole === 2)!.picked).toBe(true);
+  });
+
   it("no tees on the course → empty tees array", () => {
     const round = makeRound("stroke", scratch(["a", "b"]), [], { stake: 1 });
     expect(buildResults(round).tees).toEqual([]);

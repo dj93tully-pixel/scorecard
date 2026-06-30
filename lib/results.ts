@@ -39,6 +39,7 @@ export interface HoleCell {
   gross: number | null;
   net: number | null;
   pop: number; // handicap strokes received on this hole
+  picked: boolean; // 11s: this player counts this hole
 }
 
 export interface PlayerResults {
@@ -64,6 +65,7 @@ export interface ResultsData {
   pressHoles: number[]; // union of every press's holes
   presses: PressInfo[]; // each individual press (Press tab sub-selector)
   tees: ResultTee[]; // course tee yardages (scorecard distance rows)
+  isElevens: boolean; // 11s: hide ledger/trendline, show picked-hole tally + dots
 }
 
 const zeroHammer = (round: Round): Round => ({
@@ -154,7 +156,8 @@ export function buildResults(round: Round): ResultsData {
       const gross = typeof g === "number" ? g : null;
       const pop = pops[p.id]?.[h.number] ?? 0;
       const net = gross === null ? null : gross - pop;
-      return { hole: h.number, par: h.par, si: h.strokeIndex, gross, net, pop };
+      const picked = entryByHole.get(h.number)?.elevenPicks?.[p.id] === true;
+      return { hole: h.number, par: h.par, si: h.strokeIndex, gross, net, pop, picked };
     });
     const total = holes.map((_, i) => orig[p.id][i] + prs[p.id][i] + ham[p.id][i]);
     const grand = total.reduce((s, v) => s + v, 0);
@@ -222,5 +225,5 @@ export function buildResults(round: Round): ResultsData {
     return { name: t.name, color: t.color, distanceByHole };
   });
 
-  return { players, betTypes, hammerHoles, pressHoles, presses, tees };
+  return { players, betTypes, hammerHoles, pressHoles, presses, tees, isElevens: gt === "elevens" };
 }

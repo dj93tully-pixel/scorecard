@@ -189,6 +189,7 @@ function Nine({
             <div key={x.cell.hole} className="flex items-center justify-center" style={{ height: 9 }}>
               {on(x.cell.hole) && (
                 <span className="flex items-center" style={{ gap: 1 }}>
+                  {x.cell.picked && <span style={{ width: 4, height: 4, borderRadius: "50%", background: INK }} />}
                   {pressHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: PRESS }} />}
                   {hammerHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: HAMMER }} />}
                 </span>
@@ -420,16 +421,18 @@ function Detail({
         </div>
       </div>
 
-      {/* winnings by hole */}
-      <div className="mt-4">
-        <div className="mb-1 flex items-center gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>Winnings by hole</span>
-          <span className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide" style={{ background: TILE_ACTIVE, color: BLUE }}>
-            {pill}
-          </span>
+      {/* winnings by hole — not meaningful for 11s (sum-of-picks game) */}
+      {!results.isElevens && (
+        <div className="mt-4">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>Winnings by hole</span>
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide" style={{ background: TILE_ACTIVE, color: BLUE }}>
+              {pill}
+            </span>
+          </div>
+          <Trendline money={active} />
         </div>
-        <Trendline money={active} />
-      </div>
+      )}
     </div>
   );
 }
@@ -458,9 +461,11 @@ function PlayerBar({
   pressSel: number | "all";
   setPressSel: (s: number | "all") => void;
 }) {
-  // Round score to par, over scored holes, following the gross/net toggle.
+  // Score to par, following the gross/net toggle. For 11s the tally is only over
+  // the holes the player picked (the 11s game is the sum of those holes).
   let toPar: number | null = null;
   for (const c of player.holes) {
+    if (results.isElevens && !c.picked) continue;
     const s = net ? c.net : c.gross;
     if (s !== null) toPar = (toPar ?? 0) + s - c.par;
   }
@@ -684,7 +689,10 @@ function ScorecardNine({
               }
               return (
                 <GridCell key={`${p.id}-${h}`}>
-                  <ScoreCell score={s} par={c?.par ?? 4} pop={c?.pop ?? 0} />
+                  <span className="flex flex-col items-center justify-center">
+                    <ScoreCell score={s} par={c?.par ?? 4} pop={c?.pop ?? 0} />
+                    {c?.picked && <span style={{ width: 3, height: 3, borderRadius: "50%", background: INK, marginTop: 1 }} />}
+                  </span>
                 </GridCell>
               );
             });
@@ -834,12 +842,15 @@ export function ResultsView({ results }: { results: ResultsData }) {
         })}
       </div>
 
-      {/* By-hole ledger — styled like the scorecard grid (HOLE + Par only). */}
-      <section className="space-y-3">
-        <h2 className="text-xl font-bold">Ledger</h2>
-        <LedgerNine players={standings} holeNums={front} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} />
-        <LedgerNine players={standings} holeNums={back} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} />
-      </section>
+      {/* By-hole ledger — styled like the scorecard grid (HOLE + Par only). 11s
+          settles on the sum of picked holes, so a per-hole ledger isn't relevant. */}
+      {!results.isElevens && (
+        <section className="space-y-3">
+          <h2 className="text-xl font-bold">Ledger</h2>
+          <LedgerNine players={standings} holeNums={front} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} />
+          <LedgerNine players={standings} holeNums={back} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} />
+        </section>
+      )}
 
       {/* Traditional course-style all-players scorecard */}
       <section className="space-y-3">
