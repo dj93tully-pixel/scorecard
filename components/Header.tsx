@@ -88,18 +88,20 @@ export function Header() {
       className="safe-top sticky top-0 z-30 bg-header-bg text-on-dark"
     >
       <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-2">
-        <HackerTrackerMark size={38} className="shrink-0" />
-        <div className="min-w-0 flex-1 leading-tight">
-          <h1 className="truncate text-lg font-bold uppercase tracking-tight">
-            {config.title ? (
-              <span>{config.title}</span>
-            ) : (
-              <>
-                <span style={{ color: "#FFFFFF" }}>HACKER</span>
-                <span style={{ color: "#3B78FF" }}>TRACKER</span>
-              </>
-            )}
-          </h1>
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <HackerTrackerMark size={32} className="shrink-0" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-lg font-bold uppercase tracking-tight">
+              {config.title ? (
+                <span>{config.title}</span>
+              ) : (
+                <>
+                  <span style={{ color: "#FFFFFF" }}>HACKER</span>
+                  <span style={{ color: "#3B78FF" }}>TRACKER</span>
+                </>
+              )}
+            </h1>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {config.backHref && (
