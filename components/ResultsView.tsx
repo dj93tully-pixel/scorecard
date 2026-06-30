@@ -528,10 +528,10 @@ function AllPlayersNine({
 
   // Scorecard-only hairline rules (the ledger/money mode keeps its old look).
   const firstHole: React.CSSProperties | undefined = scores
-    ? { boxShadow: "inset 1px 0 0 #ECEEF1" }
+    ? { boxShadow: "inset 1px 0 0 #DBDFE7" }
     : undefined;
   const colRule: React.CSSProperties | undefined = scores
-    ? { borderLeft: "1px solid #ECEEF1" }
+    ? { borderLeft: "1px solid #DBDFE7" }
     : undefined;
 
   const Cell = ({
@@ -559,7 +559,7 @@ function AllPlayersNine({
         {/* hole numbers + press/hammer dots */}
         <div
           className="grid items-center"
-          style={{ gridTemplateColumns: template, borderBottom: scores ? "1px solid #DDE0E5" : undefined }}
+          style={{ gridTemplateColumns: template, borderBottom: scores ? "1px solid #C2CAD8" : undefined }}
         >
           <Cell left>
             <span className="text-[10px] font-bold" style={{ color: MUTED }}>{nineName}</span>
@@ -568,11 +568,7 @@ function AllPlayersNine({
             <HoleHead key={h} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} style={hi === 0 ? firstHole : undefined} />
           ))}
           <HoleHead n={label} style={colRule} />
-          {scores && (
-            <Cell style={colRule}>
-              <span className="text-[10px] font-bold" style={{ color: MUTED }}>+/-</span>
-            </Cell>
-          )}
+          {scores && <Cell style={colRule}> </Cell>}
         </div>
         {/* handicap (stroke index) row — above par, unshaded */}
         {scores && (
@@ -589,7 +585,7 @@ function AllPlayersNine({
         {scores && (
           <div
             className="grid items-center text-[10px]"
-            style={{ gridTemplateColumns: template, background: "#E8EBF0", color: MUTED, borderTop: "1px solid #E1E4E9", borderBottom: "1px solid #E1E4E9" }}
+            style={{ gridTemplateColumns: template, background: "#D7DEEA", color: MUTED, borderTop: "1px solid #C2CAD8", borderBottom: "1px solid #C2CAD8" }}
           >
             <Cell left>Par</Cell>
             {holeNums.map((h, hi) => (
@@ -612,7 +608,7 @@ function AllPlayersNine({
               className="grid items-center"
               style={{
                 gridTemplateColumns: template,
-                borderTop: scores ? "1px solid #ECEEF1" : idx === 0 ? undefined : `1px solid ${BORDER}`,
+                borderTop: scores ? "1px solid #DBDFE7" : idx === 0 ? undefined : `1px solid ${BORDER}`,
               }}
             >
               <Cell left>
