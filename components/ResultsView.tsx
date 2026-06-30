@@ -119,27 +119,12 @@ function ScoreCell({ score, par, pop }: { score: number | null; par: number; pop
   );
 }
 
-// Hole-number cell. Orange dot = pressed, purple dot = hammered; both sit nearly
-// touching when a hole was both.
-function HoleHead({
-  n,
-  hammered,
-  pressed,
-  style,
-}: {
-  n: number | string;
-  hammered?: boolean;
-  pressed?: boolean;
-  style?: React.CSSProperties;
-}) {
+// Hole-number cell (the press/hammer dots get their own thin row below the par).
+function HoleHead({ n, style }: { n: number | string; style?: React.CSSProperties }) {
   return (
-    <div className="flex h-7 flex-col items-center justify-center" style={style}>
+    <div className="flex h-7 items-center justify-center" style={style}>
       <span className="text-[10px] font-bold leading-none" style={{ color: MUTED }}>
         {n}
-      </span>
-      <span className="mt-0.5 flex h-1 items-center justify-center" style={{ gap: "0.5px" }}>
-        {pressed && <span className="h-1 w-1 rounded-full" style={{ background: PRESS }} />}
-        {hammered && <span className="h-1 w-1 rounded-full" style={{ background: HAMMER }} />}
       </span>
     </div>
   );
@@ -178,16 +163,11 @@ function Nine({
   return (
     <div className="overflow-x-auto">
       <div style={{ minWidth: 320 }}>
-        {/* hole numbers (+ press/hammer dots) */}
+        {/* hole numbers */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
           <HoleHead n={label} />
           {cells.map((x) => (
-            <HoleHead
-              key={x.cell.hole}
-              n={x.cell.hole}
-              hammered={hammerHoles.has(x.cell.hole)}
-              pressed={pressHoles.has(x.cell.hole)}
-            />
+            <HoleHead key={x.cell.hole} n={x.cell.hole} />
           ))}
           <HoleHead n={label} />
         </div>
@@ -200,6 +180,19 @@ function Nine({
             </Cell>
           ))}
           <Cell tint>{parTotal}</Cell>
+        </div>
+        {/* press / hammer dots — thin row after par */}
+        <div className="grid items-center" style={{ gridTemplateColumns: template }}>
+          <div style={{ height: 9 }} />
+          {cells.map((x) => (
+            <div key={x.cell.hole} className="flex items-center justify-center" style={{ height: 9 }}>
+              <span className="flex items-center" style={{ gap: 1 }}>
+                {pressHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: PRESS }} />}
+                {hammerHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: HAMMER }} />}
+              </span>
+            </div>
+          ))}
+          <div style={{ height: 9 }} />
         </div>
         {/* scores */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
@@ -632,9 +625,6 @@ function ScorecardNine({
           <GridCell bg={HEADER_BG} color="#fff" bold>{label}</GridCell>
           <GridCell bg={HEADER_BG} color="#fff" bold>+/-</GridCell>
 
-          {/* press / hammer dots — their own thin row under the header */}
-          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={2} />
-
           {/* TEE distance rows — one per tee, colored by tee */}
           {tees.map((t) => {
             const txt = readable(t.color);
@@ -670,6 +660,9 @@ function ScorecardNine({
           ))}
           <GridCell bg="#F4F6F8"> </GridCell>
           <GridCell bg="#F4F6F8"> </GridCell>
+
+          {/* press / hammer dots — their own thin row, below Hcp */}
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={2} />
 
           {/* PLAYER rows */}
           {players.map((p) => {
@@ -739,15 +732,15 @@ function LedgerNine({
           ))}
           <GridCell bg={LEDGER_HEADER} color="#fff" bold>{label}</GridCell>
 
-          {/* press / hammer dots — their own thin row under the header */}
-          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={1} />
-
           {/* PAR */}
           <GridCell bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
           {holeNums.map((h) => (
             <GridCell key={`par${h}`} bg="#E8EBF0" color={INK} bold>{parByHole.get(h)}</GridCell>
           ))}
           <GridCell bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
+
+          {/* press / hammer dots — their own thin row, below Par */}
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={1} />
 
           {/* PLAYER money rows */}
           {players.map((p) => {
