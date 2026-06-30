@@ -56,7 +56,7 @@ function HoleBox({
   const pressFull = existing?.pressFull ?? false;
   const segN = segCover ?? 0;
   const fullN = fullCover ?? 0;
-  const segLabel = hole <= 9 ? "F9" : "B9"; // rest of the front / back nine
+  const segLabel = "9"; // rest of this nine — bare number on the card (Card tab keeps F9/B9)
 
   const base: HoleEntry = {
     hole,
