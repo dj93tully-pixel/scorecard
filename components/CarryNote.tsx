@@ -31,26 +31,28 @@ function Pill({ color, children }: { color: string; children: React.ReactNode })
 export function CarryNote({ carry, hammer }: { carry: HoleCarry; hammer: number }) {
   const extra = carry.press > 0 || carry.hammer > 0;
   return (
-    <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5">
-      {carry.orig > 0 && (
-        <Pill color={NORMAL}>
-          <Handshake className="h-4 w-4" strokeWidth={2.25} />
-          {money(carry.orig)}
-        </Pill>
-      )}
-      {carry.press > 0 && (
-        <Pill color={PRESS}>
-          <Zap className="h-4 w-4" strokeWidth={2.25} />
-          {money(carry.press)}
-        </Pill>
-      )}
-      {carry.hammer > 0 && (
-        <Pill color={HAMMER}>
-          <Hammer className="h-4 w-4" strokeWidth={2.25} />
-          {hammer >= 2 && <Hammer className="-ml-2 h-4 w-4" strokeWidth={2.25} />}
-          {money(carry.hammer)}
-        </Pill>
-      )}
+    <div className="mt-2 flex flex-col items-end gap-1">
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
+        {carry.orig > 0 && (
+          <Pill color={NORMAL}>
+            <Handshake className="h-4 w-4" strokeWidth={2.25} />
+            {money(carry.orig)} carry
+          </Pill>
+        )}
+        {carry.press > 0 && (
+          <Pill color={PRESS}>
+            <Zap className="h-4 w-4" strokeWidth={2.25} />
+            {money(carry.press)} carry
+          </Pill>
+        )}
+        {carry.hammer > 0 && (
+          <Pill color={HAMMER}>
+            <Hammer className="h-4 w-4" strokeWidth={2.25} />
+            {hammer >= 2 && <Hammer className="-ml-2 h-4 w-4" strokeWidth={2.25} />}
+            {money(carry.hammer)} carry
+          </Pill>
+        )}
+      </div>
       {extra && (
         <span className="text-sm font-semibold tabular-nums text-text-primary">
           Total — {money(carry.total)} carries
