@@ -263,6 +263,17 @@ function HoleCard({
                 </button>
               )}
 
+              {/* Money won/lost this hole, to the left of the score (as in Wolf) */}
+              {!noHoleMoney && (note?.deltas[p.id] ?? 0) !== 0 && (
+                <span
+                  className={`shrink-0 font-serif text-sm font-bold tabular-nums ${
+                    (note?.deltas[p.id] ?? 0) > 0 ? "text-positive" : "text-negative"
+                  }`}
+                >
+                  {formatMoney(note?.deltas[p.id] ?? 0)}
+                </span>
+              )}
+
               <input
                 type="number"
                 inputMode="numeric"
@@ -283,21 +294,13 @@ function HoleCard({
         })}
       </div>
 
-      {/* Result note — the money each winner takes on the hole, or push/carry.
-          Total/segment games (11s, Nassau) settle on totals, not per hole, so
-          per-hole money isn't shown — the standings carry the meaningful readout. */}
+      {/* Per-player money is shown inline (left of each score). Here we only keep
+          the hole-status detail — a push/carry note when nobody won the hole.
+          Total/segment games (11s, Nassau) settle on totals, so no per-hole note. */}
       {(() => {
         if (noHoleMoney || !note || note.detail === "—") return null;
-        const winners = players.filter((p) => (note.deltas[p.id] ?? 0) > 0);
-        if (winners.length > 0) {
-          return (
-            <div className="mt-2 text-right text-sm font-bold text-positive">
-              {winners
-                .map((p) => `${(p.name || "?").split(" ")[0]} ${formatMoney(note.deltas[p.id] ?? 0)}`)
-                .join(", ")}
-            </div>
-          );
-        }
+        const anyWinner = players.some((p) => (note.deltas[p.id] ?? 0) > 0);
+        if (anyWinner) return null;
         return <div className="mt-2 text-right text-sm text-text-muted">{note.detail}</div>;
       })()}
     </div>
