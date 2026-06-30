@@ -75,8 +75,17 @@ function HoleCard({
   const canPress =
     gt !== "elevens" &&
     !(gt === "nassau" && (round.settings.nassauFormat ?? "teams") === "robin");
-  // Press the rest of this six (Sixes) or this nine — F9 on the front, B9 on the back.
-  const segLabel = gt === "sixes" ? "6" : hole <= 9 ? "F9" : "B9";
+  // Press the rest of this six (Sixes: F6/M6/B6) or this nine (F9/B9).
+  const segLabel =
+    gt === "sixes"
+      ? hole <= 6
+        ? "F6"
+        : hole <= 12
+          ? "M6"
+          : "B6"
+      : hole <= 9
+        ? "F9"
+        : "B9";
 
   // 11s: toggle whether this player is counting this hole toward their score.
   function togglePick(pid: string) {

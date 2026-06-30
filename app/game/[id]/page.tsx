@@ -251,7 +251,17 @@ export default function GamePage() {
     const counts: Record<string, number> = {};
     return eachPress(round, run).map((pr) => {
       const base =
-        pr.scope === "full" ? "18" : gt === "sixes" ? "6" : pr.hole <= 9 ? "F9" : "B9";
+        pr.scope === "full"
+          ? "18"
+          : gt === "sixes"
+            ? pr.hole <= 6
+              ? "F6"
+              : pr.hole <= 12
+                ? "M6"
+                : "B6"
+            : pr.hole <= 9
+              ? "F9"
+              : "B9";
       counts[base] = (counts[base] ?? 0) + 1;
       const k = counts[base];
       return {
