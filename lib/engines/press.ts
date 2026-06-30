@@ -11,47 +11,24 @@
 // rotation (Six-Six-Six) stays tied to the real hole numbers. Nassau settles its
 // presses itself (match play per segment); 11s has no press.
 
-import { Round, PlayerId, computePops } from "../wolf";
+import { Round, PlayerId } from "../wolf";
 import { GameResult, GameHoleResult } from "./types";
 
 export type PressScope = "seg" | "full";
 
-/** One press — a field press (players null) or a player-scoped press. */
-export interface PressDef {
-  hole: number;
-  scope: PressScope;
-  holes: number[];
-  players: PlayerId[] | null; // null = the whole field
-}
-
-/** Every press in the round (field flags + player-scoped), with its hole range. */
-export function allPresses(round: Round): PressDef[] {
-  const out: PressDef[] = [];
-  for (const e of round.entries) {
-    for (const scope of pressScopesOf(e)) {
-      out.push({ hole: e.hole, scope, holes: pressRange(round, e.hole, scope), players: null });
-    }
-    for (const pr of e.presses ?? []) {
-      out.push({
-        hole: e.hole,
-        scope: pr.scope,
-        holes: pressRange(round, e.hole, pr.scope),
-        players: [...pr.players],
-      });
-    }
-  }
-  return out;
-}
-
 /** Whether any press has been called in the round. */
 export function hasAnyPress(round: Round): boolean {
-  return round.entries.some((e) => e.pressSeg || e.pressFull || (e.presses?.length ?? 0) > 0);
+  return round.entries.some((e) => e.pressSeg || e.pressFull);
 }
 
 /** The set of holes covered by ANY press (the union of every press's range). */
 export function pressedHoles(round: Round): Set<number> {
   const out = new Set<number>();
-  for (const def of allPresses(round)) for (const h of def.holes) out.add(h);
+  for (const e of round.entries) {
+    for (const scope of pressScopesOf(e)) {
+      for (const h of pressRange(round, e.hole, scope)) out.add(h);
+    }
+  }
   return out;
 }
 
@@ -118,60 +95,6 @@ export function pressSubRound(round: Round, holes: Set<number>): Round {
 }
 
 /**
- * A press among a SUBSET of players. We feed each player's NET (gross − the
- * full-field pops) as the gross and zero out pops in the copy, so the engine
- * settles among just these players on the SAME net the main game used — a
- * player's strokes don't shift because the side bet has fewer people.
- */
-export function subsetPressRound(
-  round: Round,
-  players: PlayerId[],
-  holes: Set<number>,
-  fullPops: Record<PlayerId, Record<number, number>>
-): Round {
-  const inSet = new Set(players);
-  const subPlayers = round.players
-    .filter((p) => inSet.has(p.id))
-    .map((p) => ({ ...p, handicap: 0, pops: 0 }));
-  const entries = round.entries
-    .filter((x) => holes.has(x.hole))
-    .map((e) => {
-      const grossScores: Record<PlayerId, number> = {};
-      for (const id of players) {
-        const g = e.grossScores[id];
-        if (typeof g === "number") grossScores[id] = g - (fullPops[id]?.[e.hole] ?? 0);
-      }
-      const fhActions = e.fhActions
-        ? Object.fromEntries(Object.entries(e.fhActions).filter(([id]) => inSet.has(id)))
-        : undefined;
-      return { ...e, grossScores, fhActions, pressSeg: false, pressFull: false, presses: [] };
-    });
-  return {
-    ...round,
-    players: subPlayers,
-    teeOrder: round.teeOrder.filter((id) => inSet.has(id)),
-    settings: {
-      ...round.settings,
-      handicapMode: "offLow",
-      carryover: round.settings.pressCarryover ?? true,
-    },
-    entries,
-  };
-}
-
-/** The sub-round to settle a press over — field-wide or player-scoped. */
-export function pressSubRoundFor(
-  round: Round,
-  def: PressDef,
-  fullPops: Record<PlayerId, Record<number, number>>
-): Round {
-  const holes = new Set(def.holes);
-  return def.players
-    ? subsetPressRound(round, def.players, holes, fullPops)
-    : pressSubRound(round, holes);
-}
-
-/**
  * Total press money per player: for every flagged hole, re-settle the game over
  * the press's holes (via `computeLedger`) and sum the results. `computeLedger`
  * must be the RAW per-hole engine (not a press-wrapped one) to avoid recursion.
@@ -182,13 +105,13 @@ export function computePressMoney(
 ): Record<PlayerId, number> {
   const out: Record<PlayerId, number> = {};
   for (const p of round.players) out[p.id] = 0;
-  const defs = allPresses(round);
-  if (defs.length === 0) return out;
-  const fullPops = computePops(round.players, round.course, round.settings.handicapMode);
-  for (const def of defs) {
-    if (def.holes.length === 0) continue;
-    const l = computeLedger(pressSubRoundFor(round, def, fullPops));
-    for (const p of round.players) out[p.id] += l[p.id] ?? 0;
+  for (const e of round.entries) {
+    for (const scope of pressScopesOf(e)) {
+      const holes = new Set(pressRange(round, e.hole, scope));
+      if (holes.size === 0) continue;
+      const l = computeLedger(pressSubRound(round, holes));
+      for (const p of round.players) out[p.id] += l[p.id] ?? 0;
+    }
   }
   return out;
 }
@@ -244,21 +167,20 @@ export function decomposePresses(
   for (const id of ids) pressLedger[id] = 0;
   const pressByHole = new Map<number, Record<PlayerId, number>>();
 
-  const defs = allPresses(round);
-  const fullPops = defs.length
-    ? computePops(round.players, round.course, round.settings.handicapMode)
-    : {};
-  for (const def of defs) {
-    if (def.holes.length === 0) continue;
-    const holes = new Set(def.holes);
-    const r = run(pressSubRoundFor(round, def, fullPops));
-    for (const id of ids) pressLedger[id] += r.ledger[id] ?? 0;
-    for (const hr of r.holeResults) {
-      if (!holes.has(hr.hole)) continue;
-      const acc =
-        pressByHole.get(hr.hole) ?? Object.fromEntries(ids.map((id) => [id, 0]));
-      for (const id of ids) acc[id] = (acc[id] ?? 0) + (hr.deltas[id] ?? 0);
-      pressByHole.set(hr.hole, acc);
+  for (const e of round.entries) {
+    for (const scope of pressScopesOf(e)) {
+      const holes = new Set(pressRange(round, e.hole, scope));
+      if (holes.size === 0) continue;
+      const r = run(pressSubRound(round, holes));
+      for (const id of ids) pressLedger[id] += r.ledger[id] ?? 0;
+      for (const hr of r.holeResults) {
+        if (!holes.has(hr.hole)) continue;
+        const acc =
+          pressByHole.get(hr.hole) ??
+          Object.fromEntries(ids.map((id) => [id, 0]));
+        for (const id of ids) acc[id] = (acc[id] ?? 0) + (hr.deltas[id] ?? 0);
+        pressByHole.set(hr.hole, acc);
+      }
     }
   }
 
@@ -291,19 +213,29 @@ export function combinedHoleResults(
   });
 }
 
-export interface PressItem extends PressDef {
+export interface PressItem {
+  hole: number; // where it was started
+  scope: PressScope;
+  holes: number[]; // the holes it covers
   result: RunResult; // its own ledger + per-hole money
 }
 
 /**
  * Each individual press settled on its own — for the Card tab's per-press
- * sub-views inside the Press tab. `run(def)` settles that one press.
+ * sub-views inside the Press tab. `run(holes)` settles one press over its holes.
  */
 export function eachPress(
   round: Round,
-  run: (def: PressDef) => RunResult
+  run: (holes: Set<number>) => RunResult
 ): PressItem[] {
-  return allPresses(round).map((def) => ({ ...def, result: run(def) }));
+  const out: PressItem[] = [];
+  for (const e of round.entries) {
+    for (const scope of pressScopesOf(e)) {
+      const list = pressRange(round, e.hole, scope);
+      out.push({ hole: e.hole, scope, holes: list, result: run(new Set(list)) });
+    }
+  }
+  return out;
 }
 
 export interface PressSplit {

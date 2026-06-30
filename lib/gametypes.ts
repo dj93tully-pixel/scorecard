@@ -149,14 +149,6 @@ export const GAME_TYPE_LIST: GameTypeMeta[] = [
 export function gameTypeOf(round: Round): GameTypeId {
   return round.gameType ?? "wolf";
 }
-
-/**
- * Individual / field games where a press can be among a chosen SUBSET of players
- * (Stroke, Skins, Hammerskin). Other games keep their field/team-wide press.
- */
-export function usesPlayerPresses(gameType: GameTypeId): boolean {
-  return gameType === "stroke" || gameType === "skins" || gameType === "fieldhammer";
-}
 export function gameTypeMeta(round: Round): GameTypeMeta {
   return GAME_TYPES[gameTypeOf(round)];
 }

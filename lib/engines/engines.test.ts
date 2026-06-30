@@ -544,34 +544,6 @@ describe("press", () => {
     expect(h18.deltas.b).toBe(-2);
   });
 
-  it("a player-scoped press settles only among its participants", () => {
-    // 4-player stroke. A side press between a & b over the back (from hole 16).
-    // Only hole 18 separates a from b; c & d are not in the press.
-    const entries = Array.from({ length: 18 }, (_, i) => {
-      const h = i + 1;
-      const grossScores =
-        h === 18 ? { a: 4, b: 5, c: 5, d: 5 } : { a: 4, b: 4, c: 4, d: 4 };
-      return {
-        hole: h,
-        wolfId: "",
-        mode: "2v2" as const,
-        grossScores,
-        ...(h === 16
-          ? { presses: [{ players: ["a", "b"], scope: "seg" as const }] }
-          : {}),
-      };
-    });
-    const round = makeRound("stroke", scratch(["a", "b", "c", "d"]), entries, { stake: 1 });
-    const r = withPresses(round, computeStroke);
-    expect(r.stats.a.press).toBe(1); // a beats b by one stroke on 18
-    expect(r.stats.b.press).toBe(-1);
-    expect(r.stats.c.press).toBe(0); // not in the press
-    expect(r.stats.d.press).toBe(0);
-    expect(r.ledger.a).toBe(4); // base +3 vs field + press +1
-    expect(r.ledger.b).toBe(-2);
-    expect(sum(r.ledger)).toBe(0);
-  });
-
   it("overlapping presses on different holes stack (double press)", () => {
     // Press hole 16 AND hole 17 (each rest-of-nine). Only hole 18 separates a
     // and b, and it's in both press ranges → both presses pay there.

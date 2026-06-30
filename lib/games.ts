@@ -62,7 +62,6 @@ interface EntryRow {
     // coerced back to booleans.
     pressSeg?: number | boolean;
     pressFull?: number | boolean;
-    presses?: HoleEntry["presses"];
     /** Legacy: the original Nassau single-press flag (→ pressSeg). */
     nassauPress?: boolean;
   } | null;
@@ -81,7 +80,6 @@ function rowToEntry(r: EntryRow): HoleEntry {
     fhActions: r.meta?.fhActions ?? undefined,
     pressSeg: !!(r.meta?.pressSeg ?? r.meta?.nassauPress),
     pressFull: !!r.meta?.pressFull,
-    presses: r.meta?.presses ?? undefined,
   };
 }
 
@@ -226,7 +224,6 @@ export async function saveEntry(gameId: string, entry: HoleEntry): Promise<void>
         fhActions: entry.fhActions ?? {},
         pressSeg: entry.pressSeg ?? false,
         pressFull: entry.pressFull ?? false,
-        presses: entry.presses ?? [],
       },
       updated_at: new Date().toISOString(),
     },
