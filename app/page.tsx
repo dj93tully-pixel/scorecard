@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, ChevronRight } from "lucide-react";
+import { Settings, ChevronRight, MapPin, Calendar } from "lucide-react";
 import { GameSummary, listGames, subscribeGamesList } from "@/lib/games";
 import { supabaseConfigured } from "@/lib/supabase";
 import { useHeader } from "@/lib/header-context";
@@ -55,39 +55,56 @@ export default function Home() {
   function GameRow({ g }: { g: GameSummary }) {
     return (
       <li
-        className={`overflow-hidden rounded-xl border border-l-4 border-card-border bg-card-bg ${
-          g.completed ? "border-l-card-border" : "border-l-primary"
-        }`}
+        className="overflow-hidden rounded-xl border bg-white"
+        style={{ borderColor: "#E8EBEF" }}
       >
         <button
           onClick={() => router.push(`/game/${g.id}`)}
-          className="flex w-full items-center justify-between gap-2 px-4 py-5 text-left"
+          className="flex w-full items-center justify-between gap-2 p-3 text-left"
         >
           <span className="min-w-0">
             <span className="flex items-center gap-2 font-semibold">
               {!g.completed && (
-                <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-alert ring-pulse" />
+                <span className="h-[6px] w-[6px] shrink-0 rounded-full bg-alert ring-pulse" />
               )}
               <span className="truncate">{g.name}</span>
-              <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-text-muted">
+              <span
+                className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                style={{ backgroundColor: "#F1F3F6", color: "#5A6675" }}
+              >
                 {GAME_TYPES[g.gameType].label}
               </span>
             </span>
             {g.courseName && (
-              <span className="mt-1 block truncate text-sm text-text-muted">
-                {g.courseName}
+              <span
+                className="mt-1 flex items-center gap-1 truncate text-sm"
+                style={{ color: "#7A828D" }}
+              >
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{g.courseName}</span>
               </span>
             )}
-            <span className="mt-0.5 block text-xs text-text-faint">
-              {g.completed ? "Completed · " : ""}
-              {new Date(g.createdAt).toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
+            <span
+              className="mt-0.5 flex items-center gap-1 text-xs"
+              style={{ color: "#9CA3AD" }}
+            >
+              <Calendar className="h-3 w-3 shrink-0" />
+              <span>
+                {g.completed ? "Completed · " : ""}
+                {new Date(g.createdAt).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </span>
             </span>
           </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-chevron" />
+          <span
+            className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundColor: "#F1F3F6" }}
+          >
+            <ChevronRight className="h-3.5 w-3.5" style={{ color: "#9098A4" }} />
+          </span>
         </button>
       </li>
     );
