@@ -57,7 +57,6 @@ interface EntryRow {
   forfeit: "A" | "B" | null;
   meta: {
     elevenPicks?: HoleEntry["elevenPicks"];
-    fhActions?: HoleEntry["fhActions"];
     // Press flags. Some rows stored these as numbers (a brief stacking model) →
     // coerced back to booleans.
     pressSeg?: number | boolean;
@@ -77,7 +76,6 @@ function rowToEntry(r: EntryRow): HoleEntry {
     hammer: r.hammer ?? 0,
     forfeit: r.forfeit ?? undefined,
     elevenPicks: r.meta?.elevenPicks ?? undefined,
-    fhActions: r.meta?.fhActions ?? undefined,
     pressSeg: !!(r.meta?.pressSeg ?? r.meta?.nassauPress),
     pressFull: !!r.meta?.pressFull,
   };
@@ -221,7 +219,6 @@ export async function saveEntry(gameId: string, entry: HoleEntry): Promise<void>
       forfeit: entry.forfeit ?? null,
       meta: {
         elevenPicks: entry.elevenPicks ?? {},
-        fhActions: entry.fhActions ?? {},
         pressSeg: entry.pressSeg ?? false,
         pressFull: entry.pressFull ?? false,
       },

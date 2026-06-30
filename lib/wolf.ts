@@ -88,7 +88,6 @@ export type GameTypeId =
   | "sixes"
   | "stroke"
   | "elevens"
-  | "fieldhammer"
   | "nassau";
 
 export interface HoleEntry {
@@ -109,11 +108,6 @@ export interface HoleEntry {
    * 18 holes; only the holes they check count. Persisted in game_entries.meta.
    */
   elevenPicks?: Record<PlayerId, boolean>;
-  /**
-   * Field Hammer only: per-player stance on the hole — "hammer" (×2 your loss),
-   * "double" (×4), or "forfeit" (concede). Persisted in game_entries.meta.
-   */
-  fhActions?: Record<PlayerId, import("./fieldHammer").FHAction>;
   /**
    * Press flags (all games except 11s). A press opens a fresh same-stake bet,
    * settled by this game's own rules, over the remaining holes — `pressSeg`

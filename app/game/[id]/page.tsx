@@ -19,7 +19,6 @@ import { nassauPressLedger } from "@/lib/engines/nassau";
 import { ScoresTab } from "@/components/ScoresTab";
 import { CardTab, CardComputation, PressViews } from "@/components/CardTab";
 import { ScoreEntryTab } from "@/components/ScoreEntryTab";
-import { FieldHammerScores } from "@/components/fieldhammer/FieldHammerScores";
 import { PillTabs, PillTab } from "@/components/PillTabs";
 
 export default function GamePage() {
@@ -44,7 +43,6 @@ export default function GamePage() {
   }, [tab]);
 
   const isWolf = round ? gameTypeOf(round) === "wolf" : true;
-  const isFieldHammer = round ? gameTypeOf(round) === "fieldhammer" : false;
   // Wolf uses its own engine + bespoke tabs; the other types share the generic
   // ScoreEntryTab / StandingsView driven by computeGame.
   const computation = useMemo(
@@ -333,8 +331,6 @@ export default function GamePage() {
         {tab === "scores" &&
           (isWolf && computation ? (
             <ScoresTab round={round} computation={computation} upsertEntry={upsertEntry} />
-          ) : isFieldHammer ? (
-            <FieldHammerScores round={round} upsertEntry={upsertEntry} />
           ) : (
             <ScoreEntryTab round={round} upsertEntry={upsertEntry} />
           ))}
