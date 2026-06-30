@@ -181,15 +181,18 @@ function Nine({
           ))}
           <Cell tint>{parTotal}</Cell>
         </div>
-        {/* press / hammer dots — thin row after par */}
+        {/* press / hammer dots — thin row after par. On a press/hammer filter,
+            only the holes that filter covers keep their dots (like scores/money). */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
           <div style={{ height: 9 }} />
           {cells.map((x) => (
             <div key={x.cell.hole} className="flex items-center justify-center" style={{ height: 9 }}>
-              <span className="flex items-center" style={{ gap: 1 }}>
-                {pressHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: PRESS }} />}
-                {hammerHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: HAMMER }} />}
-              </span>
+              {on(x.cell.hole) && (
+                <span className="flex items-center" style={{ gap: 1 }}>
+                  {pressHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: PRESS }} />}
+                  {hammerHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: HAMMER }} />}
+                </span>
+              )}
             </div>
           ))}
           <div style={{ height: 9 }} />
