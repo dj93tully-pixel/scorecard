@@ -148,8 +148,8 @@ export interface Round {
 export const DEFAULT_SETTINGS: RoundSettings = {
   stake: 5,
   wolfStake: 0, // 0 = same as stake (symmetric)
-  loneMult: 1,
-  blindMult: 2,
+  loneMult: 2,
+  blindMult: 3,
   blindEnabled: true,
   carryover: false,
   hammerCarry: false,

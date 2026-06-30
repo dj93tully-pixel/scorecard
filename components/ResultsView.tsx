@@ -498,171 +498,6 @@ function PlayerBar({
   );
 }
 
-// ── One nine of an all-players grid: scores (Scorecard) or money (Ledger) ─────
-function AllPlayersNine({
-  players,
-  holeNums,
-  net,
-  label,
-  hammerHoles,
-  pressHoles,
-  mode,
-}: {
-  players: PlayerResults[];
-  holeNums: number[];
-  net: boolean;
-  label: "OUT" | "IN";
-  hammerHoles: Set<number>;
-  pressHoles: Set<number>;
-  mode: "scores" | "money";
-}) {
-  const scores = mode === "scores";
-  const nineName = label === "OUT" ? "Front 9" : "Back 9";
-  // Scorecard has an extra "+/-" column on the right; ledger does not.
-  const template = scores
-    ? `52px repeat(${holeNums.length}, minmax(0,1fr)) 24px 28px`
-    : `56px repeat(${holeNums.length}, minmax(0,1fr)) 30px`;
-  const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
-  const siByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.si]) ?? []);
-  const parTotal = holeNums.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
-
-  // Scorecard-only hairline rules (the ledger/money mode keeps its old look).
-  const firstHole: React.CSSProperties | undefined = scores
-    ? { boxShadow: "inset 1px 0 0 #DBDFE7" }
-    : undefined;
-  const colRule: React.CSSProperties | undefined = scores
-    ? { borderLeft: "1px solid #DBDFE7" }
-    : undefined;
-
-  const Cell = ({
-    children,
-    tint,
-    left,
-    style,
-  }: {
-    children: React.ReactNode;
-    tint?: boolean;
-    left?: boolean;
-    style?: React.CSSProperties;
-  }) => (
-    <div
-      className={`flex h-7 items-center tabular-nums ${left ? "justify-start pl-2" : "justify-center"}`}
-      style={{ ...(tint ? { background: "#F6F7F9" } : {}), ...style }}
-    >
-      {children}
-    </div>
-  );
-
-  return (
-    <div className="overflow-x-auto">
-      <div style={{ minWidth: 330 }}>
-        {/* hole numbers + press/hammer dots */}
-        <div
-          className="grid items-center"
-          style={{ gridTemplateColumns: template, borderBottom: scores ? "1px solid #C2CAD8" : undefined }}
-        >
-          <Cell left>
-            <span className="text-[10px] font-bold" style={{ color: MUTED }}>{nineName}</span>
-          </Cell>
-          {holeNums.map((h, hi) => (
-            <HoleHead key={h} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} style={hi === 0 ? firstHole : undefined} />
-          ))}
-          <HoleHead n={label} style={colRule} />
-          {scores && <Cell style={colRule}> </Cell>}
-        </div>
-        {/* handicap (stroke index) row — above par, unshaded */}
-        {scores && (
-          <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, color: MUTED }}>
-            <Cell left>Hcp</Cell>
-            {holeNums.map((h, hi) => (
-              <Cell key={h} style={hi === 0 ? firstHole : undefined}>{siByHole.get(h)}</Cell>
-            ))}
-            <Cell style={colRule}> </Cell>
-            <Cell style={colRule}> </Cell>
-          </div>
-        )}
-        {/* par band (scorecard only) — shaded across the whole row */}
-        {scores && (
-          <div
-            className="grid items-center text-[10px]"
-            style={{ gridTemplateColumns: template, background: "#D7DEEA", color: MUTED, borderTop: "1px solid #C2CAD8", borderBottom: "1px solid #C2CAD8" }}
-          >
-            <Cell left>Par</Cell>
-            {holeNums.map((h, hi) => (
-              <Cell key={h} style={hi === 0 ? firstHole : undefined}>{parByHole.get(h)}</Cell>
-            ))}
-            <Cell style={colRule}>{parTotal}</Cell>
-            <Cell style={colRule}> </Cell>
-          </div>
-        )}
-        {/* a row per player */}
-        {players.map((p, idx) => {
-          const idxByHole = new Map(p.holes.map((c, i) => [c.hole, i]));
-          let scoreTot = 0;
-          let moneyTot = 0;
-          let toPar = 0;
-          let anyScore = false;
-          return (
-            <div
-              key={p.id}
-              className="grid items-center"
-              style={{
-                gridTemplateColumns: template,
-                borderTop: scores ? "1px solid #DBDFE7" : idx === 0 ? undefined : `1px solid ${BORDER}`,
-              }}
-            >
-              <Cell left>
-                <span className="truncate text-[11px] font-semibold" style={{ color: INK }}>{p.name}</span>
-              </Cell>
-              {holeNums.map((h, hi) => {
-                const holeStyle = hi === 0 ? firstHole : undefined;
-                const i = idxByHole.get(h);
-                if (mode === "money") {
-                  const m = i === undefined ? 0 : p.money.total[i];
-                  moneyTot += m;
-                  return (
-                    <Cell key={h} style={holeStyle}>
-                      <span className="text-[9px] font-bold tabular-nums" style={{ color: m === 0 ? "#C4C8CE" : moneyColor(m) }}>
-                        {ledgerFmt(m)}
-                      </span>
-                    </Cell>
-                  );
-                }
-                const c = i === undefined ? undefined : p.holes[i];
-                const s = c ? (net ? c.net : c.gross) : null;
-                if (s !== null) {
-                  scoreTot += s;
-                  toPar += s - (c?.par ?? 0);
-                  anyScore = true;
-                }
-                return (
-                  <Cell key={h} style={holeStyle}>
-                    <ScoreCell score={s} par={c?.par ?? 4} pop={c?.pop ?? 0} />
-                  </Cell>
-                );
-              })}
-              <Cell style={colRule}>
-                {mode === "money" ? (
-                  <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(moneyTot) }}>{ledgerFmt(moneyTot, "—")}</span>
-                ) : (
-                  <span className="text-xs font-bold" style={{ color: INK }}>{scoreTot || "–"}</span>
-                )}
-              </Cell>
-              {scores && (
-                <Cell style={colRule}>
-                  <span className="text-[11px] font-bold tabular-nums" style={{ color: BLUE }}>
-                    {anyScore ? formatToPar(toPar) : "–"}
-                  </span>
-                </Cell>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ── Traditional course-style scorecard: full grid, green header band, a colored
 //    tee-distance row per tee, shaded Par, Hcp, then player rows. Scorecard only.
 const GRID = "#D5D9DE";
@@ -688,6 +523,52 @@ function tintOf(hex?: string): string {
   return `rgb(${mix(rgb[0])},${mix(rgb[1])},${mix(rgb[2])})`;
 }
 
+// Shared grid cell for the traditional scorecard + ledger.
+function GridCell({
+  children,
+  bg,
+  color,
+  bold,
+  left,
+  style,
+}: {
+  children: React.ReactNode;
+  bg?: string;
+  color?: string;
+  bold?: boolean;
+  left?: boolean;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      className="flex h-[26px] items-center text-[10px] tabular-nums"
+      style={{
+        background: bg ?? "#FFFFFF",
+        color,
+        fontWeight: bold ? 700 : undefined,
+        justifyContent: left ? "flex-start" : "center",
+        paddingLeft: left ? "6px" : 0,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Header hole cell: white number on the green band, with press/hammer dots.
+function HeaderHoleCell({ n, hammered, pressed }: { n: number | string; hammered?: boolean; pressed?: boolean }) {
+  return (
+    <div className="flex h-[26px] flex-col items-center justify-center" style={{ background: HEADER_BG }}>
+      <span className="text-[10px] font-bold leading-none text-white">{n}</span>
+      <span className="mt-0.5 flex h-1 items-center justify-center" style={{ gap: "0.5px" }}>
+        {pressed && <span className="h-1 w-1 rounded-full" style={{ background: PRESS }} />}
+        {hammered && <span className="h-1 w-1 rounded-full" style={{ background: HAMMER }} />}
+      </span>
+    </div>
+  );
+}
+
 function ScorecardNine({
   players,
   holeNums,
@@ -710,53 +591,17 @@ function ScorecardNine({
   const siByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.si]) ?? []);
   const parTotal = holeNums.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
 
-  const GCell = ({
-    children,
-    bg,
-    color,
-    bold,
-    left,
-    style,
-  }: {
-    children: React.ReactNode;
-    bg?: string;
-    color?: string;
-    bold?: boolean;
-    left?: boolean;
-    style?: React.CSSProperties;
-  }) => (
-    <div
-      className="flex h-[26px] items-center text-[10px] tabular-nums"
-      style={{
-        background: bg ?? "#FFFFFF",
-        color,
-        fontWeight: bold ? 700 : undefined,
-        justifyContent: left ? "flex-start" : "center",
-        paddingLeft: left ? "6px" : 0,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
-
   return (
     <div className="overflow-x-auto">
       <div style={{ minWidth: 340, border: `1px solid ${GRID}` }}>
         <div style={{ display: "grid", gridTemplateColumns: template, gap: "1px", background: GRID }}>
           {/* HEADER band */}
-          <GCell bg={HEADER_BG} color="#fff" bold left>HOLE</GCell>
+          <GridCell bg={HEADER_BG} color="#fff" bold left>HOLE</GridCell>
           {holeNums.map((h) => (
-            <div key={`hd${h}`} className="flex h-[26px] flex-col items-center justify-center" style={{ background: HEADER_BG }}>
-              <span className="text-[10px] font-bold leading-none text-white">{h}</span>
-              <span className="mt-0.5 flex h-1 items-center justify-center" style={{ gap: "0.5px" }}>
-                {pressHoles.has(h) && <span className="h-1 w-1 rounded-full" style={{ background: PRESS }} />}
-                {hammerHoles.has(h) && <span className="h-1 w-1 rounded-full" style={{ background: HAMMER }} />}
-              </span>
-            </div>
+            <HeaderHoleCell key={`hd${h}`} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} />
           ))}
-          <GCell bg={HEADER_BG} color="#fff" bold>{label}</GCell>
-          <GCell bg={HEADER_BG}> </GCell>
+          <GridCell bg={HEADER_BG} color="#fff" bold>{label}</GridCell>
+          <GridCell bg={HEADER_BG}> </GridCell>
 
           {/* TEE distance rows — one per tee, colored by tee */}
           {tees.map((t) => {
@@ -766,33 +611,33 @@ function ScorecardNine({
             const labelStyle = txt === "#1A1A1A" ? { boxShadow: "inset 0 0 0 1px #C2CAD8" } : undefined;
             return (
               <Fragment key={`tee-${t.name}`}>
-                <GCell bg={t.color ?? "#9098A4"} color={txt} bold left style={labelStyle}>
+                <GridCell bg={t.color ?? "#9098A4"} color={txt} bold left style={labelStyle}>
                   <span className="truncate">{t.name}</span>
-                </GCell>
+                </GridCell>
                 {holeNums.map((h) => (
-                  <GCell key={`${t.name}-${h}`} bg={band} color="#525861">{t.distanceByHole[h] ?? ""}</GCell>
+                  <GridCell key={`${t.name}-${h}`} bg={band} color="#525861">{t.distanceByHole[h] ?? ""}</GridCell>
                 ))}
-                <GCell bg={band} color="#525861" bold>{nineTot || ""}</GCell>
-                <GCell bg={band}> </GCell>
+                <GridCell bg={band} color="#525861" bold>{nineTot || ""}</GridCell>
+                <GridCell bg={band}> </GridCell>
               </Fragment>
             );
           })}
 
           {/* PAR */}
-          <GCell bg="#E8EBF0" color={MUTED} bold left>Par</GCell>
+          <GridCell bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
           {holeNums.map((h) => (
-            <GCell key={`par${h}`} bg="#E8EBF0" color={INK} bold>{parByHole.get(h)}</GCell>
+            <GridCell key={`par${h}`} bg="#E8EBF0" color={INK} bold>{parByHole.get(h)}</GridCell>
           ))}
-          <GCell bg="#E8EBF0" color={INK} bold>{parTotal}</GCell>
-          <GCell bg="#E8EBF0"> </GCell>
+          <GridCell bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
+          <GridCell bg="#E8EBF0"> </GridCell>
 
           {/* HCP */}
-          <GCell bg="#F4F6F8" color={MUTED} left>Hcp</GCell>
+          <GridCell bg="#F4F6F8" color={MUTED} left>Hcp</GridCell>
           {holeNums.map((h) => (
-            <GCell key={`hcp${h}`} bg="#F4F6F8" color={MUTED}>{siByHole.get(h)}</GCell>
+            <GridCell key={`hcp${h}`} bg="#F4F6F8" color={MUTED}>{siByHole.get(h)}</GridCell>
           ))}
-          <GCell bg="#F4F6F8"> </GCell>
-          <GCell bg="#F4F6F8"> </GCell>
+          <GridCell bg="#F4F6F8"> </GridCell>
+          <GridCell bg="#F4F6F8"> </GridCell>
 
           {/* PLAYER rows */}
           {players.map((p) => {
@@ -810,19 +655,86 @@ function ScorecardNine({
                 anyScore = true;
               }
               return (
-                <GCell key={`${p.id}-${h}`}>
+                <GridCell key={`${p.id}-${h}`}>
                   <ScoreCell score={s} par={c?.par ?? 4} pop={c?.pop ?? 0} />
-                </GCell>
+                </GridCell>
               );
             });
             return (
               <Fragment key={p.id}>
-                <GCell left>
+                <GridCell left>
                   <span className="truncate text-[11px] font-semibold" style={{ color: INK }}>{p.name}</span>
-                </GCell>
+                </GridCell>
                 {holeCells}
-                <GCell bold color={INK}>{scoreTot || "–"}</GCell>
-                <GCell bold color={BLUE}>{anyScore ? formatToPar(toPar) : "–"}</GCell>
+                <GridCell bold color={INK}>{scoreTot || "–"}</GridCell>
+                <GridCell bold color={BLUE}>{anyScore ? formatToPar(toPar) : "–"}</GridCell>
+              </Fragment>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── By-hole ledger, styled like the scorecard grid: green HOLE header + Par row
+//    (no tee distances, no Hcp), then each player's per-hole total money. ──────
+function LedgerNine({
+  players,
+  holeNums,
+  label,
+  hammerHoles,
+  pressHoles,
+}: {
+  players: PlayerResults[];
+  holeNums: number[];
+  label: "OUT" | "IN";
+  hammerHoles: Set<number>;
+  pressHoles: Set<number>;
+}) {
+  const template = `46px repeat(${holeNums.length}, minmax(0,1fr)) 36px`;
+  const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
+  const parTotal = holeNums.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
+
+  return (
+    <div className="overflow-x-auto">
+      <div style={{ minWidth: 330, border: `1px solid ${GRID}` }}>
+        <div style={{ display: "grid", gridTemplateColumns: template, gap: "1px", background: GRID }}>
+          {/* HEADER band */}
+          <GridCell bg={HEADER_BG} color="#fff" bold left>HOLE</GridCell>
+          {holeNums.map((h) => (
+            <HeaderHoleCell key={`hd${h}`} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} />
+          ))}
+          <GridCell bg={HEADER_BG} color="#fff" bold>{label}</GridCell>
+
+          {/* PAR */}
+          <GridCell bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
+          {holeNums.map((h) => (
+            <GridCell key={`par${h}`} bg="#E8EBF0" color={INK} bold>{parByHole.get(h)}</GridCell>
+          ))}
+          <GridCell bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
+
+          {/* PLAYER money rows */}
+          {players.map((p) => {
+            const idxByHole = new Map(p.holes.map((c, i) => [c.hole, i]));
+            let tot = 0;
+            const cells = holeNums.map((h) => {
+              const i = idxByHole.get(h);
+              const m = i === undefined ? 0 : p.money.total[i];
+              tot += m;
+              return (
+                <GridCell key={`${p.id}-${h}`} color={m === 0 ? "#C4C8CE" : moneyColor(m)} bold>
+                  {ledgerFmt(m)}
+                </GridCell>
+              );
+            });
+            return (
+              <Fragment key={p.id}>
+                <GridCell left>
+                  <span className="truncate text-[11px] font-semibold" style={{ color: INK }}>{p.name}</span>
+                </GridCell>
+                {cells}
+                <GridCell bold color={moneyColor(tot)}>{ledgerFmt(tot, "—")}</GridCell>
               </Fragment>
             );
           })}
@@ -890,16 +802,11 @@ export function ResultsView({ results }: { results: ResultsData }) {
         })}
       </div>
 
-      {/* By-hole ledger (every player's total money per hole). Transparent,
-          top/bottom hairlines only — blends into the page like before. */}
+      {/* By-hole ledger — styled like the scorecard grid (HOLE + Par only). */}
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Ledger</h2>
-        <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
-          <AllPlayersNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} mode="money" />
-          <div style={{ borderTop: `1px solid ${BORDER}` }}>
-            <AllPlayersNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} mode="money" />
-          </div>
-        </div>
+        <LedgerNine players={standings} holeNums={front} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} />
+        <LedgerNine players={standings} holeNums={back} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} />
       </section>
 
       {/* Traditional course-style all-players scorecard */}

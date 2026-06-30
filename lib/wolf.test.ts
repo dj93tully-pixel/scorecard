@@ -517,7 +517,7 @@ describe("money — lone wolf", () => {
         mode: "lone",
         grossScores: { a: 3, b: 4, c: 4, d: 5 }, // d nets 4; field best 4; wolf 3 wins
       },
-    ]);
+    ], { loneMult: 1 });
     const { ledger, results } = computeRound(round);
     expect(results[0].winner).toBe("A");
     expect(ledger.a).toBe(15); // 3 * 1 * 5
@@ -535,7 +535,7 @@ describe("money — lone wolf", () => {
         mode: "lone",
         grossScores: { a: 6, b: 4, c: 7, d: 7 }, // field best 4 < wolf 6
       },
-    ]);
+    ], { loneMult: 1 });
     const { ledger, results } = computeRound(round);
     expect(results[0].winner).toBe("B");
     expect(ledger.a).toBe(-15);

@@ -59,8 +59,8 @@ export default function GamePage() {
   const results = useMemo(() => (round ? buildResults(round) : null), [round]);
 
   const tabs: PillTab[] = [
-    { id: "scores", label: "Scores" },
-    { id: "card", label: "Card" },
+    { id: "scores", label: "Score" },
+    { id: "card", label: "Cards" },
   ];
 
   // Drive the global header: game name + back + ticker. Editing lives only in
