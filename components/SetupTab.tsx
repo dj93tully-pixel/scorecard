@@ -15,6 +15,7 @@ import {
 } from "@/lib/storage";
 import { CourseImport } from "./CourseImport";
 import { gameTypeMeta, TEAM_COLORS } from "@/lib/gametypes";
+import { JUNK_TYPES, junkConfig } from "@/lib/junk";
 
 function Field({
   label,
@@ -144,6 +145,27 @@ export function SetupTab({
   }
   function setPopsMode(direct: boolean) {
     setSetting("handicapMode", direct ? "direct" : "offLow");
+  }
+
+  // ── Side bets (junk) ──
+  function setJunkOn(id: string, on: boolean) {
+    updateRound((r) => {
+      const list = (r.settings.junk ?? []).filter((j) => j.id !== id);
+      if (on) {
+        const t = JUNK_TYPES.find((x) => x.id === id);
+        list.push({ id, value: t?.defaultValue ?? 1 });
+      }
+      return { ...r, settings: { ...r.settings, junk: list } };
+    });
+  }
+  function setJunkValue(id: string, value: number) {
+    updateRound((r) => ({
+      ...r,
+      settings: {
+        ...r.settings,
+        junk: (r.settings.junk ?? []).map((j) => (j.id === id ? { ...j, value } : j)),
+      },
+    }));
   }
 
   const numberInput =
@@ -630,6 +652,53 @@ export function SetupTab({
               </select>
             </Field>
           )}
+        </div>
+      </section>
+
+      {/* Side bets (junk) — ride on top of any game type, fold into settle-up */}
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
+        <h3 className="mb-1 font-bold">Side bets</h3>
+        <p className="mb-3 text-xs text-text-muted">
+          Optional junk that rides on top of the main game and folds into the final
+          settle-up. Birdies and eagles score automatically; the rest are tapped per
+          hole on the Score tab.
+        </p>
+        <div className="divide-y divide-divider">
+          {JUNK_TYPES.map((t) => {
+            const cfg = junkConfig(settings, t.id);
+            const on = !!cfg;
+            return (
+              <div key={t.id} className="flex items-center justify-between gap-3 py-2">
+                <label className="flex min-w-0 flex-1 items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={(e) => setJunkOn(t.id, e.target.checked)}
+                    className="mt-0.5 h-5 w-5 shrink-0 accent-[#354CA1]"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-text-primary">
+                      {t.label}
+                    </span>
+                    <span className="block text-xs text-text-faint">{t.blurb}</span>
+                  </span>
+                </label>
+                {on && (
+                  <span className="flex shrink-0 items-center gap-1 text-sm text-text-muted">
+                    $
+                    <input
+                      type="number"
+                      min={0}
+                      value={cfg!.value}
+                      onFocus={selectOnFocus}
+                      onChange={(e) => setJunkValue(t.id, parseFloat(e.target.value) || 0)}
+                      className={numberInput}
+                    />
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 

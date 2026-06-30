@@ -17,6 +17,7 @@ import {
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
 import { carryByHole, HoleCarry } from "@/lib/carry";
 import { CarryNote } from "./CarryNote";
+import { JunkChips } from "./JunkChips";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
 
@@ -72,6 +73,7 @@ function HoleBox({
     forfeit,
     pressSeg,
     pressFull,
+    junk: existing?.junk,
   };
   const commit = (patch: Partial<HoleEntry>) => upsertEntry(hole, patch, base);
 
@@ -317,6 +319,9 @@ function HoleBox({
           );
         })}
       </div>
+
+      {/* Side bets (junk) tapped per player on this hole. */}
+      <JunkChips round={round} hole={hole} entry={existing} onChange={(junk) => commit({ junk })} />
 
       {/* Result */}
       {result && (

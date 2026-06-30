@@ -66,7 +66,8 @@ function settleUp(players: PlayerResults[]): Payment[] {
   const creditors: { name: string; amt: number }[] = [];
   const debtors: { name: string; amt: number }[] = [];
   for (const p of players) {
-    const cents = Math.round(p.grand * 100);
+    // The full amount owed = main-game total + side bets.
+    const cents = Math.round((p.grand + p.junk) * 100);
     if (cents > 0) creditors.push({ name: p.name, amt: cents });
     else if (cents < 0) debtors.push({ name: p.name, amt: -cents });
   }
@@ -130,6 +131,49 @@ function SettleUp({ players }: { players: PlayerResults[] }) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+// ── Side bets (junk) breakdown — each bet's per-player result ─────────────────
+function SideBets({ results }: { results: ResultsData }) {
+  if (results.junkBets.length === 0) return null;
+  const nameById = new Map(results.players.map((p) => [p.id, p.name]));
+  return (
+    <section className="space-y-3">
+      <h2 className="text-xl font-bold">Side bets</h2>
+      <div className="space-y-2">
+        {results.junkBets.map((bet) => {
+          const lines = results.players
+            .map((p) => ({ name: nameById.get(p.id) ?? "", v: bet.total[p.id] ?? 0 }))
+            .filter((x) => Math.round(x.v * 100) !== 0)
+            .sort((a, b) => b.v - a.v);
+          return (
+            <div
+              key={bet.id}
+              className="flex items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3"
+              style={{ borderColor: BORDER }}
+            >
+              <span className="shrink-0 font-semibold" style={{ color: INK }}>
+                {bet.label}
+              </span>
+              {lines.length === 0 ? (
+                <span className="text-sm" style={{ color: MUTED }}>
+                  not yet won
+                </span>
+              ) : (
+                <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-sm tabular-nums">
+                  {lines.map((x) => (
+                    <span key={x.name} className="font-semibold" style={{ color: moneyColor(x.v) }}>
+                      {x.name} {money1(x.v)}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -981,7 +1025,8 @@ export function ResultsView({ results }: { results: ResultsData }) {
         <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} tees={results.tees} />
       </section>
 
-      {/* Who pays whom — net every player's total into the fewest payments. */}
+      {/* Side bets (junk), then who-pays-whom over the combined totals. */}
+      <SideBets results={results} />
       <SettleUp players={results.players} />
     </div>
   );

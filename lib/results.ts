@@ -20,6 +20,7 @@ import {
   RunResult,
 } from "./engines/press";
 import { nassauPressLedger } from "./engines/nassau";
+import { computeJunk, JunkBetView } from "./junk";
 
 export type BetType = "original" | "press" | "hammer";
 
@@ -48,7 +49,8 @@ export interface PlayerResults {
   holes: HoleCell[]; // course hole order
   // Per-hole winnings, aligned to holes[] (same length). total = the three summed.
   money: { original: number[]; press: number[]; hammer: number[]; total: number[] };
-  grand: number; // sum of total
+  grand: number; // sum of total — the MAIN game only
+  junk: number; // side-bet total (separate ledger); grand + junk is what's owed
 }
 
 export interface ResultTee {
@@ -65,6 +67,7 @@ export interface ResultsData {
   presses: PressInfo[]; // each individual press (Press tab sub-selector)
   tees: ResultTee[]; // course tee yardages (scorecard distance rows)
   isElevens: boolean; // 11s: hide ledger/trendline, show picked-hole tally + dots
+  junkBets: JunkBetView[]; // side bets, per-bet per-player breakdown (empty if none)
 }
 
 const zeroHammer = (round: Round): Round => ({
@@ -82,6 +85,7 @@ export function buildResults(round: Round): ResultsData {
   const wolfComp = isWolf ? computeRound(round) : null;
   const result = isWolf ? null : computeGame(round); // pops + Nassau stats
   const pops = (isWolf ? wolfComp!.pops : result!.pops) ?? {};
+  const junk = computeJunk(round); // side bets — separate, zero-sum ledger
 
   const zeros = () => holes.map(() => 0);
   const orig: Record<PlayerId, number[]> = {};
@@ -167,6 +171,7 @@ export function buildResults(round: Round): ResultsData {
       holes: holeCells,
       money: { original: orig[p.id], press: prs[p.id], hammer: ham[p.id], total },
       grand,
+      junk: junk.ledger[p.id] ?? 0,
     };
   });
 
@@ -226,5 +231,14 @@ export function buildResults(round: Round): ResultsData {
     return { name: t.name, color: t.color, distanceByHole };
   });
 
-  return { players, betTypes, hammerHoles, pressHoles, presses, tees, isElevens: gt === "elevens" };
+  return {
+    players,
+    betTypes,
+    hammerHoles,
+    pressHoles,
+    presses,
+    tees,
+    isElevens: gt === "elevens",
+    junkBets: junk.bets,
+  };
 }

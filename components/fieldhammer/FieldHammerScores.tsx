@@ -12,6 +12,7 @@ import { computeBaseGame } from "@/lib/gametypes";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
+import { JunkChips } from "../JunkChips";
 
 const HAMMER_COLOR = "#7C3AED"; // purple
 const FORFEIT_COLOR = "#06B6A4"; // teal
@@ -54,6 +55,7 @@ function HoleCard({
     hammer,
     pressSeg,
     pressFull,
+    junk: existing?.junk,
   };
   const first = (id: string) =>
     (players.find((p) => p.id === id)?.name || "—").split(" ")[0];
@@ -184,6 +186,14 @@ function HoleCard({
           );
         })}
       </div>
+
+      {/* Side bets (junk) tapped per player on this hole. */}
+      <JunkChips
+        round={round}
+        hole={hole}
+        entry={existing}
+        onChange={(junk) => upsertEntry(hole, { junk }, base)}
+      />
 
       {/* Hole result — each player's net money on the hole. */}
       {winners.length > 0 && (

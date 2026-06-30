@@ -41,6 +41,17 @@ export interface Player {
 // value verbatim (still spread across holes by stroke index).
 export type HandicapMode = "offLow" | "full" | "direct";
 
+/**
+ * One enabled side bet ("junk"). Presence in `settings.junk` = the bet is on;
+ * `value` is its dollar size; `net` overrides the default gross basis for the
+ * auto-detected bets (birdies/eagles). See lib/junk.ts for the registry + engine.
+ */
+export interface JunkSetting {
+  id: string;
+  value: number;
+  net?: boolean;
+}
+
 export interface RoundSettings {
   stake: number; // $ per hole each FIELD player risks
   /**
@@ -91,6 +102,13 @@ export interface RoundSettings {
    * Defaults to "teams".
    */
   nassauFormat?: "teams" | "robin";
+
+  /**
+   * Side bets ("junk") riding ON TOP of the main game — birdies, greenies,
+   * sandies, the snake, etc. Independent, zero-sum, settled by lib/junk.ts and
+   * folded into the settle-up. Each present entry is an enabled bet; absent = off.
+   */
+  junk?: JunkSetting[];
 }
 
 export type WolfMode = "2v2" | "lone" | "blind";
@@ -144,6 +162,12 @@ export interface HoleEntry {
    */
   pressSeg?: boolean;
   pressFull?: boolean;
+  /**
+   * Side-bet flags per player on this hole — each player's list of manually
+   * tapped junk ids (greenie, sandie, barkie, snake…). Auto bets (birdies/eagles)
+   * are derived from the score, not stored. Persisted in game_entries.meta.
+   */
+  junk?: Record<PlayerId, string[]>;
 }
 
 export interface Round {
