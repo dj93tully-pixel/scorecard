@@ -124,13 +124,15 @@ function HoleHead({
   n,
   hammered,
   pressed,
+  style,
 }: {
   n: number | string;
   hammered?: boolean;
   pressed?: boolean;
+  style?: React.CSSProperties;
 }) {
   return (
-    <div className="flex h-7 flex-col items-center justify-center">
+    <div className="flex h-7 flex-col items-center justify-center" style={style}>
       <span className="text-[10px] font-bold leading-none" style={{ color: MUTED }}>
         {n}
       </span>
@@ -523,10 +525,28 @@ function AllPlayersNine({
   const siByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.si]) ?? []);
   const parTotal = holeNums.reduce((s, h) => s + (parByHole.get(h) ?? 0), 0);
 
-  const Cell = ({ children, tint, left }: { children: React.ReactNode; tint?: boolean; left?: boolean }) => (
+  // Scorecard-only hairline rules (the ledger/money mode keeps its old look).
+  const firstHole: React.CSSProperties | undefined = scores
+    ? { boxShadow: "inset 1px 0 0 #ECEEF1" }
+    : undefined;
+  const colRule: React.CSSProperties | undefined = scores
+    ? { borderLeft: "1px solid #ECEEF1" }
+    : undefined;
+
+  const Cell = ({
+    children,
+    tint,
+    left,
+    style,
+  }: {
+    children: React.ReactNode;
+    tint?: boolean;
+    left?: boolean;
+    style?: React.CSSProperties;
+  }) => (
     <div
       className={`flex h-7 items-center tabular-nums ${left ? "justify-start pl-2" : "justify-center"}`}
-      style={tint ? { background: "#F6F7F9" } : undefined}
+      style={{ ...(tint ? { background: "#F6F7F9" } : {}), ...style }}
     >
       {children}
     </div>
@@ -536,40 +556,46 @@ function AllPlayersNine({
     <div className="overflow-x-auto">
       <div style={{ minWidth: 330 }}>
         {/* hole numbers + press/hammer dots */}
-        <div className="grid items-center" style={{ gridTemplateColumns: template }}>
+        <div
+          className="grid items-center"
+          style={{ gridTemplateColumns: template, borderBottom: scores ? "1px solid #DDE0E5" : undefined }}
+        >
           <Cell left>
             <span className="text-[10px] font-bold" style={{ color: MUTED }}>{nineName}</span>
           </Cell>
-          {holeNums.map((h) => (
-            <HoleHead key={h} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} />
+          {holeNums.map((h, hi) => (
+            <HoleHead key={h} n={h} hammered={hammerHoles.has(h)} pressed={pressHoles.has(h)} style={hi === 0 ? firstHole : undefined} />
           ))}
-          <HoleHead n={label} />
+          <HoleHead n={label} style={colRule} />
           {scores && (
-            <Cell>
+            <Cell style={colRule}>
               <span className="text-[10px] font-bold" style={{ color: MUTED }}>+/-</span>
             </Cell>
           )}
         </div>
-        {/* handicap (stroke index) row — above par */}
+        {/* handicap (stroke index) row — above par, unshaded */}
         {scores && (
           <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, color: MUTED }}>
             <Cell left>Hcp</Cell>
-            {holeNums.map((h) => (
-              <Cell key={h}>{siByHole.get(h)}</Cell>
+            {holeNums.map((h, hi) => (
+              <Cell key={h} style={hi === 0 ? firstHole : undefined}>{siByHole.get(h)}</Cell>
             ))}
-            <Cell> </Cell>
-            <Cell> </Cell>
+            <Cell style={colRule}> </Cell>
+            <Cell style={colRule}> </Cell>
           </div>
         )}
-        {/* par band (scorecard only) */}
+        {/* par band (scorecard only) — shaded across the whole row */}
         {scores && (
-          <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, background: "#F6F7F9", color: MUTED }}>
-            <Cell left tint>Par</Cell>
-            {holeNums.map((h) => (
-              <Cell key={h} tint>{parByHole.get(h)}</Cell>
+          <div
+            className="grid items-center text-[10px]"
+            style={{ gridTemplateColumns: template, background: "#E8EBF0", color: MUTED, borderTop: "1px solid #E1E4E9", borderBottom: "1px solid #E1E4E9" }}
+          >
+            <Cell left>Par</Cell>
+            {holeNums.map((h, hi) => (
+              <Cell key={h} style={hi === 0 ? firstHole : undefined}>{parByHole.get(h)}</Cell>
             ))}
-            <Cell tint>{parTotal}</Cell>
-            <Cell tint> </Cell>
+            <Cell style={colRule}>{parTotal}</Cell>
+            <Cell style={colRule}> </Cell>
           </div>
         )}
         {/* a row per player */}
@@ -583,18 +609,22 @@ function AllPlayersNine({
             <div
               key={p.id}
               className="grid items-center"
-              style={{ gridTemplateColumns: template, borderTop: idx === 0 ? undefined : `1px solid ${BORDER}` }}
+              style={{
+                gridTemplateColumns: template,
+                borderTop: scores ? "1px solid #ECEEF1" : idx === 0 ? undefined : `1px solid ${BORDER}`,
+              }}
             >
               <Cell left>
                 <span className="truncate text-[11px] font-semibold" style={{ color: INK }}>{p.name}</span>
               </Cell>
-              {holeNums.map((h) => {
+              {holeNums.map((h, hi) => {
+                const holeStyle = hi === 0 ? firstHole : undefined;
                 const i = idxByHole.get(h);
                 if (mode === "money") {
                   const m = i === undefined ? 0 : p.money.total[i];
                   moneyTot += m;
                   return (
-                    <Cell key={h}>
+                    <Cell key={h} style={holeStyle}>
                       <span className="text-[9px] font-bold tabular-nums" style={{ color: m === 0 ? "#C4C8CE" : moneyColor(m) }}>
                         {ledgerFmt(m)}
                       </span>
@@ -609,12 +639,12 @@ function AllPlayersNine({
                   anyScore = true;
                 }
                 return (
-                  <Cell key={h}>
+                  <Cell key={h} style={holeStyle}>
                     <ScoreCell score={s} par={c?.par ?? 4} pop={c?.pop ?? 0} />
                   </Cell>
                 );
               })}
-              <Cell>
+              <Cell style={colRule}>
                 {mode === "money" ? (
                   <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(moneyTot) }}>{ledgerFmt(moneyTot, "—")}</span>
                 ) : (
@@ -622,7 +652,7 @@ function AllPlayersNine({
                 )}
               </Cell>
               {scores && (
-                <Cell>
+                <Cell style={colRule}>
                   <span className="text-[11px] font-bold tabular-nums" style={{ color: BLUE }}>
                     {anyScore ? formatToPar(toPar) : "–"}
                   </span>
