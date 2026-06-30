@@ -53,9 +53,9 @@ const config: Config = {
         serif: ["Georgia", "Cambria", "'Times New Roman'", "Times", "serif"],
       },
       backgroundImage: {
-        // Header underline strip — HACKERTRACKER green → cyan → blue
+        // Header underline strip — rainbow (NBC-peacock) gradient
         "signature-gradient":
-          "linear-gradient(90deg, #19E59A 0%, #22D3EE 50%, #3B78FF 100%)",
+          "linear-gradient(90deg,#fcb711,#f37021,#cc004c,#6460aa,#0089d0,#0db14b)",
       },
       keyframes: {
         "fade-in": {
