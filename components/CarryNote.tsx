@@ -34,22 +34,25 @@ export function CarryNote({ carry, hammer }: { carry: HoleCarry; hammer: number 
       {carry.orig > 0 && (
         <Pill color={NORMAL}>
           <Handshake className="h-4 w-4" strokeWidth={2.25} />
-          {money(carry.orig)} carry
+          {money(carry.orig)}
         </Pill>
       )}
       {carry.press > 0 && (
         <Pill color={PRESS}>
           <Zap className="h-4 w-4" strokeWidth={2.25} />
-          {money(carry.press)} carry
+          {money(carry.press)}
         </Pill>
       )}
       {carry.hammer > 0 && (
         <Pill color={HAMMER}>
           <Hammer className="h-4 w-4" strokeWidth={2.25} />
           {hammer >= 2 && <Hammer className="-ml-2 h-4 w-4" strokeWidth={2.25} />}
-          {money(carry.hammer)} carry
+          {money(carry.hammer)}
         </Pill>
       )}
+      <span className="text-sm font-semibold tabular-nums text-text-primary">
+        Total — {money(carry.total)} carries
+      </span>
     </div>
   );
 }
