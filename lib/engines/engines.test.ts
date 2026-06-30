@@ -14,6 +14,7 @@ import { computeStroke } from "./strokeplay";
 import { computeElevens } from "./elevens";
 import { computeNassau } from "./nassau";
 import { withPresses, pressRange, combinedHoleResults } from "./press";
+import { segBreakdown } from "./breakdown";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -792,5 +793,46 @@ describe("six-six-six", () => {
     expect(ledger.d).toBe(-10);
     expect(stats.a.holesWon).toBe(2);
     expect(sum(ledger)).toBe(0);
+  });
+});
+
+// ── Bet breakdown (Card tab matrix) ─────────────────────────────────────────
+
+describe("bet breakdown", () => {
+  it("splits original / press / hammer by nine and reconciles to the total", () => {
+    const entries = [
+      // Front nine, hammered: a wins a doubled skin.
+      { hole: 1, wolfId: "", mode: "2v2" as const, grossScores: { a: 3, b: 4, c: 5, d: 5 }, hammer: 1 },
+      // Front nine: a press starts on hole 5 (covers 5–9); b wins the hole.
+      { hole: 5, wolfId: "", mode: "2v2" as const, grossScores: { a: 4, b: 3, c: 5, d: 5 }, pressSeg: true },
+      // Back nine: a wins a plain skin.
+      { hole: 12, wolfId: "", mode: "2v2" as const, grossScores: { a: 3, b: 4, c: 5, d: 5 } },
+    ];
+    const round = makeRound("skins", scratch(["a", "b", "c", "d"]), entries, {
+      skinValue: 2,
+      carryover: false,
+    });
+    const b = segBreakdown(round, (r) => computeSkins(r));
+    const total = withPresses(round, computeSkins).ledger;
+
+    for (const id of ["a", "b", "c", "d"]) {
+      // Columns reconcile to the player's full total, both summed and per nine.
+      expect(b.orig[id] + b.press[id] + b.hammer[id]).toBeCloseTo(total[id]);
+      const segSum = b.segs[id].reduce((s, sg) => s + sg.orig + sg.press + sg.hammer, 0);
+      expect(segSum).toBeCloseTo(total[id]);
+    }
+    // Every column is its own zero-sum bet.
+    expect(sum(b.orig)).toBeCloseTo(0);
+    expect(sum(b.press)).toBeCloseTo(0);
+    expect(sum(b.hammer)).toBeCloseTo(0);
+    expect(b.hasHammer).toBe(true);
+    // The hammer money lives on the front nine (hole 1), not the back.
+    const front = (id: string) => b.segs[id][0];
+    const back = (id: string) => b.segs[id][1];
+    expect(front("a").hammer).not.toBe(0);
+    expect(back("a").hammer).toBe(0);
+    // The press money lives on the front nine (holes 5–9) too.
+    expect(front("b").press).not.toBe(0);
+    expect(back("b").press).toBe(0);
   });
 });

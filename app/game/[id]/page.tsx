@@ -9,15 +9,15 @@ import { liveSummary, genericSummary } from "@/lib/live";
 import { computeGame, computeBaseGame, gameTypeOf } from "@/lib/gametypes";
 import {
   computePressMoney,
-  decomposePresses,
   eachPress,
   hasAnyPress,
   pressSubRound,
   RunResult,
 } from "@/lib/engines/press";
+import { segBreakdown } from "@/lib/engines/breakdown";
 import { nassauPressLedger } from "@/lib/engines/nassau";
 import { ScoresTab } from "@/components/ScoresTab";
-import { CardTab, CardComputation, PressViews } from "@/components/CardTab";
+import { CardTab, CardComputation, BetMatrix } from "@/components/CardTab";
 import { ScoreEntryTab } from "@/components/ScoreEntryTab";
 import { FieldHammerScores } from "@/components/fieldhammer/FieldHammerScores";
 import { PillTabs, PillTab } from "@/components/PillTabs";
@@ -106,66 +106,46 @@ export default function GamePage() {
     return null;
   }, [isWolf, computation, gameResult, round]);
 
-  // Once a press is in play, split the Card tab into original / press / total
-  // money views (same card format, different ledger). null = no presses.
-  const cardViews: PressViews | undefined = useMemo(() => {
-    if (!round || !hasAnyPress(round)) return undefined;
+  // Per-player bet-breakdown matrix for the Card tab: Front/Back (+Overall for
+  // Nassau) split into Original / Press / Hammer / Total. Presentation only —
+  // segBreakdown re-runs the engine with hammers off to isolate hammer money,
+  // and reuses the press decomposition; nothing in settlement changes.
+  const betMatrix: BetMatrix | undefined = useMemo(() => {
+    if (!round) return undefined;
     const gt = gameTypeOf(round);
-    if (gt === "elevens") return undefined;
     const ids = round.players.map((p) => p.id);
+    const hasPress = hasAnyPress(round);
 
-    const makeViews = (
-      base: RunResult,
-      press: RunResult,
-      pops: Record<string, Record<number, number>>,
-      stats?: Record<string, Record<string, number | string>>
-    ): PressViews => {
-      const totalLedger: Record<string, number> = {};
-      for (const pid of ids)
-        totalLedger[pid] = (base.ledger[pid] ?? 0) + (press.ledger[pid] ?? 0);
-      const pressByHole = new Map(press.holeResults.map((r) => [r.hole, r.deltas]));
-      const totalResults = base.holeResults.map((hr) => {
-        const pr = pressByHole.get(hr.hole) ?? {};
-        const deltas: Record<string, number> = {};
-        for (const pid of ids) deltas[pid] = (hr.deltas[pid] ?? 0) + (pr[pid] ?? 0);
-        return {
-          hole: hr.hole,
-          deltas,
-          decided: ids.some((pid) => deltas[pid] !== 0),
-          detail: hr.detail,
-        };
-      });
-      return {
-        original: { ledger: base.ledger, pops, results: base.holeResults, stats },
-        press: { ledger: press.ledger, pops, results: press.holeResults, stats },
-        total: { ledger: totalLedger, pops, results: totalResults, stats },
-      };
-    };
-
-    // Nassau settles its own presses; split via its stats (no per-hole money).
+    // Nassau: per-segment money lives in the engine stats; never hammered.
     if (gt === "nassau" && gameResult) {
-      const zeroHoles = round.course.holes.map((h) => ({
-        hole: h.number,
-        deltas: Object.fromEntries(ids.map((id) => [id, 0])),
-        decided: false,
-        detail: "",
-      }));
-      const ledgerFrom = (key: string) =>
-        Object.fromEntries(
-          ids.map((id) => [id, Number(gameResult.stats[id]?.[key] ?? 0)])
-        );
-      const pops = gameResult.pops;
-      const stats = gameResult.stats;
-      return {
-        original: { ledger: ledgerFrom("original"), pops, results: zeroHoles, stats },
-        press: { ledger: ledgerFrom("press"), pops, results: zeroHoles, stats },
-        total: { ledger: gameResult.ledger, pops, results: zeroHoles, stats },
-      };
+      const player: BetMatrix["player"] = {};
+      for (const id of ids) {
+        const s = gameResult.stats[id] ?? {};
+        player[id] = {
+          segs: [
+            { label: "Front", orig: Number(s.front ?? 0), press: Number(s.pressFront ?? 0), hammer: 0 },
+            { label: "Back", orig: Number(s.back ?? 0), press: Number(s.pressBack ?? 0), hammer: 0 },
+            { label: "Overall", orig: Number(s.overall ?? 0), press: Number(s.pressOverall ?? 0), hammer: 0 },
+          ],
+          orig: Number(s.original ?? 0),
+          press: Number(s.press ?? 0),
+          hammer: 0,
+        };
+      }
+      return { hasPress, hasHammer: false, player };
     }
 
-    // Wolf: re-run computeRound over each press's holes.
-    if (isWolf && computation) {
-      const run = (r: Round): RunResult => {
+    // 11s: settles on a single net total — no nine split, no press, no hammer.
+    if (gt === "elevens" && gameResult) {
+      const player: BetMatrix["player"] = {};
+      for (const id of ids)
+        player[id] = { segs: [], orig: gameResult.ledger[id] ?? 0, press: 0, hammer: 0 };
+      return { hasPress: false, hasHammer: false, player };
+    }
+
+    // Per-hole games (including Wolf): isolate hammer + press by nine.
+    const run = (r: Round): RunResult => {
+      if (isWolf) {
         const c = computeRound(r);
         return {
           ledger: c.ledger,
@@ -173,26 +153,19 @@ export default function GamePage() {
             hole: rr.hole,
             deltas: rr.deltas,
             decided: rr.winner !== "push",
-            detail: rr.winner !== "push" ? "" : "Push",
+            detail: "",
           })),
         };
-      };
-      const { base, press } = decomposePresses(round, run);
-      return makeViews(base, press, computation.pops);
-    }
-
-    // Other per-hole games: re-run the raw engine over each press's holes.
-    if (gameResult) {
-      const run = (r: Round): RunResult => {
-        const g = computeBaseGame(r);
-        return { ledger: g.ledger, holeResults: g.holeResults };
-      };
-      const { base, press } = decomposePresses(round, run);
-      return makeViews(base, press, gameResult.pops, gameResult.stats);
-    }
-
-    return undefined;
-  }, [round, isWolf, computation, gameResult]);
+      }
+      const g = computeBaseGame(r);
+      return { ledger: g.ledger, holeResults: g.holeResults };
+    };
+    const b = segBreakdown(round, run);
+    const player: BetMatrix["player"] = {};
+    for (const id of ids)
+      player[id] = { segs: b.segs[id], orig: b.orig[id], press: b.press[id], hammer: b.hammer[id] };
+    return { hasPress, hasHammer: b.hasHammer, player };
+  }, [round, isWolf, gameResult]);
 
   // Trendline data: the total money (base + press) as it would settle after each
   // played hole, in hole order — for the Card tab's bottom trendline.
@@ -342,7 +315,7 @@ export default function GamePage() {
           <CardTab
             round={round}
             computation={cardComp}
-            views={cardViews}
+            betMatrix={betMatrix}
             trend={cardTrend}
             pressCards={pressCards}
           />

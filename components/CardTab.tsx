@@ -33,11 +33,24 @@ export interface CardComputation {
 
 // When a round has presses, the Card tab splits into three money views — the
 // original bet, the press bets, and their total — each a full CardComputation.
-export interface PressViews {
-  original: CardComputation;
-  press: CardComputation;
-  total: CardComputation;
+// Per-player bet breakdown for the standings matrix: each player's money split
+// into Original / Press / Hammer by nine (Front/Back, +Overall for Nassau), plus
+// the column grand totals. hasPress/hasHammer drive which columns + tabs show.
+export interface BetMatrix {
+  hasPress: boolean;
+  hasHammer: boolean;
+  player: Record<
+    string,
+    {
+      segs: { label: string; orig: number; press: number; hammer: number }[];
+      orig: number;
+      press: number;
+      hammer: number;
+    }
+  >;
 }
+
+export type BetTab = "total" | "original" | "press" | "hammer";
 
 // One individual press as its own card view (for the Press tab's sub-selector).
 export interface PressCardView {
@@ -54,8 +67,6 @@ const STRONG = "rgba(22,24,29,0.20)";
 const POS = "#2BC081";
 const NEG = "#F0524B";
 const PRIMARY = "#2D78FF";
-
-const RANK_RAIL = ["border-l-rank-1", "border-l-rank-2", "border-l-rank-3", "border-l-rank-4"];
 
 // Concentric rings = strokes from par (cap 4). Under = circles, over = squares.
 function ringStyle(rel: number): CSSProperties {
@@ -443,70 +454,116 @@ function GrossNetToggle({
   );
 }
 
-// ── Nassau standings entry: ONE cohesive card per player. The always-visible
-//    top shows the player (rank + name + to-par) and their Front/Back/Overall ×
-//    Original/Press/Total breakdown matrix (Total column tinted, totals row at
-//    the bottom). Tapping the card expands that player's hole-by-hole scorecard
-//    below — same card, no separate box. Columns: Total always; Original/Press
-//    only when the round has presses. Values come straight from the Nassau
-//    engine's per-player stats — presentation only.
-const NASSAU_TINT = "#EEF2FB"; // shaded Total column
+// ── Universal standings entry: ONE cohesive card per player. The always-visible
+//    top shows the player (rank + name + to-par) and their bet-breakdown matrix —
+//    rows Front/Back (+Overall for Nassau), columns Original/Press/Hammer/Total
+//    (Total column tinted, totals row at the bottom). Tapping the card expands
+//    that player's hole-by-hole scorecard below. `cols` is the visible column set
+//    (chosen by the bet tab); `scoresOnly` forces the expand to scores. Values
+//    come from the bet-breakdown matrix — presentation only.
+const TINT = "#EEF2FB"; // shaded Total column
 
-function NassauLedgerBar({
+type Col = "orig" | "press" | "hammer" | "total";
+const COL_LABEL: Record<Col, string> = {
+  orig: "Original",
+  press: "Press",
+  hammer: "Hammer",
+  total: "Total",
+};
+interface SegRow {
+  label: string;
+  orig: number;
+  press: number;
+  hammer: number;
+}
+
+function BetBreakdownBar({
   round,
   computation,
   player,
   rankIndex,
   scoreNet,
-  stats,
-  hasPress,
+  segs,
+  orig,
+  press,
+  hammer,
+  cols,
+  scoresOnly,
+  pressHoles,
 }: {
   round: Round;
   computation: CardComputation;
   player: Player;
   rankIndex: number;
   scoreNet: boolean;
-  stats: Record<string, number | string> | undefined;
-  hasPress: boolean;
+  segs: SegRow[];
+  orig: number;
+  press: number;
+  hammer: number;
+  cols: Col[];
+  scoresOnly: boolean;
+  pressHoles?: Set<number> | null;
 }) {
   const [open, setOpen] = useState(false);
-  const num = (k: string) => Number(stats?.[k] ?? 0);
-  const segs = [
-    { label: "Front", orig: num("front"), press: num("pressFront") },
-    { label: "Back", orig: num("back"), press: num("pressBack") },
-    { label: "Overall", orig: num("overall"), press: num("pressOverall") },
-  ];
-  const origTot = segs.reduce((s, r) => s + r.orig, 0);
-  const pressTot = segs.reduce((s, r) => s + r.press, 0);
-  const grand = origTot + pressTot;
+  const [view, setView] = useState<"scores" | "money">("scores");
+  const touch = useRef<{ x: number; y: number } | null>(null);
 
-  // Blue to-par badge — full round, following the shared gross/net toggle.
+  // Blue to-par badge — over the visible holes, following the gross/net toggle.
   const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
   let toPar: number | null = null;
   for (const e of round.entries) {
+    if (pressHoles && !pressHoles.has(e.hole)) continue;
     const g = e.grossScores[player.id];
     if (typeof g === "number") {
       const s = scoreNet ? g - (computation.pops[player.id]?.[e.hole] ?? 0) : g;
       toPar = (toPar ?? 0) + s - (parByHole.get(e.hole) ?? s);
     }
   }
+  // 11s: net-to-par over the player's chosen holes, shown as a blue badge.
+  const chosen =
+    gameTypeOf(round) === "elevens" ? elevenChosen(round, computation, player.id) : null;
 
-  const cols: ("orig" | "press" | "total")[] = hasPress ? ["orig", "press", "total"] : ["total"];
-  const head: Record<string, string> = { orig: "Original", press: "Press", total: "Total" };
-  const template = `minmax(0,1fr) ${cols.map(() => "4.25rem").join(" ")}`;
   const colorOf = (v: number) => (v > 0 ? POS : v < 0 ? NEG : MUTED);
   const fmt = (v: number) => (v === 0 ? "—" : formatMoney(v));
-  const segVal = (r: { orig: number; press: number }, c: string) =>
-    c === "orig" ? r.orig : c === "press" ? r.press : r.orig + r.press;
-  const totVal = (c: string) => (c === "orig" ? origTot : c === "press" ? pressTot : grand);
+  const segVal = (r: SegRow, c: Col) =>
+    c === "orig"
+      ? r.orig
+      : c === "press"
+        ? r.press
+        : c === "hammer"
+          ? r.hammer
+          : r.orig + r.press + r.hammer;
+  const totVal = (c: Col) =>
+    c === "orig"
+      ? orig
+      : c === "press"
+        ? press
+        : c === "hammer"
+          ? hammer
+          : orig + press + hammer;
+  const template = `minmax(0,1fr) ${cols.map((c) => (c === "total" ? "4.5rem" : "3.6rem")).join(" ")}`;
+  const mode = scoresOnly ? "scores" : view;
+
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    const s = touch.current;
+    touch.current = null;
+    if (!s) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - s.x;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(t.clientY - s.y)) return;
+    if (scoresOnly) return;
+    setView(dx < 0 ? "money" : "scores");
+  }
 
   return (
     <div
       className="overflow-hidden rounded-xl border border-l-4 border-card-border bg-card-bg"
       style={{ borderLeftColor: PRIMARY }}
     >
-      {/* Always-visible: player + the breakdown matrix. Tapping toggles the
-          hole-by-hole scorecard below. */}
       <button onClick={() => setOpen((v) => !v)} className="block w-full text-left">
         {/* rank + name + to-par + chevron */}
         <div className="flex items-center gap-2 px-3 pb-1.5 pt-2.5">
@@ -517,13 +574,18 @@ function NassauLedgerBar({
           <span className="shrink-0 font-serif text-sm font-bold tabular-nums text-primary">
             {toPar === null ? "–" : formatToPar(toPar)}
           </span>
+          {chosen?.any && (
+            <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-on-dark">
+              {formatToPar(chosen.toPar ?? 0)}
+            </span>
+          )}
           <ChevronDown
             className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`}
           />
         </div>
 
         {/* breakdown matrix */}
-        <div className="pb-2.5">
+        <div className="overflow-x-auto pb-2.5">
           {/* column headers */}
           <div
             className="grid text-[9px] font-semibold uppercase tracking-wide text-text-faint"
@@ -533,15 +595,15 @@ function NassauLedgerBar({
             {cols.map((c) => (
               <div
                 key={c}
-                className="px-2 py-1 text-right"
-                style={{ background: c === "total" ? NASSAU_TINT : undefined }}
+                className="px-1.5 py-1 text-right"
+                style={{ background: c === "total" ? TINT : undefined }}
               >
-                {head[c]}
+                {COL_LABEL[c]}
               </div>
             ))}
           </div>
 
-          {/* Front / Back / Overall rows */}
+          {/* per-segment rows */}
           {segs.map((r) => (
             <div key={r.label} className="grid items-center" style={{ gridTemplateColumns: template }}>
               <div className="px-3 py-1 text-left text-xs font-semibold" style={{ color: INK }}>
@@ -552,8 +614,8 @@ function NassauLedgerBar({
                 return (
                   <div
                     key={c}
-                    className="px-2 py-1 text-right text-xs tabular-nums"
-                    style={{ color: colorOf(v), background: c === "total" ? NASSAU_TINT : undefined }}
+                    className="px-1.5 py-1 text-right text-xs tabular-nums"
+                    style={{ color: colorOf(v), background: c === "total" ? TINT : undefined }}
                   >
                     {fmt(v)}
                   </div>
@@ -576,10 +638,10 @@ function NassauLedgerBar({
               return (
                 <div
                   key={c}
-                  className={`px-2 py-1.5 text-right tabular-nums ${
+                  className={`px-1.5 py-1.5 text-right tabular-nums ${
                     corner ? "text-sm font-extrabold" : "text-xs font-bold"
                   }`}
-                  style={{ color: colorOf(v), background: corner ? NASSAU_TINT : undefined }}
+                  style={{ color: colorOf(v), background: corner ? TINT : undefined }}
                 >
                   {fmt(v)}
                 </div>
@@ -592,145 +654,34 @@ function NassauLedgerBar({
       {/* Expanded: the player's hole-by-hole scorecard (same card). */}
       {open && (
         <div
-          className="animate-fade-in"
-          style={{ background: SURFACE2, borderTop: `1px solid ${STRONG}`, padding: "8px 10px 10px" }}
-        >
-          <div
-            style={{
-              borderTop: `0.5px solid ${HAIRLINE}`,
-              borderBottom: `0.5px solid ${HAIRLINE}`,
-              padding: "5px 4px 6px",
-              marginBottom: "6px",
-            }}
-          >
-            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode="scores" net={scoreNet} />
-          </div>
-          <div
-            style={{
-              borderTop: `0.5px solid ${HAIRLINE}`,
-              borderBottom: `0.5px solid ${HAIRLINE}`,
-              padding: "5px 4px 6px",
-            }}
-          >
-            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode="scores" net={scoreNet} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Ledger badge that drops down to the player's detailed scorecard ─────────
-function LedgerCard({
-  round,
-  computation,
-  player,
-  rankIndex,
-  scoreNet,
-  pressHoles,
-}: {
-  round: Round;
-  computation: CardComputation;
-  player: Player;
-  rankIndex: number; // 0-based; tied players share the same index
-  scoreNet: boolean; // shared gross/net toggle (next to the Standings header)
-  pressHoles?: Set<number> | null; // press view: limit the scorecard to these
-}) {
-  const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"scores" | "money">("scores");
-  const touch = useRef<{ x: number; y: number } | null>(null);
-
-  const money = computation.ledger[player.id] ?? 0;
-  const parByHole = new Map(round.course.holes.map((h) => [h.number, h.par]));
-  let toPar: number | null = null;
-  for (const e of round.entries) {
-    // Press view: the +/- only counts the pressed holes (like the money does).
-    if (pressHoles && !pressHoles.has(e.hole)) continue;
-    const g = e.grossScores[player.id];
-    if (typeof g === "number") {
-      // Blue +/- follows the shared gross/net toggle (net = gross − pops).
-      const s = scoreNet ? g - (computation.pops[player.id]?.[e.hole] ?? 0) : g;
-      toPar = (toPar ?? 0) + s - (parByHole.get(e.hole) ?? s);
-    }
-  }
-  const moneyColor = money > 0 ? "text-positive" : money < 0 ? "text-negative" : "text-text-muted";
-  const gt = gameTypeOf(round);
-  const isElevens = gt === "elevens";
-  const isNassau = gt === "nassau";
-  // Total/segment games carry no per-hole money, so their dropdown is scores-only.
-  const scoresOnly = isElevens || isNassau;
-  // 11s: net-to-par over the player's chosen holes, shown as a blue badge.
-  const chosen = isElevens ? elevenChosen(round, computation, player.id) : null;
-
-  function onTouchStart(e: React.TouchEvent) {
-    const t = e.touches[0];
-    touch.current = { x: t.clientX, y: t.clientY };
-  }
-  function onTouchEnd(e: React.TouchEvent) {
-    const s = touch.current;
-    touch.current = null;
-    if (!s) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - s.x;
-    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(t.clientY - s.y)) return;
-    if (scoresOnly) return; // scores-only — no money view to swipe to
-    setView(dx < 0 ? "money" : "scores");
-  }
-
-  return (
-    <div
-      className={`overflow-hidden rounded-xl border border-l-4 border-card-border bg-card-bg ${RANK_RAIL[Math.min(rankIndex, 3)]}`}
-    >
-      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-3 px-3 py-3 text-left">
-        <span className="w-4 text-center font-serif text-base font-bold text-text-faint">{rankIndex + 1}</span>
-        <span className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="truncate font-semibold">{player.name || "Unnamed"}</span>
-          <span className="shrink-0 font-serif text-sm font-bold tabular-nums text-primary">
-            {toPar === null ? "–" : formatToPar(toPar)}
-          </span>
-          {chosen?.any && (
-            <span className="shrink-0 rounded-md bg-primary px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-on-dark">
-              {formatToPar(chosen.toPar ?? 0)}
-            </span>
-          )}
-        </span>
-        <span className={`font-serif text-lg font-extrabold tabular-nums ${moneyColor}`}>
-          {formatMoney(money)}
-        </span>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {open && (
-        <div
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
           className="animate-fade-in"
           style={{ background: SURFACE2, borderTop: `1px solid ${STRONG}`, padding: "8px 10px 10px", touchAction: "pan-y" }}
         >
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {(scoresOnly ? (["scores"] as const) : (["scores", "money"] as const)).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => setView(v)}
-                  className={`text-[10px] font-bold uppercase tracking-wide ${
-                    view === v ? "text-text-primary" : "text-text-faint"
-                  }`}
-                >
-                  {v === "scores" ? "Scores" : "Money"}
-                </button>
-              ))}
+          {!scoresOnly && (
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {(["scores", "money"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className={`text-[10px] font-bold uppercase tracking-wide ${
+                      view === v ? "text-text-primary" : "text-text-faint"
+                    }`}
+                  >
+                    {v === "scores" ? "Scores" : "Money"}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[10px] text-text-faint">swipe ←→</span>
             </div>
-            {!scoresOnly && <span className="text-[10px] text-text-faint">swipe ←→</span>}
-          </div>
-
+          )}
           <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px", marginBottom: "6px" }}>
-            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode={view} net={scoreNet} activeHoles={pressHoles ?? undefined} />
+            <PlayerNine round={round} computation={computation} player={player} from={1} label="OUT" mode={mode} net={scoreNet} activeHoles={pressHoles ?? undefined} />
           </div>
           <div style={{ borderTop: `0.5px solid ${HAIRLINE}`, borderBottom: `0.5px solid ${HAIRLINE}`, padding: "5px 4px 6px" }}>
-            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode={view} net={scoreNet} activeHoles={pressHoles ?? undefined} />
+            <PlayerNine round={round} computation={computation} player={player} from={10} label="IN" mode={mode} net={scoreNet} activeHoles={pressHoles ?? undefined} />
           </div>
         </div>
       )}
@@ -741,13 +692,13 @@ function LedgerCard({
 export function CardTab({
   round,
   computation,
-  views,
+  betMatrix,
   trend,
   pressCards,
 }: {
   round: Round;
   computation: CardComputation;
-  views?: PressViews;
+  betMatrix?: BetMatrix;
   trend?: Record<string, number>[]; // money after each played hole (trendline)
   pressCards?: PressCardView[]; // individual presses (Press-tab sub-selector)
 }) {
@@ -758,51 +709,88 @@ export function CardTab({
   // Shared gross/net toggle for the standings dropdowns — flipping it in any one
   // player's scorecard updates the blue +/- on every standings row.
   const [scoreNet, setScoreNet] = useState(false);
-  // When there are presses, switch the whole card between the original bet, the
-  // press bets, and their total. Without presses there's just the one view.
-  const [bet, setBet] = useState<"total" | "press" | "original">("total");
+  // The bet lens: Total shows the whole matrix; Original/Press/Hammer narrow it to
+  // that one column and show scores in the scorecards.
+  const [bet, setBet] = useState<BetTab>("total");
   // Within the Press tab: "total" (all presses) or a single press by index.
   const [pressView, setPressView] = useState<number | "total">("total");
 
-  const onePress =
-    bet === "press" && typeof pressView === "number" ? pressCards?.[pressView] : undefined;
-  const active = onePress ? onePress.comp : views ? views[bet] : computation;
-
-  const standings = [...round.players].sort(
-    (a, b) => (active.ledger[b.id] ?? 0) - (active.ledger[a.id] ?? 0)
-  );
-  // 11s and Nassau are total/segment games — money isn't a per-hole thing, so
-  // skip the by-hole Ledger grid (standings + totals carry the money).
   const gt = gameTypeOf(round);
-  const showLedger = gt !== "elevens" && gt !== "nassau";
-  // Nassau shows each player a Front/Back/Overall × Original/Press/Total matrix
-  // as its own block under that player's standings row. Press columns only when
-  // the round actually has presses.
-  const isNassau = gt === "nassau";
-  const hasPress = !!views;
+  const noHoleMoney = gt === "elevens" || gt === "nassau";
+  const hasPress = !!betMatrix?.hasPress;
+  const hasHammer = !!betMatrix?.hasHammer;
 
-  // On the Press view, the full scorecard shows but only the pressed holes carry
-  // data — a single press scopes to its own holes, "total" to all pressed holes.
+  // Tabs that apply, in order: Total always; Original when anything is broken out;
+  // Press / Hammer only when that bet exists in the round.
+  const betTabs = (["total", "original", "press", "hammer"] as const).filter(
+    (b) =>
+      b === "total" ||
+      (b === "original" && (hasPress || hasHammer)) ||
+      (b === "press" && hasPress) ||
+      (b === "hammer" && hasHammer)
+  );
+  const activeBet: BetTab = betTabs.includes(bet) ? bet : "total";
+  const showToggle = betTabs.length > 1;
+
+  // Visible matrix columns for the active tab. Only show a column if that bet
+  // exists; with no press and no hammer it's just the Total column.
+  const cols: Col[] =
+    activeBet === "original"
+      ? ["orig"]
+      : activeBet === "press"
+        ? ["press"]
+        : activeBet === "hammer"
+          ? ["hammer"]
+          : [
+              ...(hasPress || hasHammer ? (["orig"] as Col[]) : []),
+              ...(hasPress ? (["press"] as Col[]) : []),
+              ...(hasHammer ? (["hammer"] as Col[]) : []),
+              "total" as Col,
+            ];
+
+  // Non-total tabs (and total/segment games) show scores in the scorecard.
+  const scoresOnly = activeBet !== "total" || noHoleMoney;
+
+  // Press tab: optionally scope the scorecards to one press's holes.
+  const onePress =
+    activeBet === "press" && typeof pressView === "number" ? pressCards?.[pressView] : undefined;
   const activeHoles =
-    bet === "press" ? (onePress ? onePress.holes : pressedHoles(round)) : undefined;
+    activeBet === "press" ? (onePress ? onePress.holes : pressedHoles(round)) : undefined;
+
+  // Standings sort by the active column's per-player total.
+  const colTotal = (pid: string) => {
+    const pm = betMatrix?.player[pid];
+    if (!pm) return computation.ledger[pid] ?? 0;
+    const grand = pm.orig + pm.press + pm.hammer;
+    return activeBet === "original"
+      ? pm.orig
+      : activeBet === "press"
+        ? pm.press
+        : activeBet === "hammer"
+          ? pm.hammer
+          : grand;
+  };
+  const standings = [...round.players].sort((a, b) => colTotal(b.id) - colTotal(a.id));
+
+  // By-hole money ledger: only on the Total tab of per-hole games.
+  const showLedger = !noHoleMoney && activeBet === "total";
 
   return (
     <div className="space-y-6">
-      {/* Original / press / total — each a full card view of that bet. Pinned
-          just below the Scores/Card tab bar so it stays reachable while scrolling. */}
-      {views && (
+      {/* Bet lens: Total / Original / Press / Hammer. Pinned below the tab bar. */}
+      {showToggle && (
         <div
           className="sticky z-10 -mx-3 bg-page-bg px-3 py-2"
           style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
         >
           <div className="flex gap-1 rounded-full bg-divider p-1 text-sm font-semibold">
-            {(["total", "press", "original"] as const).map((b) => (
+            {betTabs.map((b) => (
               <button
                 key={b}
                 onClick={() => setBet(b)}
-                style={bet === b ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
+                style={activeBet === b ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
                 className={`flex-1 rounded-full py-1.5 capitalize transition ${
-                  bet === b ? "bg-white text-accent-on-light" : "text-text-faint"
+                  activeBet === b ? "bg-white text-accent-on-light" : "text-text-faint"
                 }`}
               >
                 {b}
@@ -811,7 +799,7 @@ export function CardTab({
           </div>
 
           {/* Press tab: pick the combined presses or an individual press. */}
-          {bet === "press" && pressCards && pressCards.length > 0 && (
+          {activeBet === "press" && pressCards && pressCards.length > 0 && (
             <div className="mt-2 flex gap-1 overflow-x-auto">
               <button
                 onClick={() => setPressView("total")}
@@ -850,49 +838,43 @@ export function CardTab({
         </div>
       )}
 
-      {/* Standings → tap a player to drop down their full scorecard */}
+      {/* Standings → one bar per player: breakdown matrix up top, tap to expand */}
       <section className="space-y-2">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold">Standings</h2>
           <GrossNetToggle net={scoreNet} onChange={setScoreNet} />
         </div>
         {standings.map((p) => {
-          const m = active.ledger[p.id] ?? 0;
+          const t = colTotal(p.id);
           // Tie-aware rank: 1 + number of players strictly ahead.
-          const rankIndex = standings.filter(
-            (q) => (active.ledger[q.id] ?? 0) > m
-          ).length;
-          return isNassau ? (
-            <NassauLedgerBar
+          const rankIndex = standings.filter((q) => colTotal(q.id) > t).length;
+          const pm = betMatrix?.player[p.id] ?? { segs: [], orig: 0, press: 0, hammer: 0 };
+          return (
+            <BetBreakdownBar
               key={p.id}
               round={round}
-              computation={active}
+              computation={computation}
               player={p}
               rankIndex={rankIndex}
               scoreNet={scoreNet}
-              stats={active.stats?.[p.id]}
-              hasPress={hasPress}
-            />
-          ) : (
-            <LedgerCard
-              key={p.id}
-              round={round}
-              computation={active}
-              player={p}
-              rankIndex={rankIndex}
-              scoreNet={scoreNet}
+              segs={pm.segs}
+              orig={pm.orig}
+              press={pm.press}
+              hammer={pm.hammer}
+              cols={cols}
+              scoresOnly={scoresOnly}
               pressHoles={activeHoles}
             />
           );
         })}
       </section>
 
-      {/* By-hole money ledger (hidden for 11s — see showLedger) */}
+      {/* By-hole money ledger (Total tab, per-hole games only) */}
       {showLedger && (
         <section className="space-y-3">
           <h2 className="text-xl font-bold">Ledger</h2>
-          <BigNine round={round} computation={active} holes={front} title="Front" mode="money" activeHoles={activeHoles} />
-          <BigNine round={round} computation={active} holes={back} title="Back" mode="money" activeHoles={activeHoles} />
+          <BigNine round={round} computation={computation} holes={front} title="Front" mode="money" activeHoles={activeHoles} />
+          <BigNine round={round} computation={computation} holes={back} title="Back" mode="money" activeHoles={activeHoles} />
         </section>
       )}
 
@@ -902,10 +884,10 @@ export function CardTab({
           <h2 className="text-xl font-bold">Scorecard</h2>
           <GrossNetToggle net={net} onChange={(n) => setScoreView(n ? "net" : "gross")} />
         </div>
-        <BigNine round={round} computation={active} holes={front} title="Front" mode="scores" net={net} activeHoles={activeHoles} />
-        <BigNine round={round} computation={active} holes={back} title="Back" mode="scores" net={net} activeHoles={activeHoles} />
+        <BigNine round={round} computation={computation} holes={front} title="Front" mode="scores" net={net} activeHoles={activeHoles} />
+        <BigNine round={round} computation={computation} holes={back} title="Back" mode="scores" net={net} activeHoles={activeHoles} />
         {/* Totals listed as part of the scorecard: name · total · +/- · money */}
-        <Totals round={round} computation={active} net={net} holes={activeHoles} />
+        <Totals round={round} computation={computation} net={net} holes={activeHoles} />
       </section>
 
       {/* Money trendline over the holes played. */}
