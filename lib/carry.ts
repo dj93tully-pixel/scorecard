@@ -4,9 +4,17 @@
 // HAMMER amplification — so the card can list them (grey / orange / purple) plus
 // a total. Presentation only; reads the engines' carry, never changes settlement.
 
-import { Round, computeRound } from "./wolf";
+import { Round, PlayerId, computeRound } from "./wolf";
 import { computeBaseGame, gameTypeOf } from "./gametypes";
-import { pressSubRound, pressRange, pressScopesOf, pushedFrom, carryChain } from "./engines/press";
+import {
+  pressSubRound,
+  pressRange,
+  pressScopesOf,
+  pushedFrom,
+  carryChain,
+  decomposePresses,
+  RunResult,
+} from "./engines/press";
 
 export interface HoleCarry {
   orig: number; // normal (un-hammered base) carry
@@ -92,6 +100,46 @@ export function carryByHole(round: Round): Map<number, HoleCarry> {
     const orig = r.hole === end ? 0 : noByHole.get(r.hole) ?? 0;
     const hammer = r.hole === end ? 0 : (r.carry ?? 0) - orig;
     const press = pressCarry.get(r.hole) ?? 0;
+    const total = orig + hammer + press;
+    if (total > 0) out.set(r.hole, { orig, hammer, press, total });
+  }
+  return out;
+}
+
+// Per-hole WON amount — what the winning side collects on a DECIDED hole, split
+// the same way as the carry (normal / press / hammer). Mirrors carryByHole but
+// sums the positive per-hole deltas instead of the carry rolling forward, so the
+// hole card can show the win as grey / orange / purple badges. Segment/total
+// games (Nassau, 11s) settle off the per-hole board, so they get no entries.
+export function wonByHole(round: Round): Map<number, HoleCarry> {
+  const out = new Map<number, HoleCarry>();
+  const gt = gameTypeOf(round);
+  if (gt === "nassau" || gt === "elevens") return out;
+
+  // Amount collected by the winners on a hole = sum of the positive deltas.
+  const won = (deltas: Record<PlayerId, number>) =>
+    Object.values(deltas).reduce((s, v) => (v > 0 ? s + v : s), 0);
+
+  const run = (r: Round): RunResult => {
+    if (gt === "wolf") {
+      const c = computeRound(r);
+      return {
+        ledger: c.ledger,
+        holeResults: c.results.map((rr) => ({ hole: rr.hole, deltas: rr.deltas, decided: rr.winner !== "push" })),
+      };
+    }
+    const g = computeBaseGame(r);
+    return { ledger: g.ledger, holeResults: g.holeResults };
+  };
+
+  const withH = run(round);
+  const noByHole = new Map(run(noHammer(round)).holeResults.map((r) => [r.hole, r.deltas]));
+  const pressByHole = new Map(decomposePresses(round, run).press.holeResults.map((r) => [r.hole, r.deltas]));
+
+  for (const r of withH.holeResults) {
+    const orig = won(noByHole.get(r.hole) ?? {});
+    const hammer = Math.max(0, won(r.deltas) - orig); // extra the hammer adds
+    const press = won(pressByHole.get(r.hole) ?? {});
     const total = orig + hammer + press;
     if (total > 0) out.set(r.hole, { orig, hammer, press, total });
   }

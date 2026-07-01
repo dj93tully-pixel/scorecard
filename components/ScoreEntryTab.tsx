@@ -10,8 +10,8 @@ import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
-import { carryByHole, HoleCarry } from "@/lib/carry";
-import { CarryNote } from "./CarryNote";
+import { carryByHole, wonByHole, HoleCarry } from "@/lib/carry";
+import { CarryNote, WonNote } from "./CarryNote";
 import { PlayerJunkIcons } from "./JunkChips";
 import { holeHighlight } from "@/lib/holeHighlight";
 import { GameHoleResult } from "@/lib/engines/types";
@@ -27,6 +27,7 @@ function HoleCard({
   hole,
   note,
   carry,
+  won,
   pickCounts,
   segCover,
   fullCover,
@@ -37,6 +38,7 @@ function HoleCard({
   hole: number;
   note?: GameHoleResult;
   carry?: HoleCarry; // push-carry split: normal / press / hammer
+  won?: HoleCarry; // won-amount split (decided hole): normal / press / hammer
   pickCounts?: Record<string, number>; // 11s: each player's running picks (of 11)
   segCover?: number; // 9/6-presses covering this hole (for the ⚡9 ×N label)
   fullCover?: number; // 18-presses covering this hole (for the ⚡18 ×N label)
@@ -306,13 +308,13 @@ function HoleCard({
         })}
       </div>
 
-      {/* Push/carry note when nobody won the hole. When money carries, it's split
-          into the normal bet (grey), the press (orange) and the hammer (purple),
-          with a total beneath. Total/segment games (11s, Nassau) carry no note. */}
+      {/* Bet note. A decided hole shows the won amount split into normal (grey),
+          press (orange) and hammer (purple) badges; a push shows the same split
+          carrying forward. Total/segment games (11s, Nassau) carry no note. */}
       {(() => {
         if (noHoleMoney) return null;
         const anyWinner = note && players.some((p) => (note.deltas[p.id] ?? 0) > 0);
-        if (anyWinner) return null;
+        if (anyWinner) return won ? <WonNote won={won} hammer={hammer} /> : null;
         if (carry) return <CarryNote carry={carry} hammer={hammer} />;
         if (!note || note.detail === "—") return null;
         return <div className="mt-2 text-right text-sm text-text-muted">{note.detail}</div>;
@@ -358,8 +360,10 @@ export function ScoreEntryTab({
     return { ledger: g.ledger, holeResults: g.holeResults };
   });
   const resultByHole = new Map(combined.map((r) => [r.hole, r]));
-  // Per-hole carry split (normal / press / hammer) for the push-carry note.
+  // Per-hole carry split (normal / press / hammer) for the push-carry note, and
+  // the matching won-amount split for a decided hole.
   const carries = carryByHole(round);
+  const wons = wonByHole(round);
   // Per-scope press coverage per hole — for the ⚡9/⚡18 ×N labels + highlight.
   const pressCovers = pressCoverByHole(round);
   const isElevens = gameTypeOf(round) === "elevens";
@@ -405,6 +409,7 @@ export function ScoreEntryTab({
           hole={h.number}
           note={resultByHole.get(h.number)}
           carry={carries.get(h.number)}
+          won={wons.get(h.number)}
           pickCounts={pickCounts}
           segCover={pressCovers.get(h.number)?.seg ?? 0}
           fullCover={pressCovers.get(h.number)?.full ?? 0}

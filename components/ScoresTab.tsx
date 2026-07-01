@@ -15,8 +15,8 @@ import {
   computeRound,
 } from "@/lib/wolf";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
-import { carryByHole, HoleCarry } from "@/lib/carry";
-import { CarryNote } from "./CarryNote";
+import { carryByHole, wonByHole, HoleCarry } from "@/lib/carry";
+import { CarryNote, WonNote } from "./CarryNote";
 import { PlayerJunkIcons } from "./JunkChips";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
@@ -32,6 +32,7 @@ function HoleBox({
   hole,
   deltas,
   carry,
+  won,
   segCover,
   fullCover,
   upsertEntry,
@@ -41,6 +42,7 @@ function HoleBox({
   hole: number;
   deltas: Record<string, number>; // per-hole money (base + press)
   carry?: HoleCarry; // push-carry split: normal / press / hammer
+  won?: HoleCarry; // won-amount split (decided hole): normal / press / hammer
   segCover?: number; // 9-presses covering this hole (for the ⚡9 ×N label)
   fullCover?: number; // 18-presses covering this hole (for the ⚡18 ×N label)
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
@@ -340,15 +342,14 @@ function HoleBox({
                 {result.carriedToNext > 0 ? `Push — $${result.carriedToNext} carries` : "Push"}
               </span>
             )
+          ) : won ? (
+            <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+              <WonNote won={won} hammer={hammer} label={result.winner === "A" ? "Wolf" : "Field"} />
+              {forfeit && <span className="text-sm font-medium text-text-muted">· forfeit</span>}
+            </div>
           ) : (
             <span className="font-bold">
-              {hammer > 0 && (
-                <span className="text-text-muted">{2 ** hammer}× · </span>
-              )}
-              {result.winner === "A" ? "Wolf" : "Field"} wins{" "}
-              <span className="text-positive">
-                ${Object.values(deltas).reduce((s, v) => (v > 0 ? s + v : s), 0)}
-              </span>
+              {result.winner === "A" ? "Wolf" : "Field"} wins
               {forfeit && <span className="font-medium text-text-muted"> · forfeit</span>}
             </span>
           )}
@@ -407,8 +408,10 @@ export function ScoresTab({
     }).map((r) => [r.hole, r.deltas])
   );
   const pressCovers = pressCoverByHole(round);
-  // Per-hole carry split (normal / press / hammer) for the push-carry note.
+  // Per-hole carry split (normal / press / hammer) for the push-carry note, and
+  // the matching won-amount split for a decided hole.
   const carries = carryByHole(round);
+  const wons = wonByHole(round);
 
   return (
     <div className="space-y-3">
@@ -443,6 +446,7 @@ export function ScoresTab({
           hole={h.number}
           deltas={moneyByHole.get(h.number) ?? {}}
           carry={carries.get(h.number)}
+          won={wons.get(h.number)}
           segCover={pressCovers.get(h.number)?.seg ?? 0}
           fullCover={pressCovers.get(h.number)?.full ?? 0}
           upsertEntry={upsertEntry}
