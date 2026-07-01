@@ -152,7 +152,9 @@ function Nine({
   pickShade?: string; // 11s: this player's pick-dot shade
   hideMoney?: boolean; // 11s: drop the per-hole money row
 }) {
-  const template = `34px repeat(${cells.length}, minmax(0,1fr)) 34px`;
+  // Trailing OUT/IN total column is wider than the hole columns so a big 9-hole
+  // money tally (e.g. hammered "+$240") doesn't overflow and overlap.
+  const template = `30px repeat(${cells.length}, minmax(0,1fr)) 52px`;
   const on = (h: number) => !activeHoles || activeHoles.has(h);
   const scoreOf = (c: PlayerResults["holes"][number]) => (net ? c.net : c.gross);
   const live = cells.filter((x) => on(x.cell.hole));
@@ -168,7 +170,7 @@ function Nine({
 
   return (
     <div className="overflow-x-auto">
-      <div style={{ minWidth: 320 }}>
+      <div style={{ minWidth: 340 }}>
         {/* hole numbers */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
           <HoleHead n={label} />
