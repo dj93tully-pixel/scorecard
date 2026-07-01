@@ -465,6 +465,26 @@ describe("money — hammer", () => {
     expect(results[1].stakeApplied).toBe(10); // base 5 + carried 5
   });
 
+  it("does not decide a hole until every player has scored (no partial-score win)", () => {
+    // Lone wolf vs 3 field. Wolf 3, two field members 4, but the 3rd field
+    // player (who could have the low ball) hasn't entered a score yet.
+    const round = makeRound(
+      [
+        {
+          hole: 5,
+          wolfId: "a",
+          mode: "lone",
+          grossScores: { a: 3, b: 4, c: 4 }, // d missing
+        },
+      ],
+      { carryover: true, stake: 5 }
+    );
+    const { results, ledger } = computeRound(round);
+    expect(results[0].winner).toBe("push"); // not everyone scored → undecided
+    expect(ledgerSum(ledger)).toBe(0);
+    for (const id of ["a", "b", "c", "d"]) expect(ledger[id]).toBe(0); // no money moved
+  });
+
   it("an incomplete hole (e.g. a press toggled before scores) does not carry its stake", () => {
     const round = makeRound(
       [

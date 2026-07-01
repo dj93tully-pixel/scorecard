@@ -400,6 +400,11 @@ export function computeRound(round: Round): RoundComputation {
 
     const teamABest = bestNet(teamA, net);
     const teamBBest = bestNet(teamB, net);
+    // A hole is only decided once EVERY player has holed out. bestNet ignores
+    // blank balls, so a partial hole could otherwise resolve on the entered
+    // scores and move money before a still-to-putt player (who might have the
+    // low ball) is in — matching how the other engines wait for all scores.
+    const allScored = playerIds.every((id) => typeof net[id] === "number");
 
     // Hammer multiplies the whole value in play on the hole (base + carryover):
     // 0 → 1×, 1 → 2× (hammer), 2 → 4× (double hammer).
@@ -414,8 +419,8 @@ export function computeRound(round: Round): RoundComputation {
       winner = "B"; // wolf side conceded → field wins regardless of scores
     } else if (entry.forfeit === "B") {
       winner = "A"; // field conceded → wolf side wins regardless of scores
-    } else if (teamABest === null || teamBBest === null) {
-      winner = "push"; // incomplete hole — nothing decided yet
+    } else if (!allScored || teamABest === null || teamBBest === null) {
+      winner = "push"; // incomplete hole — not everyone has scored yet
     } else if (teamABest < teamBBest) {
       winner = "A";
     } else if (teamBBest < teamABest) {
@@ -438,11 +443,11 @@ export function computeRound(round: Round): RoundComputation {
     // Carryover bookkeeping.
     let carriedToNext = 0;
     if (winner === "push") {
-      // An INCOMPLETE hole (a press/hammer toggled before scores are in, so a
-      // team has no ball) isn't really a push — it hasn't been played. It must
-      // not add its own stake to the carry (that would inflate later holes'
-      // chips); it just passes any carry already rolling straight through.
-      const incomplete = teamABest === null || teamBBest === null;
+      // An INCOMPLETE hole (not everyone has scored yet — e.g. a press/hammer
+      // toggled before scores are in) isn't really a push; it hasn't been
+      // played. It must not add its own stake to the carry (that would inflate
+      // later holes' chips); it just passes any carry already rolling through.
+      const incomplete = !allScored;
       if (incomplete) {
         carriedToNext = carried;
       } else if (settings.carryover) {
