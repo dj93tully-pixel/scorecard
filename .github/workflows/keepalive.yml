@@ -1,0 +1,29 @@
+name: Keep Supabase awake
+
+# Supabase's free tier pauses a project after ~7 days with no activity. This runs
+# one trivial query every few days so the project never pauses during long idle
+# stretches. The URL + publishable (anon) key are public by design — they ship to
+# every browser and are gated by RLS — so it's fine to keep them here.
+#
+# Note: GitHub disables scheduled workflows after 60 days of NO repo activity
+# (no commits). For gaps longer than that, also add an external pinger against
+# /api/ping. You can run this manually anytime from the Actions tab.
+
+on:
+  schedule:
+    - cron: "0 12 */3 * *" # ~every 3 days at 12:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST
+        run: |
+          URL="https://zlvghrxoyfuxsqnqgqdo.supabase.co/rest/v1/games?select=id&limit=1"
+          KEY="sb_publishable_tEI5o1VVU8Y5cS6dEuXLpA_ZoCrcdsO"
+          code=$(curl -fsS -o /dev/null -w "%{http_code}" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            "$URL")
+          echo "Supabase responded $code"
