@@ -438,7 +438,14 @@ export function computeRound(round: Round): RoundComputation {
     // Carryover bookkeeping.
     let carriedToNext = 0;
     if (winner === "push") {
-      if (settings.carryover) {
+      // An INCOMPLETE hole (a press/hammer toggled before scores are in, so a
+      // team has no ball) isn't really a push — it hasn't been played. It must
+      // not add its own stake to the carry (that would inflate later holes'
+      // chips); it just passes any carry already rolling straight through.
+      const incomplete = teamABest === null || teamBBest === null;
+      if (incomplete) {
+        carriedToNext = carried;
+      } else if (settings.carryover) {
         // Roll the accumulated pot forward. A lone/blind wolf doubles (or
         // blind-multiplies) the bet, so a pushed lone hole carries that larger
         // amount. The HAMMER only rolls forward when hammerCarry is on; otherwise

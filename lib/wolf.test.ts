@@ -464,6 +464,22 @@ describe("money — hammer", () => {
     expect(results[0].carriedToNext).toBe(5); // base only, hammer not carried
     expect(results[1].stakeApplied).toBe(10); // base 5 + carried 5
   });
+
+  it("an incomplete hole (e.g. a press toggled before scores) does not carry its stake", () => {
+    const round = makeRound(
+      [
+        // Hole 1: a press was toggled but no scores entered yet — not played.
+        { hole: 1, wolfId: "a", mode: "2v2", partnerId: "b", grossScores: {}, pressSeg: true },
+        // Hole 2: fully scored, team A wins.
+        { hole: 2, wolfId: "a", mode: "2v2", partnerId: "b", grossScores: { a: 4, b: 4, c: 6, d: 6 } },
+      ],
+      { carryover: true, stake: 5 }
+    );
+    const { results } = computeRound(round);
+    expect(results[0].winner).toBe("push"); // incomplete
+    expect(results[0].carriedToNext).toBe(0); // nothing carries from an unplayed hole
+    expect(results[1].stakeApplied).toBe(5); // base only — no phantom carry-in
+  });
 });
 
 describe("money — forfeit", () => {
