@@ -112,70 +112,61 @@ function HoleBox({
           </div>
         </div>
 
-        {/* Press + hammer + forfeit toggles. ⚡9 ×N = overlapping presses cover it. */}
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
+        {/* Press + hammer + forfeit toggles. ⚡9 ×N = overlapping presses cover it.
+            The hammer is one button that cycles none → ×2 → ×4 to save a slot. */}
+        <div className="flex flex-wrap items-center justify-end gap-1">
           <button
             onClick={() => commit({ pressSeg: !pressSeg })}
             aria-label="Press — new bet on the rest of this nine"
             style={pressSeg ? { background: PRESS, borderColor: PRESS } : undefined}
-            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+            className={`flex items-center gap-0.5 rounded-lg border px-1.5 py-1.5 text-[13px] font-bold ${
               pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
-            <Zap className="h-[15px] w-[15px]" />{segLabel}{pressSeg && segN > 1 ? `×${segN}` : ""}
+            <Zap className="h-[14px] w-[14px]" />{segLabel}{pressSeg && segN > 1 ? `×${segN}` : ""}
           </button>
           {hole <= 9 && (
             <button
               onClick={() => commit({ pressFull: !pressFull })}
               aria-label="Press — new bet on the rest of the round"
               style={pressFull ? { background: PRESS, borderColor: PRESS } : undefined}
-              className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+              className={`flex items-center gap-0.5 rounded-lg border px-1.5 py-1.5 text-[13px] font-bold ${
                 pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
               }`}
             >
-              <Zap className="h-[15px] w-[15px]" />18{pressFull && fullN > 1 ? `×${fullN}` : ""}
+              <Zap className="h-[14px] w-[14px]" />18{pressFull && fullN > 1 ? `×${fullN}` : ""}
             </button>
           )}
           <button
-            onClick={() => commit({ hammer: hammer === 1 ? 0 : 1 })}
-            aria-label="Hammer — double the hole"
-            style={hammer === 1 ? { background: HAMMER, borderColor: HAMMER } : undefined}
-            className={`flex items-center rounded-lg border px-2 py-1.5 ${
-              hammer === 1 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            onClick={() => commit({ hammer: (hammer + 1) % 3 })}
+            aria-label="Hammer — tap to cycle none, hammer (×2), double (×4)"
+            style={hammer > 0 ? { background: HAMMER, borderColor: HAMMER } : undefined}
+            className={`flex items-center rounded-lg border px-1.5 py-1.5 ${
+              hammer > 0 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
-            <Hammer className="h-[15px] w-[15px]" />
-          </button>
-          <button
-            onClick={() => commit({ hammer: hammer === 2 ? 0 : 2 })}
-            aria-label="Double hammer — quadruple the hole"
-            style={hammer === 2 ? { background: HAMMER, borderColor: HAMMER } : undefined}
-            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
-              hammer === 2 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
-            }`}
-          >
-            <Hammer className="h-[15px] w-[15px]" />
-            <Hammer className="h-[15px] w-[15px]" />
+            <Hammer className="h-[14px] w-[14px]" />
+            {hammer === 2 && <Hammer className="-ml-1 h-[14px] w-[14px]" />}
           </button>
           <button
             onClick={() => commit({ forfeit: forfeit === "A" ? undefined : "A" })}
             aria-label="Wolf forfeits"
             style={forfeit === "A" ? { background: FORFEIT, borderColor: FORFEIT } : undefined}
-            className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[13px] font-medium ${
+            className={`flex items-center gap-0.5 rounded-lg border px-1.5 py-1.5 text-[13px] font-medium ${
               forfeit === "A" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
-            <Flag className="h-[15px] w-[15px]" />W
+            <Flag className="h-[14px] w-[14px]" />W
           </button>
           <button
             onClick={() => commit({ forfeit: forfeit === "B" ? undefined : "B" })}
             aria-label="Field forfeits"
             style={forfeit === "B" ? { background: FORFEIT, borderColor: FORFEIT } : undefined}
-            className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[13px] font-medium ${
+            className={`flex items-center gap-0.5 rounded-lg border px-1.5 py-1.5 text-[13px] font-medium ${
               forfeit === "B" ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
-            <Flag className="h-[15px] w-[15px]" />F
+            <Flag className="h-[14px] w-[14px]" />F
           </button>
         </div>
       </div>
