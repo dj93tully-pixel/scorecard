@@ -52,12 +52,11 @@ export function SetupTab({
   const gameType = round.gameType ?? "wolf";
   const isWolf = gameType === "wolf";
   // Carry/hammer-carry rules only apply to the per-hole carry games. Total/points
-  // and segment games (stroke, points-Stableford, 11s, Nassau, Field Hammer) hide them.
+  // and segment games (stroke, points-Stableford, 11s, Nassau) hide them.
   const showCarry = ![
     "vegas",
     "stroke",
     "elevens",
-    "fieldhammer",
     "nassau",
     "stableford",
     "modifiedstableford",
@@ -505,7 +504,6 @@ export function SetupTab({
             gameType === "stableford" ||
             gameType === "modifiedstableford" ||
             gameType === "elevens" ||
-            gameType === "fieldhammer" ||
             gameType === "nassau") && (
             <Field
               label={
@@ -513,11 +511,9 @@ export function SetupTab({
                   ? "$ per stroke"
                   : gameType === "stableford" || gameType === "modifiedstableford"
                     ? "$ per point"
-                    : gameType === "fieldhammer"
-                      ? "Base stake — $/pairing"
-                      : gameType === "nassau"
-                        ? "$ per bet (F/B/18)"
-                        : "Stake — $/hole"
+                    : gameType === "nassau"
+                      ? "$ per bet (F/B/18)"
+                      : "Stake — $/hole"
               }
             >
               <input

@@ -13,7 +13,6 @@ import { computeSixes } from "./engines/sixes";
 import { computeStroke } from "./engines/strokeplay";
 import { computeStableford, computeModifiedStableford } from "./engines/stableford";
 import { computeElevens } from "./engines/elevens";
-import { computeFieldHammer } from "./engines/fieldhammer";
 import { computeNassau } from "./engines/nassau";
 import { withPresses } from "./engines/press";
 import { splitTeams } from "./engines/teams";
@@ -129,16 +128,6 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     statColumns: [{ key: "picks", label: "Picks", kind: "number" }],
     defaultSettings: { stake: 1 },
   },
-  fieldhammer: {
-    id: "fieldhammer",
-    label: "Hammerskin",
-    blurb: "Round-robin skins; tap hammer (×2), double (×4), or forfeit per player.",
-    players: { min: 3, max: 6 },
-    hasTeams: false,
-    rotatesTeams: false,
-    statColumns: [],
-    defaultSettings: { stake: 5, carryover: false },
-  },
   nassau: {
     id: "nassau",
     label: "Nassau",
@@ -165,7 +154,6 @@ export const GAME_TYPE_LIST: GameTypeMeta[] = [
   GAME_TYPES.stableford,
   GAME_TYPES.modifiedstableford,
   GAME_TYPES.elevens,
-  GAME_TYPES.fieldhammer,
   GAME_TYPES.nassau,
 ];
 
@@ -197,8 +185,6 @@ export function computeBaseGame(round: Round): GameResult {
       return computeStableford(round);
     case "modifiedstableford":
       return computeModifiedStableford(round);
-    case "fieldhammer":
-      return computeFieldHammer(round);
     case "elevens":
       return computeElevens(round);
     case "nassau":
@@ -226,8 +212,6 @@ export function computeGame(round: Round): GameResult {
       return withPresses(round, computeStableford);
     case "modifiedstableford":
       return withPresses(round, computeModifiedStableford);
-    case "fieldhammer":
-      return withPresses(round, computeFieldHammer);
     // 11s has no press; Nassau settles its own (match play per segment).
     case "elevens":
       return computeElevens(round);
