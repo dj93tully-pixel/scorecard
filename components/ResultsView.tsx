@@ -373,6 +373,7 @@ function Detail({
   const sumMoney = (type: Filter) => player.money[type].reduce((s, v) => s + v, 0);
   const liveHole = (h: number) => !activeHoles || activeHoles.has(h);
   const parTotal = player.holes.filter((c) => liveHole(c.hole)).reduce((s, c) => s + c.par, 0);
+  const popsTotal = player.holes.filter((c) => liveHole(c.hole)).reduce((s, c) => s + c.pop, 0);
   const scoreTotal = player.holes
     .filter((c) => liveHole(c.hole))
     .reduce((s, c) => s + ((net ? c.net : c.gross) ?? 0), 0);
@@ -440,9 +441,10 @@ function Detail({
         </div>
         <div
           className="grid items-center text-xs font-bold tabular-nums"
-          style={{ gridTemplateColumns: "1fr auto auto auto", background: TOTAL_TINT, borderTop: `1px solid ${BORDER}`, padding: "6px 10px", gap: "14px" }}
+          style={{ gridTemplateColumns: popsTotal > 0 ? "1fr auto auto auto auto" : "1fr auto auto auto", background: TOTAL_TINT, borderTop: `1px solid ${BORDER}`, padding: "6px 10px", gap: "14px" }}
         >
           <span style={{ color: INK }}>Total</span>
+          {popsTotal > 0 && <span style={{ color: BLUE }}>Pops ({popsTotal})</span>}
           <span style={{ color: MUTED }}>Par {parTotal}</span>
           <span style={{ color: INK }}>Score {scoreTotal || "–"}</span>
           <span style={{ color: moneyColor(grand) }}>{dollars(grand)}</span>
@@ -984,6 +986,18 @@ export function ResultsView({ results }: { results: ResultsData }) {
         <h2 className="text-xl font-bold">Scorecard</h2>
         <ScorecardNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} tees={results.tees} />
         <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} tees={results.tees} />
+        {(() => {
+          const withPops = standings
+            .map((p) => ({ name: p.name, pops: p.holes.reduce((s, c) => s + c.pop, 0) }))
+            .filter((x) => x.pops > 0);
+          if (withPops.length === 0) return null;
+          return (
+            <p className="px-1 text-xs" style={{ color: MUTED }}>
+              <span style={{ color: BLUE, fontWeight: 700 }}>* Pops:</span>{" "}
+              {withPops.map((x) => `${x.name} (${x.pops})`).join(", ")}
+            </p>
+          );
+        })()}
       </section>
 
       {/* Side bets (junk) breakdown per player. */}
