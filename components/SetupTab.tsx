@@ -154,6 +154,22 @@ export function SetupTab({
   function setPopsMode(direct: boolean) {
     setSetting("handicapMode", direct ? "direct" : "offLow");
   }
+  // Carryover ties gates the three carry sub-toggles. Turning it off forces them
+  // off too, so they can never look "still on" while their prerequisite is off.
+  function setCarryover(on: boolean) {
+    updateRound((r) => ({
+      ...r,
+      settings: on
+        ? { ...r.settings, carryover: true }
+        : {
+            ...r.settings,
+            carryover: false,
+            hammerCarry: false,
+            pressCarryover: false,
+            pressHammerCarry: false,
+          },
+    }));
+  }
 
   // ── Side bets (junk) ──
   function setJunkOn(id: string, on: boolean) {
@@ -613,7 +629,7 @@ export function SetupTab({
               <input
                 type="checkbox"
                 checked={settings.carryover}
-                onChange={(e) => setSetting("carryover", e.target.checked)}
+                onChange={(e) => setCarryover(e.target.checked)}
                 className="h-6 w-6 accent-[#354CA1]"
               />
             </Field>
