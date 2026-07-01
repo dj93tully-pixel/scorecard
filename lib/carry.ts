@@ -163,26 +163,36 @@ function baseStakeInPlay(round: Round): Map<number, number> {
   const gt = gameTypeOf(round);
   const stake = round.settings.stake ?? 0;
   const m = new Map<number, number>();
+  const nums = round.course.holes.map((h) => h.number).sort((a, b) => a - b);
+  const multByHole = new Map(
+    round.entries.map((e) => [e.hole, 2 ** Math.max(0, Math.floor(e.hammer ?? 0))])
+  );
 
+  // Walk EVERY hole in order so a carry from a prior push lands on the next hole
+  // even before that hole has an entry — the chips update the moment the earlier
+  // hole resolves, not when you tap into the later one.
   if (gt === "wolf") {
-    for (const r of computeRound(round).results) m.set(r.hole, r.stakeApplied);
+    const byHole = new Map(computeRound(round).results.map((r) => [r.hole, r]));
+    let carriedIn = 0;
+    for (const h of nums) {
+      const r = byHole.get(h);
+      if (r) {
+        m.set(h, r.stakeApplied); // engine value already folds in carry + hammer
+        carriedIn = r.carriedToNext;
+      } else {
+        m.set(h, (stake + carriedIn) * (multByHole.get(h) ?? 1));
+        carriedIn = 0; // the carry shows on this (next-to-play) hole, then stops
+      }
+    }
     return m;
   }
 
   const byHole = new Map(computeBaseGame(round).holeResults.map((r) => [r.hole, r]));
-  const multByHole = new Map(
-    round.entries.map((e) => [e.hole, 2 ** Math.max(0, Math.floor(e.hammer ?? 0))])
-  );
-  const nums = round.course.holes.map((h) => h.number).sort((a, b) => a - b);
   let carriedIn = 0;
   for (const h of nums) {
     const r = byHole.get(h);
-    if (!r) {
-      carriedIn = 0; // hole not scored yet — carry chain can't be known past here
-      continue;
-    }
     m.set(h, (stake + carriedIn) * (multByHole.get(h) ?? 1));
-    carriedIn = r.carry ?? 0; // this hole's carry-out becomes the next hole's carry-in
+    carriedIn = r?.carry ?? 0; // this hole's carry-out becomes the next hole's carry-in
   }
   return m;
 }
