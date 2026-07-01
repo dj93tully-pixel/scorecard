@@ -19,15 +19,22 @@ import { JUNK_TYPES, junkConfig } from "@/lib/junk";
 
 function Field({
   label,
+  hint,
   children,
 }: {
   label: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex items-center justify-between gap-3 py-2">
-      <span className="text-sm font-medium text-text-primary">{label}</span>
-      {children}
+    <label className="block py-2">
+      <span className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-text-primary">{label}</span>
+        {children}
+      </span>
+      {hint && (
+        <span className="mt-1 block max-w-[42ch] text-xs leading-snug text-text-muted">{hint}</span>
+      )}
     </label>
   );
 }
@@ -597,7 +604,10 @@ export function SetupTab({
             </>
           )}
           {showCarry && (
-            <Field label="Carryover ties">
+            <Field
+              label="Carryover ties"
+              hint="When a hole is tied (pushed), its money isn't voided — it rolls forward and is added onto the next hole someone wins."
+            >
               <input
                 type="checkbox"
                 checked={settings.carryover}
@@ -607,7 +617,10 @@ export function SetupTab({
             </Field>
           )}
           {showCarry && (
-            <Field label="Carryover hammered value">
+            <Field
+              label="Carryover hammered value"
+              hint="If the tied hole was hammered, roll forward the full doubled amount instead of just the base stake. (Only matters with Carryover ties on.)"
+            >
               <input
                 type="checkbox"
                 checked={settings.hammerCarry ?? false}
@@ -617,7 +630,10 @@ export function SetupTab({
             </Field>
           )}
           {showCarry && (
-            <Field label="Carryover ties into press bets">
+            <Field
+              label="Carryover ties into press bets"
+              hint="When you press right after a tie, the money carrying from that tie is also copied into the new press bet (it still stays in the main bet too). (Needs Carryover ties on.)"
+            >
               <input
                 type="checkbox"
                 checked={settings.pressCarryover ?? false}
@@ -627,7 +643,10 @@ export function SetupTab({
             </Field>
           )}
           {showCarry && (
-            <Field label="Carryover hammers into press bets">
+            <Field
+              label="Carryover hammers into press bets"
+              hint="That copied-in carry enters the press at its hammered (doubled) size instead of the base stake. (Needs Carryover ties into press bets on.)"
+            >
               <input
                 type="checkbox"
                 checked={settings.pressHammerCarry ?? false}
