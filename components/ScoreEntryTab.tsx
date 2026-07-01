@@ -116,7 +116,7 @@ function HoleCard({
         <div className="leading-tight">
           <div className="text-lg font-extrabold">Hole {hole}</div>
           <div className="text-xs text-text-muted">
-            Par {par ?? "–"} · Hcp {courseHole?.strokeIndex ?? "–"}
+            Par {par ?? "–"} ({courseHole?.strokeIndex ?? "–"})
           </div>
         </div>
 
