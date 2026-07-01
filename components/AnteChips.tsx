@@ -21,8 +21,8 @@ const amt = (v: number) => (Number.isInteger(v) ? `${v}` : v.toFixed(1));
 function Chip({ color, value }: { color: string; value: number }) {
   return (
     <span
-      className="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums text-white"
-      style={{ background: color }}
+      className="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums"
+      style={{ background: `${color}26`, color }}
     >
       {amt(value)}
     </span>

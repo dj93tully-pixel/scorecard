@@ -289,12 +289,7 @@ function HoleBox({
                     ))}
                   </span>
                 )}
-                {conceded && (
-                  <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none text-text-faint">
-                    conceded
-                  </span>
-                )}
-                {!conceded && <AnteChips ante={ante} />}
+                <AnteChips ante={ante} />
               </div>
 
               {/* Money won/lost this hole */}
@@ -357,7 +352,9 @@ function HoleBox({
           ) : (
             <span className="font-bold">
               {result.winner === "A" ? "Wolf" : "Field"} wins ${won?.total ?? Object.values(deltas).reduce((s, v) => (v > 0 ? s + v : s), 0)}
-              {forfeit && <span className="font-medium text-text-muted"> · forfeit</span>}
+              {forfeit && (
+                <span className="font-medium text-text-muted"> · {forfeit === "A" ? "Wolf" : "Field"} conceded</span>
+              )}
             </span>
           )}
         </div>
