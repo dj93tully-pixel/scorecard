@@ -740,10 +740,6 @@ export function SetupTab({
           })}
         </div>
       </section>
-
-      <p className="px-1 text-center text-xs text-text-faint">
-        Everything saves automatically to this device.
-      </p>
     </div>
   );
 }
