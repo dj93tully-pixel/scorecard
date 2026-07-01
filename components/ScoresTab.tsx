@@ -66,6 +66,10 @@ function HoleBox({
   const segN = segCover ?? 0;
   const fullN = fullCover ?? 0;
   const segLabel = "9"; // rest of this nine — bare number on the card (Card tab keeps F9/B9)
+  // Lone/blind multiply the whole hole (the wolf plays each opponent for N× the
+  // stake). Shown as a compact ×N beside the ante chips.
+  const anteMult =
+    mode === "blind" ? round.settings.blindMult : mode === "lone" ? round.settings.loneMult : 1;
 
   const base: HoleEntry = {
     hole,
@@ -261,7 +265,7 @@ function HoleBox({
                     ))}
                   </span>
                 )}
-                {ante && <AnteChips ante={ante} />}
+                {ante && <AnteChips ante={ante} mult={anteMult} />}
               </div>
 
               {/* Money won/lost this hole */}
