@@ -13,6 +13,7 @@ import { ChevronDown } from "lucide-react";
 import { ResultsData, PlayerResults, BetType, ResultTee } from "@/lib/results";
 import { formatToPar } from "@/lib/storage";
 import { SettleUp } from "./SettleUp";
+import { JunkIcon, hasJunkIcon } from "./JunkChips";
 
 const BLUE = "#3B78FF";
 const GREEN = "#16A06A";
@@ -824,18 +825,21 @@ function LedgerNine({
   );
 }
 
-// ── Side bets — one row per player listing the bets they won with counts
-//    (e.g. "Sandy 1 · Birdie 2") and their junk total. Settles into the main
-//    who-pays-whom below. ──────────────────────────────────────────────────────
+// ── Side bets — one row per player showing the bets that affect their payout as
+//    icons with counts, plus their junk total. Settles into the main who-pays-
+//    whom below. A holder bet (snake) only shows on whoever holds it at the end.
 function SideBets({ results }: { results: ResultsData }) {
   if (results.junkBets.length === 0) return null;
   const standings = [...results.players].sort((a, b) => b.junk - a.junk);
   const countsFor = (pid: string) =>
     results.junkBets
-      .map((bet) => ({
-        label: bet.label,
-        n: bet.events.filter((e) => e.players.includes(pid)).length,
-      }))
+      .map((bet) => {
+        // Holder bets (snake) settle only on the LAST trigger — earlier triggers
+        // by other players don't affect the payout, so count just the final one.
+        const relevant = bet.settle === "holder" ? bet.events.slice(-1) : bet.events;
+        const n = relevant.filter((e) => e.players.includes(pid)).length;
+        return { id: bet.id, label: bet.label, n };
+      })
       .filter((x) => x.n > 0);
 
   return (
@@ -850,15 +854,20 @@ function SideBets({ results }: { results: ResultsData }) {
               className="flex items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3"
               style={{ borderColor: BORDER }}
             >
-              <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
                 <span className="font-semibold" style={{ color: INK }}>
                   {p.name}
                 </span>
                 {counts.length > 0 ? (
-                  <span className="flex flex-wrap items-baseline gap-x-2 text-sm" style={{ color: MUTED }}>
+                  <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm" style={{ color: MUTED }}>
                     {counts.map((c) => (
-                      <span key={c.label} className="tabular-nums">
-                        {c.label} {c.n}
+                      <span key={c.id} className="inline-flex items-center gap-0.5 tabular-nums">
+                        {hasJunkIcon(c.id) ? (
+                          <JunkIcon id={c.id} className="h-[18px] w-[18px]" />
+                        ) : (
+                          <span>{c.label}</span>
+                        )}
+                        {c.n}
                       </span>
                     ))}
                   </span>

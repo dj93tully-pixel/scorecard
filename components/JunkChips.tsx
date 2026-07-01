@@ -66,6 +66,15 @@ const JUNK_ICON: Record<string, (p: IconProps) => React.JSX.Element> = {
   greenie: FlagIcon,
 };
 
+/** Whether a junk bet id has a dedicated glyph (the manual bets do). */
+export const hasJunkIcon = (id: string): boolean => id in JUNK_ICON;
+
+/** The glyph for a junk bet id, or null if it has none (e.g. birdie/eagle). */
+export function JunkIcon({ id, className }: { id: string; className?: string }) {
+  const Icon = JUNK_ICON[id];
+  return Icon ? <Icon className={className} /> : null;
+}
+
 export function PlayerJunkIcons({
   round,
   hole,
