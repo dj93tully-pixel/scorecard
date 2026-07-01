@@ -859,9 +859,13 @@ function SideBets({ results }: { results: ResultsData }) {
                   {p.name}
                 </span>
                 {counts.length > 0 ? (
-                  <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm" style={{ color: MUTED }}>
+                  <span className="flex flex-wrap items-center gap-1.5 text-sm" style={{ color: MUTED }}>
                     {counts.map((c) => (
-                      <span key={c.id} className="inline-flex items-center gap-0.5 tabular-nums">
+                      <span
+                        key={c.id}
+                        className="inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-semibold tabular-nums"
+                        style={{ borderColor: BORDER, background: "#F6F7F9" }}
+                      >
                         {hasJunkIcon(c.id) ? (
                           <JunkIcon id={c.id} className="h-[18px] w-[18px]" />
                         ) : (
