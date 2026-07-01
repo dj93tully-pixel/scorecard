@@ -96,9 +96,22 @@ function ringStyle(rel: number, ring: string = INK): React.CSSProperties {
 }
 
 // ── Score cell — concentric circles (under par) / squares (over par); 4+ over is
-//    a solid dark square. Text is blue when the player got a pop on the hole. ──
+//    a solid dark square. Text is blue when the player got a pop on the hole.
+//    Before a hole is scored, an upcoming pop shows as blue dot(s) (one per
+//    stroke) in place of the "–", so players see where/how many pops they get. ──
 function ScoreCell({ score, par, pop }: { score: number | null; par: number; pop: number }) {
-  if (score === null) return <span style={{ color: "#C4C8CE" }}>–</span>;
+  if (score === null) {
+    if (pop > 0) {
+      return (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+          {Array.from({ length: Math.min(pop, 4) }).map((_, i) => (
+            <span key={i} style={{ width: "5px", height: "5px", borderRadius: "50%", background: BLUE }} />
+          ))}
+        </span>
+      );
+    }
+    return <span style={{ color: "#C4C8CE" }}>–</span>;
+  }
   const rel = score - par;
   const base = {
     display: "inline-flex",
