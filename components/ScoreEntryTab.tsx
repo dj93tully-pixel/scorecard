@@ -12,7 +12,7 @@ import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from 
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
 import { carryByHole, HoleCarry } from "@/lib/carry";
 import { CarryNote } from "./CarryNote";
-import { JunkChips } from "./JunkChips";
+import { PlayerJunkIcons } from "./JunkChips";
 import { holeHighlight } from "@/lib/holeHighlight";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
@@ -292,13 +292,19 @@ function HoleCard({
                 }}
                 className="h-9 w-12 shrink-0 rounded-lg border border-card-border bg-card-bg text-center text-lg font-bold tabular-nums outline-none focus:border-primary"
               />
+
+              {/* Side bets (junk) tapped per player, to the right of the score. */}
+              <PlayerJunkIcons
+                round={round}
+                hole={hole}
+                playerId={p.id}
+                entry={existing}
+                onChange={(junk) => commit({ junk })}
+              />
             </div>
           );
         })}
       </div>
-
-      {/* Side bets (junk) tapped per player on this hole. */}
-      <JunkChips round={round} hole={hole} entry={existing} onChange={(junk) => commit({ junk })} />
 
       {/* Push/carry note when nobody won the hole. When money carries, it's split
           into the normal bet (grey), the press (orange) and the hammer (purple),

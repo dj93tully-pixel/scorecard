@@ -17,7 +17,7 @@ import {
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
 import { carryByHole, HoleCarry } from "@/lib/carry";
 import { CarryNote } from "./CarryNote";
-import { JunkChips } from "./JunkChips";
+import { PlayerJunkIcons } from "./JunkChips";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
 
@@ -315,13 +315,19 @@ function HoleBox({
                     : "border-card-border bg-card-bg focus:border-primary"
                 }`}
               />
+
+              {/* Side bets (junk) tapped per player, to the right of the score. */}
+              <PlayerJunkIcons
+                round={round}
+                hole={hole}
+                playerId={p.id}
+                entry={existing}
+                onChange={(junk) => commit({ junk })}
+              />
             </div>
           );
         })}
       </div>
-
-      {/* Side bets (junk) tapped per player on this hole. */}
-      <JunkChips round={round} hole={hole} entry={existing} onChange={(junk) => commit({ junk })} />
 
       {/* Result */}
       {result && (

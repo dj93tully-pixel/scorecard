@@ -824,6 +824,64 @@ function LedgerNine({
   );
 }
 
+// ── Side bets — one row per player listing the bets they won with counts
+//    (e.g. "Sandy 1 · Birdie 2") and their junk total. Settles into the main
+//    who-pays-whom below. ──────────────────────────────────────────────────────
+function SideBets({ results }: { results: ResultsData }) {
+  if (results.junkBets.length === 0) return null;
+  const standings = [...results.players].sort((a, b) => b.junk - a.junk);
+  const countsFor = (pid: string) =>
+    results.junkBets
+      .map((bet) => ({
+        label: bet.label,
+        n: bet.events.filter((e) => e.players.includes(pid)).length,
+      }))
+      .filter((x) => x.n > 0);
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-xl font-bold">Side bets</h2>
+      <div className="space-y-2">
+        {standings.map((p) => {
+          const counts = countsFor(p.id);
+          return (
+            <div
+              key={p.id}
+              className="flex items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3"
+              style={{ borderColor: BORDER }}
+            >
+              <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="font-semibold" style={{ color: INK }}>
+                  {p.name}
+                </span>
+                {counts.length > 0 ? (
+                  <span className="flex flex-wrap items-baseline gap-x-2 text-sm" style={{ color: MUTED }}>
+                    {counts.map((c) => (
+                      <span key={c.label} className="tabular-nums">
+                        {c.label} {c.n}
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="text-sm" style={{ color: MUTED }}>
+                    none
+                  </span>
+                )}
+              </span>
+              <span
+                className="shrink-0 font-serif text-base font-extrabold tabular-nums"
+                style={{ color: moneyColor(p.junk) }}
+              >
+                {money1(p.junk)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function ResultsView({ results }: { results: ResultsData }) {
   const standings = useMemo(
     () => [...results.players].sort((a, b) => b.grand - a.grand),
@@ -900,8 +958,11 @@ export function ResultsView({ results }: { results: ResultsData }) {
         <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} tees={results.tees} />
       </section>
 
-      {/* Who pays whom — the main game money only (side bets settle on their tab). */}
-      <SettleUp people={results.players.map((p) => ({ name: p.name, amount: p.grand }))} />
+      {/* Side bets (junk) breakdown per player. */}
+      <SideBets results={results} />
+
+      {/* Who pays whom — main game money + side bets combined. */}
+      <SettleUp people={results.players.map((p) => ({ name: p.name, amount: p.grand + p.junk }))} />
     </div>
   );
 }

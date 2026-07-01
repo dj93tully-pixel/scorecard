@@ -12,7 +12,6 @@ import { ScoresTab } from "@/components/ScoresTab";
 import { ResultsView } from "@/components/ResultsView";
 import { ScoreEntryTab } from "@/components/ScoreEntryTab";
 import { FieldHammerScores } from "@/components/fieldhammer/FieldHammerScores";
-import { SideBetsView } from "@/components/SideBetsView";
 import { PillTabs, PillTab } from "@/components/PillTabs";
 
 export default function GamePage() {
@@ -22,12 +21,12 @@ export default function GamePage() {
 
   const { game, round, loading, error, upsertEntry } = useGame(id);
   const { setHeader } = useHeader();
-  type Tab = "scores" | "card" | "junk";
+  type Tab = "scores" | "card";
   const [tab, setTab] = useState<Tab>("scores");
 
   // Remember each tab's own scroll position so switching tabs starts at that
   // tab's top by default, but returning to a tab you'd scrolled restores it.
-  const scrollByTab = useRef<Record<string, number>>({ scores: 0, card: 0, junk: 0 });
+  const scrollByTab = useRef<Record<string, number>>({ scores: 0, card: 0 });
   function switchTab(next: Tab) {
     if (next === tab) return;
     scrollByTab.current[tab] = window.scrollY; // save the outgoing tab
@@ -60,11 +59,9 @@ export default function GamePage() {
   // split by bet type. Re-reads the engines — changes no settlement logic.
   const results = useMemo(() => (round ? buildResults(round) : null), [round]);
 
-  const hasJunk = !!round?.settings.junk?.length;
   const tabs: PillTab[] = [
     { id: "scores", label: "Score" },
     { id: "card", label: "Cards" },
-    ...(hasJunk ? [{ id: "junk", label: "Side bets" } as PillTab] : []),
   ];
 
   // Drive the global header: game name + back + ticker. Editing lives only in
@@ -124,7 +121,6 @@ export default function GamePage() {
             <ScoreEntryTab round={round} upsertEntry={upsertEntry} />
           ))}
         {tab === "card" && results && <ResultsView results={results} />}
-        {tab === "junk" && hasJunk && results && <SideBetsView results={results} />}
       </div>
     </div>
   );
