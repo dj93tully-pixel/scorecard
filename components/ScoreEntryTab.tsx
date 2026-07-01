@@ -320,8 +320,8 @@ function HoleCard({
         const winners = note ? players.filter((p) => (note.deltas[p.id] ?? 0) > 0) : [];
         if (winners.length > 0) {
           const line = winners
-            .map((w) => `${w.name || "Unnamed"} wins $${Math.round((note!.deltas[w.id] ?? 0) * 100) / 100}`)
-            .join(" & ");
+            .map((w) => `${w.name || "Unnamed"}: ${formatMoney(note!.deltas[w.id] ?? 0)}`)
+            .join(", ");
           return (
             <div className="mt-2 text-right text-sm font-bold tabular-nums">{line}</div>
           );

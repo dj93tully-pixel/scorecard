@@ -343,9 +343,9 @@ function HoleBox({
               const line = winTeam
                 .map((id) => {
                   const name = players.find((p) => p.id === id)?.name || "Unnamed";
-                  return `${name} wins $${Math.round((deltas[id] ?? 0) * 100) / 100}`;
+                  return `${name}: ${formatMoney(deltas[id] ?? 0)}`;
                 })
-                .join(" & ");
+                .join(", ");
               return (
                 <span className="font-bold">
                   {forfeit && (
