@@ -122,18 +122,18 @@ function HoleCard({
 
         {/* Press (rest of this nine/six, rest of 18), hammer, forfeit toggles.
             ⚡9 ×N shows when N presses (from overlapping holes) cover this one. */}
-        <div className="flex flex-wrap items-center justify-end gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           {canPress && (
             <>
               <button
                 onClick={() => commit({ pressSeg: !pressSeg })}
                 aria-label={`Press — new bet on the rest of this ${gt === "sixes" ? "six" : "nine"}`}
                 style={pressSeg ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
-                className={`flex items-center gap-0.5 rounded-lg border px-1.5 py-1.5 text-[13px] font-bold ${
+                className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
                   pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
                 }`}
               >
-                <Zap className="h-[14px] w-[14px]" />
+                <Zap className="h-[15px] w-[15px]" />
                 {segLabel}
                 {pressSeg && segN > 1 ? `×${segN}` : ""}
               </button>
@@ -144,11 +144,11 @@ function HoleCard({
                   onClick={() => commit({ pressFull: !pressFull })}
                   aria-label="Press — new bet on the rest of the round"
                   style={pressFull ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
-                  className={`flex items-center gap-0.5 rounded-lg border px-1.5 py-1.5 text-[13px] font-bold ${
+                  className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
                     pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
                   }`}
                 >
-                  <Zap className="h-[14px] w-[14px]" />
+                  <Zap className="h-[15px] w-[15px]" />
                   18
                   {pressFull && fullN > 1 ? `×${fullN}` : ""}
                 </button>
@@ -160,12 +160,12 @@ function HoleCard({
               onClick={() => commit({ hammer: (hammer + 1) % 3 })}
               aria-label="Hammer — tap to cycle none, hammer (×2), double (×4)"
               style={hammer > 0 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
-              className={`flex items-center rounded-lg border px-1.5 py-1.5 ${
+              className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
                 hammer > 0 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
               }`}
             >
-              <Hammer className="h-[14px] w-[14px]" />
-              {hammer === 2 && <Hammer className="-ml-1 h-[14px] w-[14px]" />}
+              <Hammer className="h-[15px] w-[15px]" />
+              {hammer === 2 && <Hammer className="h-[15px] w-[15px]" />}
             </button>
           )}
           {forfeitable &&
@@ -179,13 +179,13 @@ function HoleCard({
                     ? { background: TEAM_COLORS[side], borderColor: TEAM_COLORS[side] }
                     : undefined
                 }
-                className={`flex items-center gap-0.5 rounded-lg border px-1.5 py-1.5 text-[13px] font-bold ${
+                className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
                   forfeit === side
                     ? "text-on-dark"
                     : "border-card-border bg-card-bg text-text-muted"
                 }`}
               >
-                <Flag className="h-[14px] w-[14px]" />
+                <Flag className="h-[15px] w-[15px]" />
                 {side}
               </button>
             ))}
