@@ -11,7 +11,8 @@ import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
 import { carryByHole, wonByHole, HoleCarry } from "@/lib/carry";
-import { CarryNote, WonNote } from "./CarryNote";
+import { CarryNote } from "./CarryNote";
+import { AnteChips } from "./AnteChips";
 import { PlayerJunkIcons } from "./JunkChips";
 import { holeHighlight } from "@/lib/holeHighlight";
 import { GameHoleResult } from "@/lib/engines/types";
@@ -84,6 +85,17 @@ function HoleCard({
   const eleven = gt === "elevens";
   // Segment/total games settle on totals, not per hole — no per-hole money note.
   const noHoleMoney = gt === "elevens" || gt === "nassau";
+
+  // Per-player ante for this hole: base stake (grey), press stake (orange, one
+  // per press covering the hole), hammer add-on (purple). Only the per-hole
+  // betting games (Skins, Best Ball, Vegas, Sixes) have a hole ante.
+  const baseStake = round.settings.stake ?? 0;
+  const showAnte = hammerable && baseStake > 0;
+  const ante = {
+    orig: baseStake,
+    press: baseStake * (segN + fullN),
+    hammer: baseStake * (2 ** hammer - 1),
+  };
   // Press is in every game except 11s (Nassau needs two fixed sides → teams only).
   const canPress =
     gt !== "elevens" &&
@@ -230,6 +242,7 @@ function HoleCard({
                     ))}
                   </span>
                 )}
+                {showAnte && <AnteChips ante={ante} />}
                 {eleven &&
                   (() => {
                     const c = pickCounts?.[p.id] ?? 0;
@@ -308,14 +321,25 @@ function HoleCard({
         })}
       </div>
 
-      {/* Bet note. A decided hole shows the won amount split into normal (grey),
-          press (orange) and hammer (purple) badges; a push shows the same split
-          carrying forward. Total/segment games (11s, Nassau) carry no note. */}
+      {/* Bet note — text only; the per-bet split lives in the ante chips above. A
+          decided hole names the winner + amount; a push shows what carries.
+          Total/segment games (11s, Nassau) carry no note. */}
       {(() => {
         if (noHoleMoney) return null;
-        const anyWinner = note && players.some((p) => (note.deltas[p.id] ?? 0) > 0);
-        if (anyWinner) return won ? <WonNote won={won} hammer={hammer} /> : null;
-        if (carry) return <CarryNote carry={carry} hammer={hammer} />;
+        const winners = note ? players.filter((p) => (note.deltas[p.id] ?? 0) > 0) : [];
+        if (winners.length > 0) {
+          const tag = teamTag(round, winners[0].id, hole);
+          const label = tag
+            ? `Team ${tag.label}`
+            : winners.map((w) => w.name || "Unnamed").join(" & ");
+          const total = won?.total ?? winners.reduce((s, w) => s + (note!.deltas[w.id] ?? 0), 0);
+          return (
+            <div className="mt-2 text-right text-sm font-bold tabular-nums">
+              {label} wins ${Math.round(total * 100) / 100}
+            </div>
+          );
+        }
+        if (carry) return <div className="mt-2 text-right"><CarryNote carry={carry} /></div>;
         if (!note || note.detail === "—") return null;
         return <div className="mt-2 text-right text-sm text-text-muted">{note.detail}</div>;
       })()}

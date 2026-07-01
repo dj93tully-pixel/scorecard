@@ -16,7 +16,8 @@ import {
 } from "@/lib/wolf";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
 import { carryByHole, wonByHole, HoleCarry } from "@/lib/carry";
-import { CarryNote, WonNote } from "./CarryNote";
+import { CarryNote } from "./CarryNote";
+import { AnteChips } from "./AnteChips";
 import { PlayerJunkIcons } from "./JunkChips";
 import { formatMoney } from "@/lib/storage";
 import { holeHighlight } from "@/lib/holeHighlight";
@@ -64,6 +65,16 @@ function HoleBox({
   const segN = segCover ?? 0;
   const fullN = fullCover ?? 0;
   const segLabel = "9"; // rest of this nine — bare number on the card (Card tab keeps F9/B9)
+
+  // Per-player ante for this hole: base stake (grey), press stake (orange, one
+  // per press covering the hole), and the hammer add-on (purple) — the extra the
+  // hammer stacks on the base, so base + hammer = the doubled stake.
+  const baseStake = round.settings.stake ?? 0;
+  const ante = {
+    orig: baseStake,
+    press: baseStake * (segN + fullN),
+    hammer: baseStake * (2 ** hammer - 1),
+  };
 
   const base: HoleEntry = {
     hole,
@@ -283,6 +294,7 @@ function HoleBox({
                     conceded
                   </span>
                 )}
+                {!conceded && <AnteChips ante={ante} />}
               </div>
 
               {/* Money won/lost this hole */}
@@ -331,25 +343,20 @@ function HoleBox({
         })}
       </div>
 
-      {/* Result */}
+      {/* Result — text only; the per-bet split lives in the ante chips above. */}
       {result && (
         <div className="mt-2 text-right text-sm tabular-nums">
           {result.winner === "push" ? (
             carry ? (
-              <CarryNote carry={carry} hammer={hammer} />
+              <CarryNote carry={carry} />
             ) : (
               <span className="text-text-faint">
                 {result.carriedToNext > 0 ? `Push — $${result.carriedToNext} carries` : "Push"}
               </span>
             )
-          ) : won ? (
-            <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-              <WonNote won={won} hammer={hammer} label={result.winner === "A" ? "Wolf" : "Field"} />
-              {forfeit && <span className="text-sm font-medium text-text-muted">· forfeit</span>}
-            </div>
           ) : (
             <span className="font-bold">
-              {result.winner === "A" ? "Wolf" : "Field"} wins
+              {result.winner === "A" ? "Wolf" : "Field"} wins ${won?.total ?? Object.values(deltas).reduce((s, v) => (v > 0 ? s + v : s), 0)}
               {forfeit && <span className="font-medium text-text-muted"> · forfeit</span>}
             </span>
           )}
