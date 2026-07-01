@@ -23,7 +23,7 @@ const amt = (v: number) => (Number.isInteger(v) ? `${v}` : v.toFixed(1));
 function Chip({ color, variant, value }: { color: string; variant: PokerChipVariant; value: number }) {
   return (
     <span className="inline-flex shrink-0" style={{ color }}>
-      <PokerChip variant={variant} size={22} label={amt(value)} />
+      <PokerChip variant={variant} size={18} label={amt(value)} />
     </span>
   );
 }
