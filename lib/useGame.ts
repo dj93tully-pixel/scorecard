@@ -60,10 +60,46 @@ function mergeGame(prev: Game | null, fresh: Game, edits: Edits): Game {
 export function useGame(id: string) {
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
+  // `error` is fatal LOAD failure only — it gates the whole screen. A failed
+  // background save must NEVER set this (it would blank the scorecard); it uses
+  // the non-fatal `saveError` instead.
   const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const edits = useRef<Edits>(new Map());
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // The latest save fn per key that hasn't landed a successful write yet — holds
+  // both debounced-but-not-fired and failed-pending-retry saves, so we can flush
+  // them on unmount / backgrounding / reconnect instead of dropping them.
+  const pending = useRef<Map<string, () => Promise<void>>>(new Map());
+
+  // Fire a pending save now (cancels its debounce timer). Keeps it queued for
+  // retry on failure; clears it only after a successful write.
+  const runSave = useCallback((key: string) => {
+    const fn = pending.current.get(key);
+    if (!fn) return;
+    const t = timers.current.get(key);
+    if (t) {
+      clearTimeout(t);
+      timers.current.delete(key);
+    }
+    fn()
+      .then(() => {
+        // Only clear if a newer edit hasn't since replaced this fn.
+        if (pending.current.get(key) === fn) {
+          pending.current.delete(key);
+          if (pending.current.size === 0) setSaveError(null);
+        }
+      })
+      .catch((e) => {
+        setSaveError(e?.message ?? "Couldn’t save — will retry when back online.");
+      });
+  }, []);
+
+  // Push out everything queued (used on unmount, backgrounding, reconnect).
+  const flushPending = useCallback(() => {
+    for (const key of [...pending.current.keys()]) runSave(key);
+  }, [runSave]);
 
   useEffect(() => {
     let active = true;
@@ -92,23 +128,36 @@ export function useGame(id: string) {
         .catch(() => {});
     });
 
+    // Commit queued edits before they can be lost, and retry failures.
+    const onOnline = () => flushPending();
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flushPending();
+    };
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flushPending);
+
     return () => {
       active = false;
       unsub();
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flushPending);
+      flushPending(); // best-effort: fire any pending saves before tearing down
       timers.current.forEach((t) => clearTimeout(t));
       timers.current.clear();
     };
-  }, [id]);
+  }, [id, flushPending]);
 
-  const scheduleSave = useCallback((key: string, fn: () => Promise<void>) => {
-    const existing = timers.current.get(key);
-    if (existing) clearTimeout(existing);
-    const t = setTimeout(() => {
-      timers.current.delete(key);
-      fn().catch((e) => setError(e?.message ?? "Save failed."));
-    }, DEBOUNCE_MS);
-    timers.current.set(key, t);
-  }, []);
+  const scheduleSave = useCallback(
+    (key: string, fn: () => Promise<void>) => {
+      pending.current.set(key, fn);
+      const existing = timers.current.get(key);
+      if (existing) clearTimeout(existing);
+      timers.current.set(key, setTimeout(() => runSave(key), DEBOUNCE_MS));
+    },
+    [runSave]
+  );
 
   const updateRound = useCallback(
     (patch: Partial<Round> | ((r: Round) => Round)) => {
@@ -155,5 +204,14 @@ export function useGame(id: string) {
     [id, scheduleSave]
   );
 
-  return { game, round: game?.round ?? null, loading, error, updateRound, upsertEntry, rename };
+  return {
+    game,
+    round: game?.round ?? null,
+    loading,
+    error,
+    saveError,
+    updateRound,
+    upsertEntry,
+    rename,
+  };
 }

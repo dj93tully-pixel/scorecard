@@ -17,7 +17,7 @@ export function AdminGameEditor({
   id: string;
   onClose: () => void;
 }) {
-  const { game, round, loading, error, updateRound, rename } = useGame(id);
+  const { game, round, loading, error, saveError, updateRound, rename } = useGame(id);
   const [busy, setBusy] = useState(false);
 
   async function togglePublished() {
@@ -79,6 +79,13 @@ export function AdminGameEditor({
       >
         ‹ All games
       </button>
+
+      {saveError && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <span className="font-semibold">Offline?</span>
+          <span>Changes saved on this device and will sync when you reconnect.</span>
+        </div>
+      )}
 
       <div className="rounded-xl border border-card-border bg-card-bg p-4">
         <label className="text-sm font-semibold">Game name</label>
