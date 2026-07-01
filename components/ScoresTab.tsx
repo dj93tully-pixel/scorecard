@@ -343,7 +343,7 @@ function HoleBox({
               const line = winTeam
                 .map((id) => {
                   const name = players.find((p) => p.id === id)?.name || "Unnamed";
-                  return `${name}: ${formatMoney(deltas[id] ?? 0)}`;
+                  return `${name} ${formatMoney(deltas[id] ?? 0)}`;
                 })
                 .join(", ");
               return (
