@@ -10,7 +10,7 @@ import { PokerChip, PokerChipVariant } from "./PokerChip";
 const NORMAL = "#6B7280"; // grey
 const PRESS = "#E8590C"; // orange
 const HAMMER = "#7C3AED"; // purple
-const MULT = "#E5484D"; // red — lone/blind multiplier (a wolf going solo)
+const MULT = "#6B7280"; // grey — lone/blind multiplier (a wolf going solo)
 
 export interface Ante {
   orig: number; // base bet stake
