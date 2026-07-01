@@ -119,7 +119,7 @@ function HoleBox({
             onClick={() => commit({ pressSeg: !pressSeg })}
             aria-label="Press — new bet on the rest of this nine"
             style={pressSeg ? { background: PRESS, borderColor: PRESS } : undefined}
-            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+            className={`flex h-8 items-center justify-center gap-0.5 rounded-lg border px-2 text-[13px] font-bold ${
               pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
@@ -130,7 +130,7 @@ function HoleBox({
               onClick={() => commit({ pressFull: !pressFull })}
               aria-label="Press — new bet on the rest of the round"
               style={pressFull ? { background: PRESS, borderColor: PRESS } : undefined}
-              className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+              className={`flex h-8 items-center justify-center gap-0.5 rounded-lg border px-2 text-[13px] font-bold ${
                 pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
               }`}
             >
@@ -141,7 +141,7 @@ function HoleBox({
             onClick={() => commit({ hammer: (hammer + 1) % 3 })}
             aria-label="Hammer — tap to cycle none, hammer (×2), double (×4)"
             style={hammer > 0 ? { background: HAMMER, borderColor: HAMMER } : undefined}
-            className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
+            className={`flex h-8 items-center justify-center gap-0.5 rounded-lg border px-2 text-[13px] font-bold ${
               hammer > 0 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
@@ -154,7 +154,7 @@ function HoleBox({
             }
             aria-label="Forfeit — tap to cycle none, Wolf forfeits, Field forfeits"
             style={forfeit ? { background: FORFEIT, borderColor: FORFEIT } : undefined}
-            className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[13px] font-medium ${
+            className={`flex h-8 items-center justify-center gap-0.5 rounded-lg border px-2 text-[13px] font-bold ${
               forfeit ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >

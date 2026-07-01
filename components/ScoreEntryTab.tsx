@@ -129,7 +129,7 @@ function HoleCard({
                 onClick={() => commit({ pressSeg: !pressSeg })}
                 aria-label={`Press — new bet on the rest of this ${gt === "sixes" ? "six" : "nine"}`}
                 style={pressSeg ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
-                className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+                className={`flex h-8 items-center justify-center gap-0.5 rounded-lg border px-2 text-[13px] font-bold ${
                   pressSeg ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
                 }`}
               >
@@ -144,7 +144,7 @@ function HoleCard({
                   onClick={() => commit({ pressFull: !pressFull })}
                   aria-label="Press — new bet on the rest of the round"
                   style={pressFull ? { background: PRESS_COLOR, borderColor: PRESS_COLOR } : undefined}
-                  className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+                  className={`flex h-8 items-center justify-center gap-0.5 rounded-lg border px-2 text-[13px] font-bold ${
                     pressFull ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
                   }`}
                 >
@@ -160,7 +160,7 @@ function HoleCard({
               onClick={() => commit({ hammer: (hammer + 1) % 3 })}
               aria-label="Hammer — tap to cycle none, hammer (×2), double (×4)"
               style={hammer > 0 ? { background: HAMMER_COLOR, borderColor: HAMMER_COLOR } : undefined}
-              className={`flex items-center gap-0.5 rounded-lg border px-2 py-1.5 ${
+              className={`flex h-8 items-center justify-center gap-0.5 rounded-lg border px-2 text-[13px] font-bold ${
                 hammer > 0 ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
               }`}
             >
@@ -179,7 +179,7 @@ function HoleCard({
                   ? { background: TEAM_COLORS[forfeit], borderColor: TEAM_COLORS[forfeit] }
                   : undefined
               }
-              className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+              className={`flex h-8 items-center justify-center gap-0.5 rounded-lg border px-2 text-[13px] font-bold ${
                 forfeit ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
               }`}
             >
