@@ -489,7 +489,7 @@ function PlayerBar({
     if (c.picked) elevenToPar = (elevenToPar ?? 0) + s - c.par;
   }
   return (
-    <div className="overflow-hidden rounded-l-xl border border-r-0 bg-card-bg" style={{ borderColor: BORDER, borderLeft: `4px solid ${open ? BLUE : "#AFC6FF"}` }}>
+    <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER, borderLeft: `4px solid ${open ? BLUE : "#AFC6FF"}` }}>
       <button onClick={onToggle} className="flex w-full items-center gap-3 px-3 py-3 text-left">
         <span className="w-4 text-center font-serif text-base font-bold" style={{ color: MUTED }}>{rank}</span>
         <span className="flex min-w-0 flex-1 items-baseline gap-2">
@@ -934,9 +934,7 @@ export function ResultsView({ results }: { results: ResultsData }) {
         <h2 className="text-xl font-bold">Standings</h2>
         <GrossNetToggle net={net} onChange={setNet} />
       </div>
-      {/* Player bars bleed to the right edge (cancel the page's right padding) —
-          more room for the scorecard, and a clean full-width look. */}
-      <div className="-mr-3 space-y-2">
+      <div className="space-y-2">
         {standings.map((p, idx) => {
           const rank = 1 + standings.filter((q) => q.grand > p.grand).length;
           return (
