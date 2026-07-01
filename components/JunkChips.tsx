@@ -11,7 +11,8 @@
 import { Round, HoleEntry, PlayerId } from "@/lib/wolf";
 import { manualJunkForHole, toggleJunkFlag } from "@/lib/junk";
 
-const JUNK_COLOR = "#0FA968"; // money-green, distinct from press/hammer/forfeit
+const JUNK_COLOR = "#F5C518"; // yellow — active side-bet fill
+const JUNK_INK = "#1A1A1A"; // dark icon on the yellow fill (white is too low-contrast)
 
 // ── Bet glyphs (solid, currentColor so they inherit theme/light-dark color) ────
 type IconProps = { className?: string };
@@ -98,9 +99,9 @@ export function PlayerJunkIcons({
             aria-label={bet.label}
             aria-pressed={active}
             title={bet.label}
-            style={active ? { background: JUNK_COLOR, borderColor: JUNK_COLOR } : undefined}
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border ${
-              active ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+            style={active ? { background: JUNK_COLOR, borderColor: JUNK_COLOR, color: JUNK_INK } : undefined}
+            className={`flex h-8 w-[19px] items-center justify-center rounded-lg border ${
+              active ? "" : "border-card-border bg-card-bg text-text-muted"
             }`}
           >
             <Icon className="h-[15px] w-[15px]" />
