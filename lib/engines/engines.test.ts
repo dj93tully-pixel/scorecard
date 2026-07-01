@@ -609,7 +609,7 @@ describe("press", () => {
       "skins",
       scratch(["a", "b"]),
       [{ hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 4 }, hammer: 1, pressSeg: true }],
-      { skinValue: 5, carryover: true, hammerCarry: true }
+      { skinValue: 5, carryover: true, hammerCarry: true, pressHammerCarry: false }
     );
     const c = carryByHole(round).get(1)!;
     expect(c.orig).toBe(5); // un-hammered base carry

@@ -76,13 +76,13 @@ export interface RoundSettings {
   /**
    * "Carryover ties into press bets": when you open a press right after a push,
    * whether the money carrying from that push is ALSO counted in the press bet
-   * (duplicated — it stays in the base bet too). Defaults to true.
+   * (duplicated — it stays in the base bet too). Defaults to false.
    */
   pressCarryover?: boolean;
   /**
    * "Carryover hammers into press bets": when a carry duplicates into a press,
    * whether it rides in at its hammered (doubled) size or the base value. This is
-   * the press-bet equivalent of `hammerCarry`. Defaults to false.
+   * the press-bet equivalent of `hammerCarry`. Defaults to true.
    */
   pressHammerCarry?: boolean;
   handicapMode: HandicapMode;
@@ -182,8 +182,8 @@ export const DEFAULT_SETTINGS: RoundSettings = {
   blindEnabled: true,
   carryover: false,
   hammerCarry: false,
-  pressCarryover: true,
-  pressHammerCarry: false,
+  pressCarryover: false,
+  pressHammerCarry: true,
   handicapMode: "offLow",
 };
 
