@@ -69,8 +69,9 @@ export function PokerChip({
   className?: string;
 }) {
   const text = label === undefined ? "" : String(label);
-  // Fit inside the r=29 inner ring: ~26 for one char, easing down as it grows.
-  const fontSize = text.length <= 1 ? 26 : text.length === 2 ? 22 : Math.max(12, 44 / text.length);
+  // Fill the blank center (inside the r≈25 inner ring) so the value stays legible
+  // even at small render sizes — big and heavy, easing down as digits are added.
+  const fontSize = text.length <= 1 ? 54 : text.length === 2 ? 42 : Math.max(22, 96 / text.length);
 
   return (
     <svg
@@ -90,7 +91,7 @@ export function PokerChip({
           dominantBaseline="central"
           fill="currentColor"
           fontSize={fontSize}
-          fontWeight="700"
+          fontWeight="800"
           fontFamily="ui-sans-serif, system-ui, sans-serif"
         >
           {text}
