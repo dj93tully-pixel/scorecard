@@ -20,14 +20,16 @@ import { JUNK_TYPES, junkConfig } from "@/lib/junk";
 function Field({
   label,
   hint,
+  disabled,
   children,
 }: {
   label: string;
   hint?: string;
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block py-2">
+    <label className={`block py-2 ${disabled ? "opacity-40" : ""}`}>
       <span className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-text-primary">{label}</span>
         {children}
@@ -619,13 +621,15 @@ export function SetupTab({
           {showCarry && (
             <Field
               label="Carryover hammered value"
-              hint="If the tied hole was hammered, roll forward the full doubled amount instead of just the base stake. (Only matters with Carryover ties on.)"
+              hint="If the tied hole was hammered, roll forward the full doubled amount instead of just the base stake. (Needs Carryover ties on.)"
+              disabled={!settings.carryover}
             >
               <input
                 type="checkbox"
+                disabled={!settings.carryover}
                 checked={settings.hammerCarry ?? false}
                 onChange={(e) => setSetting("hammerCarry", e.target.checked)}
-                className="h-6 w-6 accent-[#354CA1]"
+                className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
               />
             </Field>
           )}
@@ -633,12 +637,14 @@ export function SetupTab({
             <Field
               label="Carryover ties into new press bets"
               hint="When you open a press right after a tie, the money carrying from that tie is copied into the new press so it starts bigger (it still stays in the main bet too). (Needs Carryover ties on.)"
+              disabled={!settings.carryover}
             >
               <input
                 type="checkbox"
+                disabled={!settings.carryover}
                 checked={settings.pressCarryover ?? false}
                 onChange={(e) => setSetting("pressCarryover", e.target.checked)}
-                className="h-6 w-6 accent-[#354CA1]"
+                className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
               />
             </Field>
           )}
@@ -646,12 +652,14 @@ export function SetupTab({
             <Field
               label="Carryover hammers into press bets"
               hint="Inside a press, a hammered tie carries at its doubled size instead of the base stake — like Carryover hammered value, but for the press. (Needs Carryover ties on.)"
+              disabled={!settings.carryover}
             >
               <input
                 type="checkbox"
+                disabled={!settings.carryover}
                 checked={settings.pressHammerCarry ?? false}
                 onChange={(e) => setSetting("pressHammerCarry", e.target.checked)}
-                className="h-6 w-6 accent-[#354CA1]"
+                className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
               />
             </Field>
           )}
