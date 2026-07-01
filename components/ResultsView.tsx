@@ -103,9 +103,9 @@ function ScoreCell({ score, par, pop }: { score: number | null; par: number; pop
   if (score === null) {
     if (pop > 0) {
       return (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "2px", color: BLUE, fontWeight: 800 }}>
           {Array.from({ length: Math.min(pop, 4) }).map((_, i) => (
-            <span key={i} style={{ width: "5px", height: "5px", borderRadius: "50%", background: BLUE }} />
+            <span key={i}>–</span>
           ))}
         </span>
       );
@@ -349,16 +349,13 @@ function Detail({
   // Active money + (for press) the holes the press covers.
   let active: number[];
   let activeHoles: Set<number> | null = null;
-  let pill = FILTER_LABEL[filter];
   if (filter === "press") {
     if (pressSel === "all" || !presses[pressSel]) {
       active = player.money.press;
       activeHoles = new Set(pressHoles);
-      pill = "Press";
     } else {
       active = presses[pressSel].money[player.id] ?? player.money.press;
       activeHoles = new Set(presses[pressSel].holes);
-      pill = presses[pressSel].label;
     }
   } else if (filter === "hammer") {
     active = player.money.hammer;
@@ -456,9 +453,6 @@ function Detail({
         <div className="mt-4">
           <div className="mb-1 flex items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>Winnings by hole</span>
-            <span className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide" style={{ background: TILE_ACTIVE, color: BLUE }}>
-              {pill}
-            </span>
           </div>
           <Trendline money={active} />
         </div>
@@ -993,8 +987,7 @@ export function ResultsView({ results }: { results: ResultsData }) {
           if (withPops.length === 0) return null;
           return (
             <p className="px-1 text-xs" style={{ color: MUTED }}>
-              <span style={{ color: BLUE, fontWeight: 700 }}>* Pops:</span>{" "}
-              {withPops.map((x) => `${x.name} (${x.pops})`).join(", ")}
+              * Pops: {withPops.map((x) => `${x.name} (${x.pops})`).join(", ")}
             </p>
           );
         })()}
