@@ -324,12 +324,10 @@ function HoleBox({
           ) : (
             (() => {
               const winTeam = result.winner === "A" ? result.teamA : result.teamB;
-              const line = winTeam
-                .map((id) => {
-                  const name = players.find((p) => p.id === id)?.name || "Unnamed";
-                  return `${name} ${formatMoney(deltas[id] ?? 0)}`;
-                })
-                .join(", ");
+              // Winning teammates get equal per-hole shares, so list the names
+              // then the amount once: "Alice, Bob +$5".
+              const names = winTeam.map((id) => players.find((p) => p.id === id)?.name || "Unnamed");
+              const line = `${names.join(", ")} ${formatMoney(deltas[winTeam[0]] ?? 0)}`;
               return (
                 <span className="font-bold">
                   {forfeit && (

@@ -305,9 +305,10 @@ function HoleCard({
         if (noHoleMoney) return null;
         const winners = note ? players.filter((p) => (note.deltas[p.id] ?? 0) > 0) : [];
         if (winners.length > 0) {
-          const line = winners
-            .map((w) => `${w.name || "Unnamed"} ${formatMoney(note!.deltas[w.id] ?? 0)}`)
-            .join(", ");
+          // Co-winners share equally, so list the names then the amount once:
+          // "Alice, Bob +$5".
+          const names = winners.map((w) => w.name || "Unnamed").join(", ");
+          const line = `${names} ${formatMoney(note!.deltas[winners[0].id] ?? 0)}`;
           return (
             <div className="mt-2 text-right text-sm font-bold tabular-nums">{line}</div>
           );
