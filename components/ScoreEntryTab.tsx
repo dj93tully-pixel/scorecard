@@ -168,27 +168,25 @@ function HoleCard({
               {hammer === 2 && <Hammer className="h-[15px] w-[15px]" />}
             </button>
           )}
-          {forfeitable &&
-            (["A", "B"] as const).map((side) => (
-              <button
-                key={side}
-                onClick={() => commit({ forfeit: forfeit === side ? undefined : side })}
-                aria-label={`Team ${side} forfeits`}
-                style={
-                  forfeit === side
-                    ? { background: TEAM_COLORS[side], borderColor: TEAM_COLORS[side] }
-                    : undefined
-                }
-                className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
-                  forfeit === side
-                    ? "text-on-dark"
-                    : "border-card-border bg-card-bg text-text-muted"
-                }`}
-              >
-                <Flag className="h-[15px] w-[15px]" />
-                {side}
-              </button>
-            ))}
+          {forfeitable && (
+            <button
+              onClick={() =>
+                commit({ forfeit: forfeit === undefined ? "A" : forfeit === "A" ? "B" : undefined })
+              }
+              aria-label="Forfeit — tap to cycle none, Team A forfeits, Team B forfeits"
+              style={
+                forfeit
+                  ? { background: TEAM_COLORS[forfeit], borderColor: TEAM_COLORS[forfeit] }
+                  : undefined
+              }
+              className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[13px] font-bold ${
+                forfeit ? "text-on-dark" : "border-card-border bg-card-bg text-text-muted"
+              }`}
+            >
+              <Flag className="h-[15px] w-[15px]" />
+              {forfeit ?? ""}
+            </button>
+          )}
         </div>
       </div>
 
