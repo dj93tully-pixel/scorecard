@@ -59,7 +59,38 @@ const FlagIcon = svg(
   </>
 );
 
+// Birdie — a round bird. The head + eye are one even-odd path so the eye is a
+// true knockout (a hole showing the background), never a hardcoded white fill.
+const BirdieIcon = svg(
+  <>
+    <circle cx="46" cy="54" r="18" fill="currentColor" />
+    <path
+      d="M52,42 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 M62.2,41 a1.8,1.8 0 1,0 3.6,0 a1.8,1.8 0 1,0 -3.6,0"
+      fillRule="evenodd"
+      fill="currentColor"
+    />
+    <path d="M68,40 L78,43 L68,46 Z" fill="currentColor" />
+    <path d="M30,58 L15,61 L29,67 Z" fill="currentColor" />
+    <line x1="44" y1="72" x2="44" y2="80" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+    <line x1="54" y1="72" x2="54" y2="80" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+  </>
+);
+
+// Eagle — a soaring eagle.
+const EagleIcon = svg(
+  <>
+    <path d="M48,40 L14,32 C8,31 6,37 13,38 C7,40 9,46 16,44 C11,47 16,51 22,48 L46,46 Z" fill="currentColor" />
+    <path d="M52,40 L86,32 C92,31 94,37 87,38 C93,40 91,46 84,44 C89,47 84,51 78,48 L54,46 Z" fill="currentColor" />
+    <path d="M46,40 L54,40 L52,64 L48,64 Z" fill="currentColor" />
+    <path d="M46,62 L42,76 L50,72 L58,76 L54,62 Z" fill="currentColor" />
+    <circle cx="50" cy="34" r="6.5" fill="currentColor" />
+    <path d="M50,25 L46,32 L54,32 Z" fill="currentColor" />
+  </>
+);
+
 const JUNK_ICON: Record<string, (p: IconProps) => React.JSX.Element> = {
+  birdie: BirdieIcon,
+  eagle: EagleIcon,
   sandie: SandcastleIcon,
   snake: SnakeIcon,
   barkie: TreeIcon,
