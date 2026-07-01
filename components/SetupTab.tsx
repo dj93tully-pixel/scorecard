@@ -631,8 +631,8 @@ export function SetupTab({
           )}
           {showCarry && (
             <Field
-              label="Carryover ties into press bets"
-              hint="When you press right after a tie, the money carrying from that tie is also copied into the new press bet (it still stays in the main bet too). (Needs Carryover ties on.)"
+              label="Carryover ties into new press bets"
+              hint="When you open a press right after a tie, the money carrying from that tie is copied into the new press so it starts bigger (it still stays in the main bet too). (Needs Carryover ties on.)"
             >
               <input
                 type="checkbox"
