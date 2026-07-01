@@ -645,7 +645,7 @@ export function SetupTab({
           {showCarry && (
             <Field
               label="Carryover hammers into press bets"
-              hint="That copied-in carry enters the press at its hammered (doubled) size instead of the base stake. (Needs Carryover ties into press bets on.)"
+              hint="Inside a press, a hammered tie carries at its doubled size instead of the base stake — like Carryover hammered value, but for the press. (Needs Carryover ties on.)"
             >
               <input
                 type="checkbox"
