@@ -38,9 +38,10 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // The API matches whole words only (and is rate-limited), so we hit it with
-  // just the FIRST word and re-fetch only when that word changes…
-  const apiQuery = query.trim().split(/\s+/)[0] ?? "";
+  // Send the FULL typed query to the API. It ranks + caps its results, so a
+  // distinguishing word (e.g. "West" in "Lincoln West") must reach the API —
+  // querying only the first word would rank the match out and it'd never appear.
+  const apiQuery = query.trim();
   useEffect(() => {
     setError(null);
     if (apiQuery.length < 2) {
