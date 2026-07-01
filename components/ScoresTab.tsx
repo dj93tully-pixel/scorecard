@@ -340,14 +340,18 @@ function HoleBox({
           ) : (
             (() => {
               const winTeam = result.winner === "A" ? result.teamA : result.teamB;
-              const names = winTeam.map((id) => players.find((p) => p.id === id)?.name || "Unnamed");
-              const total = won?.total ?? Object.values(deltas).reduce((s, v) => (v > 0 ? s + v : s), 0);
+              const line = winTeam
+                .map((id) => {
+                  const name = players.find((p) => p.id === id)?.name || "Unnamed";
+                  return `${name} wins $${Math.round((deltas[id] ?? 0) * 100) / 100}`;
+                })
+                .join(" & ");
               return (
                 <span className="font-bold">
                   {forfeit && (
                     <span className="font-medium text-text-muted">{forfeit === "A" ? "Wolf" : "Field"} conceded · </span>
                   )}
-                  {names.join(" & ")} {names.length > 1 ? "win" : "wins"} ${total}
+                  {line}
                 </span>
               );
             })()
