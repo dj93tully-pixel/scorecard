@@ -319,14 +319,11 @@ function HoleCard({
         if (noHoleMoney) return null;
         const winners = note ? players.filter((p) => (note.deltas[p.id] ?? 0) > 0) : [];
         if (winners.length > 0) {
-          const tag = teamTag(round, winners[0].id, hole);
-          const label = tag
-            ? `Team ${tag.label}`
-            : winners.map((w) => w.name || "Unnamed").join(" & ");
+          const names = winners.map((w) => w.name || "Unnamed");
           const total = won?.total ?? winners.reduce((s, w) => s + (note!.deltas[w.id] ?? 0), 0);
           return (
             <div className="mt-2 text-right text-sm font-bold tabular-nums">
-              {label} wins ${Math.round(total * 100) / 100}
+              {names.join(" & ")} {winners.length > 1 ? "win" : "wins"} ${Math.round(total * 100) / 100}
             </div>
           );
         }
