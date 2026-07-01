@@ -13,6 +13,7 @@ import {
   pushedFrom,
   carryChain,
   decomposePresses,
+  hasAnyPress,
   RunResult,
 } from "./engines/press";
 
@@ -142,6 +143,89 @@ export function wonByHole(round: Round): Map<number, HoleCarry> {
     const press = won(pressByHole.get(r.hole) ?? {});
     const total = orig + hammer + press;
     if (total > 0) out.set(r.hole, { orig, hammer, press, total });
+  }
+  return out;
+}
+
+export interface HoleAnte {
+  orig: number; // un-hammered base stake in play this hole (incl. carry-in)
+  press: number; // un-hammered press stake in play (summed over covering presses)
+  hammer: number; // extra the hammer stakes — it doubles the whole pot
+}
+
+// The un-hammered base stake actually in play on each hole, INCLUDING any carry
+// rolled in from prior pushes and all the carry toggles. Read straight from the
+// engine: Wolf exposes `stakeApplied` per hole; the other per-hole games are
+// reconstructed from `settings.stake` + the carry rolling in from the hole before.
+function baseStakeInPlay(round: Round): Map<number, number> {
+  const gt = gameTypeOf(round);
+  const stake = round.settings.stake ?? 0;
+  const m = new Map<number, number>();
+
+  if (gt === "wolf") {
+    for (const r of computeRound(noHammer(round)).results) m.set(r.hole, r.stakeApplied);
+    return m;
+  }
+
+  const byHole = new Map(computeBaseGame(noHammer(round)).holeResults.map((r) => [r.hole, r]));
+  const nums = round.course.holes.map((h) => h.number).sort((a, b) => a - b);
+  let carriedIn = 0;
+  for (const h of nums) {
+    const r = byHole.get(h);
+    if (!r) {
+      carriedIn = 0; // hole not scored yet — carry chain can't be known past here
+      continue;
+    }
+    m.set(h, stake + carriedIn);
+    carriedIn = r.carry ?? 0; // this hole's carry-out becomes the next hole's carry-in
+  }
+  return m;
+}
+
+// Per-hole ANTE — what each player is putting up on the hole, split into the
+// normal bet (grey), the press (orange), and the hammer add-on (purple). Unlike
+// the won/carry splits this is the STAKE at risk, not the outcome, so it shows
+// as the round is played. The hammer doubles the whole hole (base + press), so
+// its chip is (orig + press) × (2^level − 1) — additive with the other two, and
+// carry-aware because orig/press come from the engine's real per-hole stakes.
+export function anteByHole(round: Round): Map<number, HoleAnte> {
+  const out = new Map<number, HoleAnte>();
+  const gt = gameTypeOf(round);
+  if (gt === "nassau" || gt === "elevens") return out; // no per-hole ante
+
+  const stake = round.settings.stake ?? 0;
+  const origByHole = baseStakeInPlay(round);
+
+  // Press stake in play per hole (un-hammered): re-run each press over its own
+  // holes (+ any carry it absorbs) and read the base stake in play there.
+  const pressByHole = new Map<number, number>();
+  if (hasAnyPress(round)) {
+    const decided =
+      gt === "wolf"
+        ? computeRound(round).results.map((r) => ({ hole: r.hole, decided: r.winner !== "push" }))
+        : computeBaseGame(round).holeResults.map((r) => ({ hole: r.hole, decided: r.decided }));
+    const pushed = pushedFrom(round, decided);
+    for (const e of round.entries) {
+      for (const scope of pressScopesOf(e)) {
+        const range = pressRange(round, e.hole, scope);
+        if (range.length === 0) continue;
+        const holes = new Set(range);
+        const sub = pressSubRound(round, holes, carryChain(round, e.hole, pushed));
+        for (const [h, s] of baseStakeInPlay(sub)) {
+          if (!holes.has(h)) continue; // ignore the carry-chain seed holes
+          pressByHole.set(h, (pressByHole.get(h) ?? 0) + s);
+        }
+      }
+    }
+  }
+
+  const hammerByHole = new Map(round.entries.map((e) => [e.hole, Math.max(0, Math.floor(e.hammer ?? 0))]));
+  for (const h of round.course.holes) {
+    const orig = origByHole.get(h.number) ?? stake;
+    const press = pressByHole.get(h.number) ?? 0;
+    const level = hammerByHole.get(h.number) ?? 0;
+    const hammer = (orig + press) * (2 ** level - 1);
+    out.set(h.number, { orig, press, hammer });
   }
   return out;
 }

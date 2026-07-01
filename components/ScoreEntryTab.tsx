@@ -10,11 +10,10 @@ import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
-import { carryByHole, wonByHole, HoleCarry } from "@/lib/carry";
+import { carryByHole, wonByHole, anteByHole, HoleCarry, HoleAnte } from "@/lib/carry";
 import { CarryNote } from "./CarryNote";
 import { AnteChips } from "./AnteChips";
 import { PlayerJunkIcons } from "./JunkChips";
-import { holeHighlight } from "@/lib/holeHighlight";
 import { GameHoleResult } from "@/lib/engines/types";
 import { formatMoney } from "@/lib/storage";
 
@@ -29,6 +28,7 @@ function HoleCard({
   note,
   carry,
   won,
+  ante,
   pickCounts,
   segCover,
   fullCover,
@@ -40,6 +40,7 @@ function HoleCard({
   note?: GameHoleResult;
   carry?: HoleCarry; // push-carry split: normal / press / hammer
   won?: HoleCarry; // won-amount split (decided hole): normal / press / hammer
+  ante?: HoleAnte; // per-player stake this hole: normal / press / hammer
   pickCounts?: Record<string, number>; // 11s: each player's running picks (of 11)
   segCover?: number; // 9/6-presses covering this hole (for the ⚡9 ×N label)
   fullCover?: number; // 18-presses covering this hole (for the ⚡18 ×N label)
@@ -86,16 +87,9 @@ function HoleCard({
   // Segment/total games settle on totals, not per hole — no per-hole money note.
   const noHoleMoney = gt === "elevens" || gt === "nassau";
 
-  // Per-player ante for this hole: base stake (grey), press stake (orange, one
-  // per press covering the hole), hammer add-on (purple). Only the per-hole
-  // betting games (Skins, Best Ball, Vegas, Sixes) have a hole ante.
-  const baseStake = round.settings.stake ?? 0;
-  const showAnte = hammerable && baseStake > 0;
-  const ante = {
-    orig: baseStake,
-    press: baseStake * (segN + fullN),
-    hammer: baseStake * (2 ** hammer - 1),
-  };
+  // Only the per-hole betting games (Skins, Best Ball, Vegas, Sixes) show a hole
+  // ante; the exact amounts come from anteByHole (carry-aware) via the parent.
+  const showAnte = hammerable && (round.settings.stake ?? 0) > 0;
   // Press is in every game except 11s (Nassau needs two fixed sides → teams only).
   const canPress =
     gt !== "elevens" &&
@@ -115,10 +109,7 @@ function HoleCard({
   return (
     <div
       id={`hole-${hole}`}
-      style={{
-        scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)",
-        ...holeHighlight(segN + fullN, hammer),
-      }}
+      style={{ scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)" }}
       className="rounded-xl border border-card-border bg-card-bg p-3"
     >
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -242,7 +233,7 @@ function HoleCard({
                     ))}
                   </span>
                 )}
-                {showAnte && <AnteChips ante={ante} />}
+                {showAnte && ante && <AnteChips ante={ante} />}
                 {eleven &&
                   (() => {
                     const c = pickCounts?.[p.id] ?? 0;
@@ -388,6 +379,7 @@ export function ScoreEntryTab({
   // the matching won-amount split for a decided hole.
   const carries = carryByHole(round);
   const wons = wonByHole(round);
+  const antes = anteByHole(round);
   // Per-scope press coverage per hole — for the ⚡9/⚡18 ×N labels + highlight.
   const pressCovers = pressCoverByHole(round);
   const isElevens = gameTypeOf(round) === "elevens";
@@ -434,6 +426,7 @@ export function ScoreEntryTab({
           note={resultByHole.get(h.number)}
           carry={carries.get(h.number)}
           won={wons.get(h.number)}
+          ante={antes.get(h.number)}
           pickCounts={pickCounts}
           segCover={pressCovers.get(h.number)?.seg ?? 0}
           fullCover={pressCovers.get(h.number)?.full ?? 0}
