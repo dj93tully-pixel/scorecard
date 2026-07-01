@@ -78,8 +78,10 @@ export function CarryNote({ carry, hammer }: { carry: HoleCarry; hammer: number 
 export function WonNote({ won, hammer, label }: { won: HoleCarry; hammer: number; label?: string }) {
   return (
     <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5">
-      {label && <span className="text-sm font-bold tabular-nums text-text-primary">{label} wins</span>}
       <Badges split={won} hammer={hammer} />
+      <span className="text-sm font-bold tabular-nums text-text-primary">
+        {label ? `${label} wins` : "Wins"} {money(won.total)}
+      </span>
     </div>
   );
 }
