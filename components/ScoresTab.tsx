@@ -241,9 +241,6 @@ function HoleBox({
           const myPops = computation.pops[p.id]?.[hole] ?? 0;
           const score = grossScores[p.id];
           const delta = deltas[p.id] ?? 0;
-          // This player's side conceded → scores aren't needed.
-          const conceded =
-            (forfeit === "A" && onTeamA) || (forfeit === "B" && !onTeamA);
 
           return (
             <div
@@ -279,13 +276,13 @@ function HoleBox({
                 </span>
               )}
 
-              {/* Right: plain score input (disabled when this side conceded) */}
+              {/* Right: plain score input — stays editable even when a side
+                  concedes, so scores can still be recorded on a conceded hole. */}
               <input
                 type="number"
                 inputMode="numeric"
                 value={score ?? ""}
                 placeholder="–"
-                disabled={conceded}
                 onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -294,11 +291,7 @@ function HoleBox({
                   else next[p.id] = Math.max(1, parseInt(v) || 1);
                   commit({ grossScores: next });
                 }}
-                className={`h-9 w-12 shrink-0 rounded-lg border text-center text-lg font-bold tabular-nums outline-none ${
-                  conceded
-                    ? "border-card-border bg-surface-2 text-text-faint opacity-60"
-                    : "border-card-border bg-card-bg focus:border-primary"
-                }`}
+                className="h-9 w-12 shrink-0 rounded-lg border border-card-border bg-card-bg text-center text-lg font-bold tabular-nums outline-none focus:border-primary"
               />
 
               {/* Side bets (junk) tapped per player, to the right of the score. */}
