@@ -15,15 +15,12 @@ import { formatToPar } from "@/lib/storage";
 import { SettleUp } from "./SettleUp";
 import { JunkIcon, hasJunkIcon } from "./JunkChips";
 
-// Themeable via the --rv-* tokens (app/globals.css). Default values equal the
-// originals (#3B78FF / #16A06A / #E5484D / #9098A4 / #EAECEF / #16181D) so the
-// default theme is pixel-unchanged. Only ever used as CSS color values.
-const BLUE = "var(--rv-accent)";
-const GREEN = "var(--rv-positive)";
-const RED = "var(--rv-negative)";
-const MUTED = "var(--rv-muted)";
-const BORDER = "var(--rv-border)";
-const INK = "var(--rv-ink)";
+const BLUE = "#3B78FF";
+const GREEN = "#16A06A";
+const RED = "#E5484D";
+const MUTED = "#9098A4";
+const BORDER = "#EAECEF";
+const INK = "#16181D";
 const HAMMER = "#7C3AED"; // purple — matches the Scores tab hammer accent
 const PRESS = "#E8590C"; // orange — matches the press accent
 const TOTAL_TINT = "#EEF4F0";
@@ -434,7 +431,7 @@ function Detail({
       )}
 
       {/* horizontal scorecard */}
-      <div className="overflow-hidden rounded-card border bg-card-bg" style={{ borderColor: BORDER }}>
+      <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
         <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
         <div style={{ borderTop: `1px solid ${BORDER}` }}>
           <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
@@ -501,7 +498,7 @@ function PlayerBar({
     if (c.picked) elevenToPar = (elevenToPar ?? 0) + s - c.par;
   }
   return (
-    <div className="overflow-hidden rounded-card border bg-card-bg" style={{ borderColor: BORDER, borderLeft: `4px solid ${open ? BLUE : "#AFC6FF"}` }}>
+    <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER, borderLeft: `4px solid ${open ? BLUE : "#AFC6FF"}` }}>
       <button onClick={onToggle} className="flex w-full items-center gap-3 px-3 py-3 text-left">
         <span className="w-4 text-center font-serif text-base font-bold" style={{ color: MUTED }}>{rank}</span>
         <span className="flex min-w-0 flex-1 items-baseline gap-2">
@@ -865,7 +862,7 @@ function SideBets({ results }: { results: ResultsData }) {
           return (
             <div
               key={p.id}
-              className="flex items-center justify-between gap-3 rounded-card border bg-white px-4 py-3"
+              className="flex items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3"
               style={{ borderColor: BORDER }}
             >
               <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">

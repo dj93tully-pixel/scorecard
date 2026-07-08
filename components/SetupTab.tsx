@@ -210,7 +210,7 @@ export function SetupTab({
       </div>
 
       {/* Course */}
-      <section className="rounded-card border border-card-border bg-card-bg p-4">
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <h3 className="mb-2 font-bold">Course</h3>
 
         {flash && (
@@ -335,7 +335,7 @@ export function SetupTab({
       </section>
 
       {/* Players */}
-      <section className="rounded-card border border-card-border bg-card-bg p-4">
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-bold">Players</h3>
           <span
@@ -468,7 +468,7 @@ export function SetupTab({
 
       {/* Teams (Best Ball / Vegas / team Nassau) */}
       {showTeams && (
-        <section className="rounded-card border border-card-border bg-card-bg p-4">
+        <section className="rounded-xl border border-card-border bg-card-bg p-4">
           <h3 className="mb-1 font-bold">Teams</h3>
           <p className="mb-3 text-xs text-text-muted">
             Assign each player to team A or B (any split — 1v3, 2v2, 2v3…).
@@ -505,7 +505,7 @@ export function SetupTab({
       )}
 
       {/* Money & rules */}
-      <section className="rounded-card border border-card-border bg-card-bg p-4">
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <h3 className="mb-1 font-bold">Money &amp; rules</h3>
         <div className="divide-y divide-divider">
           {gameType === "nassau" && (
@@ -695,7 +695,7 @@ export function SetupTab({
       </section>
 
       {/* Side bets (junk) — ride on top of any game type, fold into settle-up */}
-      <section className="rounded-card border border-card-border bg-card-bg p-4">
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <h3 className="mb-1 font-bold">Side bets</h3>
         <p className="mb-3 text-xs text-text-muted">
           Optional junk that rides on top of the main game and folds into the final

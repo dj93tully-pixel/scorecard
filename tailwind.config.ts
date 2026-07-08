@@ -10,39 +10,35 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Themeable tokens resolve to CSS vars (see app/globals.css). The
-        // DEFAULT theme's var values equal the hex shown in comments, so the
-        // default look is unchanged. Colors used with Tailwind opacity
-        // modifiers (e.g. bg-positive/15) bind as `rgb(var(--x) / <alpha>)`.
         // Dark chrome
-        "header-bg": "var(--color-header)", // #0C0C0E
-        "ticker-bg": "var(--color-ticker)", // #060608
+        "header-bg": "#0C0C0E",
+        "ticker-bg": "#060608",
         "on-dark": "#FFFFFF",
-        "avatar-bg": "var(--color-chip)", // #1C1C22 — dark chips on the header
-        "accent-on-dark": "var(--color-accent-on-dark)", // #6BA0FF — reads on near-black
+        "avatar-bg": "#1C1C22", // dark chips on the header
+        "accent-on-dark": "#6BA0FF", // accent that reads on near-black
         // Light body
-        "page-bg": "var(--color-bg)", // #F5F6F8
-        "card-bg": "var(--color-surface)", // #FFFFFF
-        "surface-2": "var(--color-surface-2)", // #F4F6FA
-        "card-border": "var(--color-border)", // #E5E7EB
-        divider: "var(--color-divider)", // #EEF0F3
-        "text-primary": "var(--color-text)", // #16181D
-        "text-muted": "var(--color-muted)", // #8A90A0
-        "text-faint": "var(--color-text-faint)", // #9098A4
-        "row-tint": "var(--color-row-tint)", // #EDF3FF — soft blue team/highlight wash
+        "page-bg": "#F5F6F8",
+        "card-bg": "#FFFFFF",
+        "surface-2": "#F4F6FA",
+        "card-border": "#E5E7EB",
+        divider: "#EEF0F3",
+        "text-primary": "#16181D",
+        "text-muted": "#8A90A0",
+        "text-faint": "#9098A4",
+        "row-tint": "#EDF3FF", // soft blue team/highlight wash
         chevron: "#C4C8CE",
         // Accent
-        primary: "rgb(var(--color-accent-rgb) / <alpha-value>)", // #2D78FF
-        "accent-on-light": "var(--color-accent)", // #2D78FF
-        alert: "var(--color-status)", // #F0524B — wolf / live red pop
+        primary: "#2D78FF", // NBC electric blue
+        "accent-on-light": "#2D78FF",
+        alert: "#F0524B", // wolf / live red pop
         // Semantic scores (constant)
-        positive: "rgb(var(--color-positive-rgb) / <alpha-value>)", // #2BC081
-        negative: "rgb(var(--color-negative-rgb) / <alpha-value>)", // #F0524B
+        positive: "#2BC081",
+        negative: "#F0524B",
         "score-under": "#2BC081",
         "score-over": "#F0524B",
         "score-even": "#8A90A0",
-        "pill-bg": "var(--color-pill-bg)", // #DDF6EC
-        "pill-text": "rgb(var(--color-pill-text-rgb) / <alpha-value>)", // #0E7A5A
+        "pill-bg": "#DDF6EC",
+        "pill-text": "#0E7A5A",
         // Row washes
         "tint-good": "#F0F9F4",
         "tint-caution": "#FEFAE6",
@@ -57,15 +53,9 @@ const config: Config = {
         serif: ["Georgia", "Cambria", "'Times New Roman'", "Times", "serif"],
       },
       backgroundImage: {
-        // Header underline strip — themeable via --color-strip. The DEFAULT
-        // theme's var equals the original NBC-peacock rainbow gradient.
-        "signature-gradient": "var(--color-strip)",
-      },
-      borderRadius: {
-        // Themeable card corner radius (--radius-card). Default 12px == the
-        // original `rounded-xl`, so cards using `rounded-card` are unchanged
-        // under the default theme.
-        card: "var(--radius-card)",
+        // Header underline strip — rainbow (NBC-peacock) gradient
+        "signature-gradient":
+          "linear-gradient(90deg,#fcb711,#f37021,#cc004c,#6460aa,#0089d0,#0db14b)",
       },
       keyframes: {
         "fade-in": {

@@ -40,7 +40,7 @@ export default function Home() {
 
   if (!supabaseConfigured) {
     return (
-      <div className="mt-6 rounded-card border border-card-border bg-card-bg p-6 text-sm text-text-muted">
+      <div className="mt-6 rounded-xl border border-card-border bg-card-bg p-6 text-sm text-text-muted">
         The games database isn&apos;t configured yet. Add{" "}
         <code className="rounded bg-page-bg px-1">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
         <code className="rounded bg-page-bg px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to your
@@ -55,7 +55,7 @@ export default function Home() {
   function GameRow({ g }: { g: GameSummary }) {
     return (
       <li
-        className="overflow-hidden rounded-card border bg-white"
+        className="overflow-hidden rounded-xl border bg-white"
         style={{ borderColor: "#E8EBEF" }}
       >
         <button
@@ -124,11 +124,11 @@ export default function Home() {
       {games === null ? (
         <div className="space-y-2">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="skeleton h-[68px] w-full rounded-card" />
+            <div key={i} className="skeleton h-[68px] w-full rounded-xl" />
           ))}
         </div>
       ) : active.length === 0 && completed.length === 0 ? (
-        <div className="rounded-card border border-dashed border-card-border bg-card-bg p-8 text-center text-sm text-text-muted">
+        <div className="rounded-xl border border-dashed border-card-border bg-card-bg p-8 text-center text-sm text-text-muted">
           No games yet. Tap <span className="font-semibold">Admin</span> in the header to
           create and publish one.
         </div>

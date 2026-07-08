@@ -34,18 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.className} suppressHydrationWarning>
+    <html lang="en" className={inter.className}>
       <head>
-        {/* Apply the persisted theme before first paint so there's no flash of
-            the default palette on refresh. Reads localStorage["ht-theme"]; an
-            unknown/absent value falls back to the default theme (the :root
-            token block always applies). Keep the storage key in sync with
-            lib/themes.ts. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('ht-theme')||'default';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','default');}})();`,
-          }}
-        />
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       {/* Body is the dark chrome color so the iPhone safe-area (notch / status bar)

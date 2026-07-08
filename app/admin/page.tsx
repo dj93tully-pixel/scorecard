@@ -75,7 +75,7 @@ export default function AdminPage() {
 
   if (!supabaseConfigured) {
     return (
-      <div className="mt-6 rounded-card border border-card-border bg-card-bg p-6 text-sm text-text-muted">
+      <div className="mt-6 rounded-xl border border-card-border bg-card-bg p-6 text-sm text-text-muted">
         The games database isn&apos;t configured yet.
       </div>
     );
@@ -111,7 +111,7 @@ export default function AdminPage() {
             <li key={t.id}>
               <button
                 onClick={() => startGame(t.id)}
-                className="flex w-full items-center justify-between gap-3 rounded-card border border-card-border bg-card-bg px-4 py-3 text-left"
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-card-border bg-card-bg px-4 py-3 text-left"
               >
                 <span className="min-w-0">
                   <span className="block font-bold">{t.label}</span>
@@ -146,7 +146,7 @@ export default function AdminPage() {
       <li>
         <button
           onClick={() => setEditingId(g.id)}
-          className="flex w-full items-center justify-between gap-2 rounded-card border border-card-border bg-card-bg px-4 py-3 text-left"
+          className="flex w-full items-center justify-between gap-2 rounded-xl border border-card-border bg-card-bg px-4 py-3 text-left"
         >
           <span className="min-w-0">
             <span className="block truncate font-semibold">{g.name}</span>
@@ -186,11 +186,11 @@ export default function AdminPage() {
       {games === null ? (
         <div className="space-y-2">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="skeleton h-[60px] w-full rounded-card" />
+            <div key={i} className="skeleton h-[60px] w-full rounded-xl" />
           ))}
         </div>
       ) : shown.length === 0 ? (
-        <div className="rounded-card border border-dashed border-card-border bg-card-bg p-8 text-center text-sm text-text-muted">
+        <div className="rounded-xl border border-dashed border-card-border bg-card-bg p-8 text-center text-sm text-text-muted">
           {tab === "active"
             ? "No active games. Tap New game in the header to create one."
             : "No completed games yet."}

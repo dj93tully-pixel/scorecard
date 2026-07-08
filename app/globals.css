@@ -2,113 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ──────────────────────────────────────────────────────────────────────────
-   THEME TOKENS
-   Semantic palette exposed as CSS custom properties, switched by the
-   `data-theme` attribute on <html>. The Tailwind color names in
-   tailwind.config.ts resolve to these vars, so every existing class
-   (bg-card-bg, text-positive, …) re-tints with the theme — no per-component
-   edits. Colors that use Tailwind opacity modifiers (accent/positive/
-   negative/pill-text, e.g. bg-positive/15) also carry an `-rgb` channel
-   version so `rgb(var(--x) / <alpha>)` works.
-
-   DEFAULT is the app's CURRENT palette verbatim → the default theme is
-   pixel-identical to before. To add a theme later: add one [data-theme="…"]
-   block below and one entry in lib/themes.ts.
-   ────────────────────────────────────────────────────────────────────────── */
-:root,
-[data-theme="default"] {
-  --color-bg: #f5f6f8;
-  --color-surface: #ffffff;
-  --color-header: #0c0c0e;
-  --color-border: #e5e7eb;
-  --color-text: #16181d;
-  --color-muted: #8a90a0;
-  --color-accent: #2d78ff;
-  --color-accent-2: #20eba0;
-  --color-positive: #2bc081;
-  --color-negative: #f0524b;
-  --color-pill-bg: #ddf6ec;
-  --color-pill-text: #0e7a5a;
-  --color-status: #f0524b;
-  --logo-color: #20eba0;
-  --wm-primary: #ffffff;
-  --wm-accent: #20eba0;
-  --color-strip: linear-gradient(90deg, #fcb711, #f37021, #cc004c, #6460aa, #0089d0, #0db14b);
-  --radius-card: 12px;
-  /* channel forms for Tailwind alpha modifiers */
-  --color-accent-rgb: 45 120 255;
-  --color-positive-rgb: 43 192 129;
-  --color-negative-rgb: 240 82 75;
-  --color-pill-text-rgb: 14 122 90;
-  /* secondary surfaces / dark chrome */
-  --color-surface-2: #f4f6fa;
-  --color-divider: #eef0f3;
-  --color-text-faint: #9098a4;
-  --color-row-tint: #edf3ff;
-  --color-ticker: #060608;
-  --color-chip: #1c1c22;
-  --color-accent-on-dark: #6ba0ff;
-  /* Card/scorecard detail view (ResultsView) — kept as its own values so the
-     default theme is pixel-identical (this view uses a deeper green/red and a
-     brighter blue than the rest of the app). */
-  --rv-accent: #3b78ff;
-  --rv-positive: #16a06a;
-  --rv-negative: #e5484d;
-  --rv-border: #eaecef;
-  --rv-muted: #9098a4;
-  --rv-ink: #16181d;
-}
-
-/* FRESH FINTECH */
-[data-theme="fintech"] {
-  --color-bg: #f5f7fb;
-  --color-surface: #ffffff;
-  --color-header: #1b2a4a;
-  --color-border: #eaeef5;
-  --color-text: #101828;
-  --color-muted: #8a93a3;
-  --color-accent: #3b6ef6;
-  --color-accent-2: #16c79a;
-  --color-positive: #12b886;
-  --color-negative: #f0505a;
-  --color-pill-bg: #eaf0ff;
-  --color-pill-text: #3b6ef6;
-  --color-status: #f0505a;
-  --logo-color: #4fe0b8;
-  --wm-primary: #ffffff;
-  --wm-accent: #4fe0b8;
-  --color-strip: linear-gradient(90deg, #3b6ef6, #16c79a);
-  --radius-card: 14px;
-  /* channel forms for Tailwind alpha modifiers */
-  --color-accent-rgb: 59 110 246;
-  --color-positive-rgb: 18 184 134;
-  --color-negative-rgb: 240 80 90;
-  --color-pill-text-rgb: 59 110 246;
-  /* secondary surfaces / dark chrome */
-  --color-surface-2: #eef2fa;
-  --color-divider: #e9eef6;
-  --color-text-faint: #9aa3b2;
-  --color-row-tint: #e8eefe;
-  --color-ticker: #12203b;
-  --color-chip: #26375a;
-  --color-accent-on-dark: #7c9ff8;
-  /* Card/scorecard detail view — tracks the Fintech palette. */
-  --rv-accent: #3b6ef6;
-  --rv-positive: #12b886;
-  --rv-negative: #f0505a;
-  --rv-border: #eaeef5;
-  --rv-muted: #8a93a3;
-  --rv-ink: #101828;
+:root {
+  /* NBC theme mirrored as CSS vars for non-Tailwind use. */
+  --header-bg: #0c0c0e;
+  --ticker-bg: #060608;
+  --page-bg: #f5f6f8;
+  --card-bg: #ffffff;
+  --primary: #2d78ff;
+  --alert: #f0524b;
+  --positive: #2bc081;
+  --text-primary: #16181d;
+  --text-muted: #8a90a0;
 }
 
 /* html is the dark chrome color so the iPhone safe-area (above the header)
    reads dark, not white. The light page background lives on <main>. */
 html {
-  background: var(--color-header);
+  background: var(--header-bg);
 }
 body {
-  color: var(--color-text);
+  color: var(--text-primary);
   -webkit-tap-highlight-color: transparent;
 }
 

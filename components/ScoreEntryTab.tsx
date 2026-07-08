@@ -112,7 +112,7 @@ function HoleCard({
     <div
       id={`hole-${hole}`}
       style={{ scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)" }}
-      className="rounded-card border border-card-border bg-card-bg p-3"
+      className="rounded-xl border border-card-border bg-card-bg p-3"
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="leading-tight">
@@ -346,7 +346,7 @@ export function ScoreEntryTab({
 
   if (!ready) {
     return (
-      <div className="rounded-card border border-dashed border-card-border bg-card-bg p-6 text-center text-sm text-text-muted">
+      <div className="rounded-xl border border-dashed border-card-border bg-card-bg p-6 text-center text-sm text-text-muted">
         Add at least {meta.players.min} players and a course on the{" "}
         <span className="font-semibold">Setup</span> tab to start scoring.
       </div>
