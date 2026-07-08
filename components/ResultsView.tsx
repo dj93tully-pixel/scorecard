@@ -15,12 +15,15 @@ import { formatToPar } from "@/lib/storage";
 import { SettleUp } from "./SettleUp";
 import { JunkIcon, hasJunkIcon } from "./JunkChips";
 
-const BLUE = "#3B78FF";
-const GREEN = "#16A06A";
-const RED = "#E5484D";
-const MUTED = "#9098A4";
-const BORDER = "#EAECEF";
-const INK = "#16181D";
+// Themeable via the --rv-* tokens (app/globals.css). Default values equal the
+// originals (#3B78FF / #16A06A / #E5484D / #9098A4 / #EAECEF / #16181D) so the
+// default theme is pixel-unchanged. Only ever used as CSS color values.
+const BLUE = "var(--rv-accent)";
+const GREEN = "var(--rv-positive)";
+const RED = "var(--rv-negative)";
+const MUTED = "var(--rv-muted)";
+const BORDER = "var(--rv-border)";
+const INK = "var(--rv-ink)";
 const HAMMER = "#7C3AED"; // purple — matches the Scores tab hammer accent
 const PRESS = "#E8590C"; // orange — matches the press accent
 const TOTAL_TINT = "#EEF4F0";

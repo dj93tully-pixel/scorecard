@@ -16,20 +16,20 @@ const config: Config = {
         // modifiers (e.g. bg-positive/15) bind as `rgb(var(--x) / <alpha>)`.
         // Dark chrome
         "header-bg": "var(--color-header)", // #0C0C0E
-        "ticker-bg": "#060608",
+        "ticker-bg": "var(--color-ticker)", // #060608
         "on-dark": "#FFFFFF",
-        "avatar-bg": "#1C1C22", // dark chips on the header
-        "accent-on-dark": "#6BA0FF", // accent that reads on near-black
+        "avatar-bg": "var(--color-chip)", // #1C1C22 — dark chips on the header
+        "accent-on-dark": "var(--color-accent-on-dark)", // #6BA0FF — reads on near-black
         // Light body
         "page-bg": "var(--color-bg)", // #F5F6F8
         "card-bg": "var(--color-surface)", // #FFFFFF
-        "surface-2": "#F4F6FA",
+        "surface-2": "var(--color-surface-2)", // #F4F6FA
         "card-border": "var(--color-border)", // #E5E7EB
-        divider: "#EEF0F3",
+        divider: "var(--color-divider)", // #EEF0F3
         "text-primary": "var(--color-text)", // #16181D
         "text-muted": "var(--color-muted)", // #8A90A0
-        "text-faint": "#9098A4",
-        "row-tint": "#EDF3FF", // soft blue team/highlight wash
+        "text-faint": "var(--color-text-faint)", // #9098A4
+        "row-tint": "var(--color-row-tint)", // #EDF3FF — soft blue team/highlight wash
         chevron: "#C4C8CE",
         // Accent
         primary: "rgb(var(--color-accent-rgb) / <alpha-value>)", // #2D78FF

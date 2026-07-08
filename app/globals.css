@@ -41,6 +41,23 @@
   --color-positive-rgb: 43 192 129;
   --color-negative-rgb: 240 82 75;
   --color-pill-text-rgb: 14 122 90;
+  /* secondary surfaces / dark chrome */
+  --color-surface-2: #f4f6fa;
+  --color-divider: #eef0f3;
+  --color-text-faint: #9098a4;
+  --color-row-tint: #edf3ff;
+  --color-ticker: #060608;
+  --color-chip: #1c1c22;
+  --color-accent-on-dark: #6ba0ff;
+  /* Card/scorecard detail view (ResultsView) — kept as its own values so the
+     default theme is pixel-identical (this view uses a deeper green/red and a
+     brighter blue than the rest of the app). */
+  --rv-accent: #3b78ff;
+  --rv-positive: #16a06a;
+  --rv-negative: #e5484d;
+  --rv-border: #eaecef;
+  --rv-muted: #9098a4;
+  --rv-ink: #16181d;
 }
 
 /* FRESH FINTECH */
@@ -68,6 +85,21 @@
   --color-positive-rgb: 18 184 134;
   --color-negative-rgb: 240 80 90;
   --color-pill-text-rgb: 59 110 246;
+  /* secondary surfaces / dark chrome */
+  --color-surface-2: #eef2fa;
+  --color-divider: #e9eef6;
+  --color-text-faint: #9aa3b2;
+  --color-row-tint: #e8eefe;
+  --color-ticker: #12203b;
+  --color-chip: #26375a;
+  --color-accent-on-dark: #7c9ff8;
+  /* Card/scorecard detail view — tracks the Fintech palette. */
+  --rv-accent: #3b6ef6;
+  --rv-positive: #12b886;
+  --rv-negative: #f0505a;
+  --rv-border: #eaeef5;
+  --rv-muted: #8a93a3;
+  --rv-ink: #101828;
 }
 
 /* html is the dark chrome color so the iPhone safe-area (above the header)
