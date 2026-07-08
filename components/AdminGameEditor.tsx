@@ -87,7 +87,7 @@ export function AdminGameEditor({
         </div>
       )}
 
-      <div className="rounded-xl border border-card-border bg-card-bg p-4">
+      <div className="rounded-card border border-card-border bg-card-bg p-4">
         <label className="text-sm font-semibold">Game name</label>
         <input
           value={game.name}

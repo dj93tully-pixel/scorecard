@@ -105,7 +105,7 @@ function HoleBox({
     <div
       id={`hole-${hole}`}
       style={{ scrollMarginTop: "calc(var(--header-h, 88px) + 6rem)" }}
-      className="rounded-xl border border-card-border bg-card-bg p-3"
+      className="rounded-card border border-card-border bg-card-bg p-3"
     >
       {/* Header */}
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -367,7 +367,7 @@ export function ScoresTab({
 
   if (!ready) {
     return (
-      <div className="rounded-xl border border-dashed border-card-border bg-card-bg p-6 text-center text-sm text-text-muted">
+      <div className="rounded-card border border-dashed border-card-border bg-card-bg p-6 text-center text-sm text-text-muted">
         Add players and a course on the <span className="font-semibold">Setup</span>{" "}
         tab to start scoring.
       </div>

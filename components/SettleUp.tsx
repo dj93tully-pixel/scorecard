@@ -29,7 +29,7 @@ export function SettleUp({
       <h2 className="text-xl font-bold">{title}</h2>
       {payments.length === 0 ? (
         <div
-          className="rounded-xl border bg-white px-4 py-4 text-center text-sm"
+          className="rounded-card border bg-white px-4 py-4 text-center text-sm"
           style={{ borderColor: BORDER, color: MUTED }}
         >
           All square — nobody owes anything.
@@ -39,7 +39,7 @@ export function SettleUp({
           {payments.map((pmt, i) => (
             <div
               key={i}
-              className="flex items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3"
+              className="flex items-center justify-between gap-3 rounded-card border bg-white px-4 py-3"
               style={{ borderColor: BORDER }}
             >
               <span className="flex min-w-0 items-center gap-2 text-sm">
