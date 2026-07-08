@@ -87,9 +87,11 @@ function HoleCard({
   // Segment/total games settle on totals, not per hole — no per-hole money note.
   const noHoleMoney = gt === "elevens" || gt === "nassau";
 
-  // Only the per-hole betting games (Skins, Best Ball, Vegas, Sixes) show a hole
-  // ante; the exact amounts come from anteByHole (carry-aware) via the parent.
-  const showAnte = hammerable && (round.settings.stake ?? 0) > 0;
+  // Only the fixed per-hole cash-stake games show a hole ante (amounts from
+  // anteByHole, carry-aware, via the parent). Vegas is excluded: it settles on
+  // points × pointValue, not settings.stake, so a fixed ante chip is meaningless
+  // — it would just paint the leftover default stake, which Vegas never uses.
+  const showAnte = hammerable && gt !== "vegas" && (round.settings.stake ?? 0) > 0;
   // Press is in every game except 11s (Nassau needs two fixed sides → teams only).
   const canPress =
     gt !== "elevens" &&
