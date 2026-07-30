@@ -58,7 +58,7 @@ export function suggestForHole(
   }
 
   const net = new Map(players.map((p) => [p.id, expNet(p.id)]));
-  const stake = settings.stake || 1;
+  const stake = settings.stake ?? 1;
   const nOpp = others.length;
   const wolfNet = net.get(wolfId)!;
 

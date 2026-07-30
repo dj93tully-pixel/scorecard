@@ -73,6 +73,18 @@ describe("skins", () => {
     expect(sum(ledger)).toBe(0);
   });
 
+  it("skinValue 0 means no money (not a $1 fallback)", () => {
+    const round = makeRound(
+      "skins",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 4, c: 5, d: 5 } }],
+      { skinValue: 0 }
+    );
+    const { ledger } = computeSkins(round);
+    expect(ledger.a).toBe(0);
+    expect(ledger.b).toBe(0);
+  });
+
   it("ties carry the skins to the next decided hole", () => {
     const round = makeRound(
       "skins",

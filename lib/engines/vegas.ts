@@ -28,8 +28,7 @@ export function computeVegas(round: Round): GameResult {
   const ids = players.map((p) => p.id);
   const pops = computePops(players, course, settings.handicapMode);
   const { A, B } = splitTeams(round);
-  const pointValue =
-    settings.pointValue && settings.pointValue > 0 ? settings.pointValue : 1;
+  const pointValue = settings.pointValue ?? 1; // 0 = no money
   const flip = settings.birdieFlip ?? true;
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
 

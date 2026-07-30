@@ -47,7 +47,7 @@ function computeStablefordLike(
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);
   const pops = computePops(players, course, settings.handicapMode);
-  const value = settings.stake || 1; // dollars per point
+  const value = settings.stake ?? 1; // dollars per point (0 = no money)
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
 
   const ledger: Record<PlayerId, number> = {};

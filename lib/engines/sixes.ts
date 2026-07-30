@@ -13,7 +13,7 @@ export function computeSixes(round: Round): GameResult {
   const pops = computePops(players, course, settings.handicapMode);
   const order = round.teeOrder.length === 4 ? round.teeOrder : ids;
   const [p0, p1, p2, p3] = order;
-  const stake = settings.stake || 1;
+  const stake = settings.stake ?? 1; // 0 = no money
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
   const total = course.holes.length || 18;
 

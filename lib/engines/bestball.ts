@@ -12,7 +12,7 @@ export function computeBestBall(round: Round): GameResult {
   const ids = players.map((p) => p.id);
   const pops = computePops(players, course, settings.handicapMode);
   const { A, B } = splitTeams(round);
-  const fieldStake = settings.stake || 1;
+  const fieldStake = settings.stake ?? 1; // 0 = no money
   const wolfStake =
     settings.wolfStake && settings.wolfStake > 0 ? settings.wolfStake : fieldStake;
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));

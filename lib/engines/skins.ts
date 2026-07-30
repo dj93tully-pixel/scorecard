@@ -11,7 +11,7 @@ export function computeSkins(round: Round): GameResult {
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);
   const pops = computePops(players, course, settings.handicapMode);
-  const value = settings.skinValue && settings.skinValue > 0 ? settings.skinValue : 1;
+  const value = settings.skinValue ?? 1; // 0 is a valid "no money" value
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
 
   const ledger: Record<PlayerId, number> = {};

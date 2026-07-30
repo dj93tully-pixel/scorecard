@@ -166,7 +166,7 @@ export async function createGame(
   const { data, error } = await supabase
     .from("games")
     .insert({
-      name: name.trim() || `New ${meta.label} game`,
+      name: name.trim() || `${meta.label} Game`,
       game_type: gameType,
       course: blankCourse(),
       players,

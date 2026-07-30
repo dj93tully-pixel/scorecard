@@ -23,7 +23,7 @@ import {
 // other per-hole game antes settings.stake. Mirrors each engine's own unit choice.
 export function unitStake(round: Round): number {
   if (gameTypeOf(round) === "skins") {
-    return round.settings.skinValue && round.settings.skinValue > 0 ? round.settings.skinValue : 1;
+    return round.settings.skinValue ?? 1; // 0 = no money (ante hidden when 0)
   }
   return round.settings.stake ?? 0;
 }
