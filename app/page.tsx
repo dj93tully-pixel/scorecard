@@ -155,6 +155,15 @@ export default function Home() {
         className="flex items-stretch overflow-hidden rounded-xl border bg-white"
         style={{ borderColor: "#E8EBEF" }}
       >
+        {/* Edit button — opens the game editor (setup / delete / complete) */}
+        <button
+          onClick={() => setEditingId(g.id)}
+          aria-label={`Edit ${g.name}`}
+          className="flex shrink-0 items-center justify-center border-r px-3.5 text-text-muted active:bg-surface-2"
+          style={{ borderColor: "#E8EBEF" }}
+        >
+          <Pencil className="h-[17px] w-[17px]" />
+        </button>
         {/* Tap the card body to score the game */}
         <button
           onClick={() => router.push(`/game/${g.id}`)}
@@ -203,15 +212,6 @@ export default function Home() {
             </span>
           </span>
           <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "#C4C8CE" }} />
-        </button>
-        {/* Edit button — opens the game editor (setup / delete / complete) */}
-        <button
-          onClick={() => setEditingId(g.id)}
-          aria-label={`Edit ${g.name}`}
-          className="flex shrink-0 items-center justify-center border-l px-3.5 text-text-muted active:bg-surface-2"
-          style={{ borderColor: "#E8EBEF" }}
-        >
-          <Pencil className="h-[17px] w-[17px]" />
         </button>
       </li>
     );
