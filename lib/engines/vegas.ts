@@ -12,9 +12,15 @@ import { GameResult, GameHoleResult } from "./types";
 import { splitTeams } from "./teams";
 
 function teamNumber(a: number, b: number, highFirst: boolean): number {
-  const lo = Math.min(a, b);
-  const hi = Math.max(a, b);
-  return highFirst ? Number(`${hi}${lo}`) : Number(`${lo}${hi}`);
+  // Form the two-figure Vegas number arithmetically (low digit first, or high-first on
+  // a birdie flip). Computing it — rather than string-concatenating — is critical: a
+  // double-digit net (a blow-up 10) used to become Number("410") = 410 (a ~10× swing),
+  // and a net <= 0 (a very low gross with handicap pops) with a flip became
+  // Number("3-1") = NaN, which then poisoned every player's total for the whole round.
+  // Floor each net at 1 so the number stays a sane, monotonic figure.
+  const lo = Math.max(1, Math.min(a, b));
+  const hi = Math.max(1, Math.max(a, b));
+  return highFirst ? hi * 10 + lo : lo * 10 + hi;
 }
 
 export function computeVegas(round: Round): GameResult {

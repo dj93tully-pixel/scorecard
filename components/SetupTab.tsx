@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { Pencil, Search } from "lucide-react";
-import { Round, Course, HandicapMode } from "@/lib/wolf";
+import { Round, Course, HandicapMode, sanitizeEntries } from "@/lib/wolf";
 import {
   makePlayer,
   blankCourse,
@@ -120,11 +120,22 @@ export function SetupTab({
   }
   function removePlayer(id: string) {
     if (players.length <= meta.players.min) return;
-    updateRound((r) => ({
-      ...r,
-      players: r.players.filter((p) => p.id !== id),
-      teeOrder: r.teeOrder.filter((t) => t !== id),
-    }));
+    updateRound((r) => {
+      const nextPlayers = r.players.filter((p) => p.id !== id);
+      const nextTeeOrder = r.teeOrder.filter((t) => t !== id);
+      // Drop the player from fixed-team assignments so no ghost id lingers, and scrub
+      // existing entries (their scores + any hole where they were the wolf/partner) so
+      // removing them can't silently void holes or orphan scores.
+      const teams = { ...(r.settings.teams ?? {}) };
+      delete teams[id];
+      return {
+        ...r,
+        players: nextPlayers,
+        teeOrder: nextTeeOrder,
+        settings: { ...r.settings, teams },
+        entries: sanitizeEntries(r.entries, nextPlayers, nextTeeOrder),
+      };
+    });
   }
   function moveTee(id: string, dir: -1 | 1) {
     updateRound((r) => {
@@ -556,7 +567,7 @@ export function SetupTab({
               <input
                 type="number"
                 min={0}
-                value={settings.skinValue ?? 5}
+                value={settings.skinValue ?? 1}
                 onFocus={selectOnFocus}
                 onChange={(e) => setSetting("skinValue", parseFloat(e.target.value) || 0)}
                 className={numberInput}

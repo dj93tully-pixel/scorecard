@@ -60,8 +60,8 @@ export interface RoundSettings {
    * 3×$2. 0 or undefined means "same as stake" (symmetric).
    */
   wolfStake?: number;
-  loneMult: number; // default 1
-  blindMult: number; // default 2
+  loneMult: number; // default 2 (see DEFAULT_SETTINGS)
+  blindMult: number; // default 3 (see DEFAULT_SETTINGS)
   blindEnabled: boolean;
   // "Carryover ties": ties push and roll into the next hole — applies to the base
   // bet AND to presses (a press carries its own ties the same way).
@@ -221,7 +221,10 @@ export function strokesReceived(
 export function popsForHole(received: number, strokeIndex: number): number {
   if (received <= 0) return 0;
   const base = Math.floor(received / 18);
-  const extra = strokeIndex <= received % 18 ? 1 : 0;
+  // A valid stroke index is 1..18. Guard the lower bound so an unset/invalid SI of 0
+  // (from an incomplete manual course) doesn't auto-grant a pop on every such hole
+  // (0 <= received % 18 is always true).
+  const extra = strokeIndex >= 1 && strokeIndex <= received % 18 ? 1 : 0;
   return base + extra;
 }
 
@@ -266,6 +269,9 @@ export interface HoleResult {
   winner: HoleWinner;
   /** Effective field stake in play on this hole (base + any carryover). */
   stakeApplied: number;
+  /** Effective WOLF-TEAM stake in play on this hole (base + carryover); equals
+   *  stakeApplied unless a separate wolfStake is configured. */
+  wolfStakeApplied: number;
   /** Money change per player for this hole. Always sums to 0. */
   deltas: Record<PlayerId, number>;
   /** Total money moved on the hole (sum of the positive deltas). */
@@ -481,6 +487,7 @@ export function computeRound(round: Round): RoundComputation {
       teamBBest,
       winner,
       stakeApplied,
+      wolfStakeApplied,
       deltas,
       pot,
       carriedToNext,
@@ -501,6 +508,45 @@ export function defaultWolfForHole(
 ): PlayerId | undefined {
   if (teeOrder.length === 0) return undefined;
   return teeOrder[(hole - 1) % teeOrder.length];
+}
+
+/**
+ * Strip references to players no longer in the field: drop their gross scores and hand
+ * any hole where a departed player was the wolf/partner back to the default. Without
+ * this, removing a player mid-game leaves a dangling wolfId that silently voids the
+ * hole (bestNet can't score a player who isn't in the field) and orphans their scores.
+ * Idempotent — safe to run on every load and on removal. Returns the same array when
+ * nothing needs changing so React state/refs stay stable.
+ */
+export function sanitizeEntries(
+  entries: HoleEntry[],
+  players: Player[],
+  teeOrder: PlayerId[]
+): HoleEntry[] {
+  const ids = new Set(players.map((p) => p.id));
+  let touched = false;
+  const out = entries.map((e) => {
+    let changed = false;
+    const grossScores: Record<PlayerId, number> = {};
+    for (const [pid, sc] of Object.entries(e.grossScores)) {
+      if (ids.has(pid)) grossScores[pid] = sc;
+      else changed = true;
+    }
+    let wolfId = e.wolfId;
+    if (wolfId && !ids.has(wolfId)) {
+      wolfId = defaultWolfForHole(teeOrder, e.hole) ?? players[0]?.id ?? wolfId;
+      changed = true;
+    }
+    let partnerId = e.partnerId;
+    if (partnerId && !ids.has(partnerId)) {
+      partnerId = undefined;
+      changed = true;
+    }
+    if (!changed) return e;
+    touched = true;
+    return { ...e, grossScores, wolfId, partnerId };
+  });
+  return touched ? out : entries;
 }
 
 /** Total of all ledger values — should always be 0 (money invariant). */

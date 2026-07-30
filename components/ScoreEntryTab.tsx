@@ -10,7 +10,7 @@ import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
-import { carryByHole, wonByHole, anteByHole, unitStake, HoleCarry, HoleAnte } from "@/lib/carry";
+import { carryByHole, anteByHole, unitStake, HoleCarry, HoleAnte } from "@/lib/carry";
 import { CarryNote } from "./CarryNote";
 import { AnteChips } from "./AnteChips";
 import { PlayerJunkIcons } from "./JunkChips";
@@ -27,7 +27,6 @@ function HoleCard({
   hole,
   note,
   carry,
-  won,
   ante,
   pickCounts,
   segCover,
@@ -39,7 +38,6 @@ function HoleCard({
   hole: number;
   note?: GameHoleResult;
   carry?: HoleCarry; // push-carry split: normal / press / hammer
-  won?: HoleCarry; // won-amount split (decided hole): normal / press / hammer
   ante?: HoleAnte; // per-player stake this hole: normal / press / hammer
   pickCounts?: Record<string, number>; // 11s: each player's running picks (of 11)
   segCover?: number; // 9/6-presses covering this hole (for the ⚡9 ×N label)
@@ -307,10 +305,15 @@ function HoleCard({
         if (noHoleMoney) return null;
         const winners = note ? players.filter((p) => (note.deltas[p.id] ?? 0) > 0) : [];
         if (winners.length > 0) {
-          // Co-winners share equally, so list the names then the amount once:
-          // "Alice, Bob +$5".
-          const names = winners.map((w) => w.name || "Unnamed").join(", ");
-          const line = `${names} ${formatMoney(note!.deltas[winners[0].id] ?? 0)}`;
+          // Team/skins co-winners share one amount → "Alice, Bob +$5". Field games
+          // (stroke/Stableford) pay each winner a DIFFERENT amount, so list them
+          // individually — "Alice +$6, Bob +$2" — rather than printing one figure
+          // for everyone.
+          const amtOf = (id: string) => note!.deltas[id] ?? 0;
+          const allEqual = winners.every((w) => amtOf(w.id) === amtOf(winners[0].id));
+          const line = allEqual
+            ? `${winners.map((w) => w.name || "Unnamed").join(", ")} ${formatMoney(amtOf(winners[0].id))}`
+            : winners.map((w) => `${w.name || "Unnamed"} ${formatMoney(amtOf(w.id))}`).join(",  ");
           return (
             <div className="mt-2 text-right text-sm font-bold tabular-nums">{line}</div>
           );
@@ -360,10 +363,8 @@ export function ScoreEntryTab({
     return { ledger: g.ledger, holeResults: g.holeResults };
   });
   const resultByHole = new Map(combined.map((r) => [r.hole, r]));
-  // Per-hole carry split (normal / press / hammer) for the push-carry note, and
-  // the matching won-amount split for a decided hole.
+  // Per-hole carry split (normal / press / hammer) for the push-carry note.
   const carries = carryByHole(round);
-  const wons = wonByHole(round);
   const antes = anteByHole(round);
   // Per-scope press coverage per hole — for the ⚡9/⚡18 ×N labels + highlight.
   const pressCovers = pressCoverByHole(round);
@@ -410,7 +411,6 @@ export function ScoreEntryTab({
           hole={h.number}
           note={resultByHole.get(h.number)}
           carry={carries.get(h.number)}
-          won={wons.get(h.number)}
           ante={antes.get(h.number)}
           pickCounts={pickCounts}
           segCover={pressCovers.get(h.number)?.seg ?? 0}

@@ -267,3 +267,19 @@ export function anteByHole(round: Round): Map<number, HoleAnte> {
   }
   return out;
 }
+
+// Un-hammered WOLF-TEAM base stake per hole, for Wolf games that set a separate
+// `wolfStake` (uneven teams). The generic ante reads the FIELD stake off the engine
+// (`stakeApplied`), so without this the wolf/partner rows would show the field ante
+// instead of their own. Empty when the game isn't Wolf or the stake is symmetric —
+// callers then just use the field ante for everyone.
+export function wolfBaseByHole(round: Round): Map<number, number> {
+  const out = new Map<number, number>();
+  if (gameTypeOf(round) !== "wolf") return out;
+  const ws = round.settings.wolfStake ?? 0;
+  if (!(ws > 0) || ws === (round.settings.stake ?? 0)) return out; // symmetric — no override needed
+  for (const r of computeRound(noHammer(round)).results) {
+    out.set(r.hole, r.wolfStakeApplied);
+  }
+  return out;
+}

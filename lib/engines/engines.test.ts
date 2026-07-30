@@ -198,6 +198,22 @@ describe("vegas", () => {
     // A = 34, B = 45 → A wins by 11.
     expect(computeVegas(noFlip).ledger.a).toBe(11);
   });
+
+  it("double-digit blow-up doesn't explode the number or produce NaN", () => {
+    const round = makeRound(
+      "vegas",
+      scratch(["a", "b", "c", "d"]),
+      [{ hole: 18, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 10, c: 4, d: 5 } }],
+      { pointValue: 1, birdieFlip: true, teams: { ...teams } }
+    );
+    // A = 4 & 10 → 50 (arithmetic), B = 45 → B wins by 5. The old string-concat made
+    // A "410" (a 365-pt swing); the number must stay finite and sane.
+    const { ledger } = computeVegas(round);
+    expect(Number.isFinite(ledger.a)).toBe(true);
+    expect(ledger.a).toBe(-5);
+    expect(ledger.c).toBe(5);
+    expect(sum(ledger)).toBe(0);
+  });
 });
 
 // ── Six-Six-Six ──────────────────────────────────────────────────────────

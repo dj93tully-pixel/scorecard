@@ -105,8 +105,6 @@ export async function GET(
     }
 
     const data = await res.json();
-    // Log the raw shape once for inspection (server console only).
-    console.log("[courses/:id] raw response keys:", Object.keys(data));
 
     // The course object may be at the top level or nested under `course`.
     const course = data.course ?? data;

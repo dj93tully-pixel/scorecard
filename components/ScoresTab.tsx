@@ -15,7 +15,7 @@ import {
   computeRound,
 } from "@/lib/wolf";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
-import { carryByHole, wonByHole, anteByHole, HoleCarry, HoleAnte } from "@/lib/carry";
+import { carryByHole, anteByHole, wolfBaseByHole, HoleCarry, HoleAnte } from "@/lib/carry";
 import { CarryNote } from "./CarryNote";
 import { AnteChips } from "./AnteChips";
 import { PlayerJunkIcons } from "./JunkChips";
@@ -32,8 +32,8 @@ function HoleBox({
   hole,
   deltas,
   carry,
-  won,
   ante,
+  wolfBase,
   segCover,
   fullCover,
   upsertEntry,
@@ -43,8 +43,8 @@ function HoleBox({
   hole: number;
   deltas: Record<string, number>; // per-hole money (base + press)
   carry?: HoleCarry; // push-carry split: normal / press / hammer
-  won?: HoleCarry; // won-amount split (decided hole): normal / press / hammer
   ante?: HoleAnte; // per-player stake this hole: normal / press / hammer
+  wolfBase?: number; // un-hammered wolf-team base stake (asymmetric wolfStake only)
   segCover?: number; // 9-presses covering this hole (for the ⚡9 ×N label)
   fullCover?: number; // 18-presses covering this hole (for the ⚡18 ×N label)
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
@@ -262,7 +262,16 @@ function HoleBox({
                     ))}
                   </span>
                 )}
-                {ante && <AnteChips ante={ante} mult={anteMult} />}
+                {ante &&
+                  (() => {
+                    // On a 2v2 hole with a separate wolf-team stake, the wolf + partner
+                    // ante their own (higher/lower) base, not the field stake.
+                    const rowAnte =
+                      onTeamA && mode === "2v2" && wolfBase != null
+                        ? { ...ante, orig: wolfBase }
+                        : ante;
+                    return <AnteChips ante={rowAnte} mult={anteMult} />;
+                  })()}
               </div>
 
               {/* Money won/lost this hole */}
@@ -315,7 +324,9 @@ function HoleBox({
               <CarryNote carry={carry} />
             ) : (
               <span className="text-text-faint">
-                {result.carriedToNext > 0 ? `Push — $${result.carriedToNext} carries` : "Push"}
+                {result.carriedToNext > 0
+                  ? `Push — $${Math.round(result.carriedToNext * 100) / 100} carries`
+                  : "Push"}
               </span>
             )
           ) : (
@@ -393,8 +404,8 @@ export function ScoresTab({
   // Per-hole carry split (normal / press / hammer) for the push-carry note, and
   // the matching won-amount split for a decided hole.
   const carries = carryByHole(round);
-  const wons = wonByHole(round);
   const antes = anteByHole(round);
+  const wolfBases = wolfBaseByHole(round);
 
   return (
     <div className="space-y-3">
@@ -429,8 +440,8 @@ export function ScoresTab({
           hole={h.number}
           deltas={moneyByHole.get(h.number) ?? {}}
           carry={carries.get(h.number)}
-          won={wons.get(h.number)}
           ante={antes.get(h.number)}
+          wolfBase={wolfBases.get(h.number)}
           segCover={pressCovers.get(h.number)?.seg ?? 0}
           fullCover={pressCovers.get(h.number)?.full ?? 0}
           upsertEntry={upsertEntry}

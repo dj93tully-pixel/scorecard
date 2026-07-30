@@ -61,7 +61,11 @@ export function pressRange(round: Round, hole: number, scope: PressScope): numbe
   if (scope === "full") {
     end = maxHole;
   } else {
-    const size = round.gameType === "sixes" ? 6 : 9;
+    // A "seg" press covers the rest of the current segment. For Six-Six-Six the
+    // segment is a THIRD of the round (6 on an 18-hole course, but 3 on a 9-hole),
+    // mirroring segOf in sixes.ts — a fixed 6 would cross the partner rotation on a
+    // non-18-hole course. Every other game segments by nine.
+    const size = round.gameType === "sixes" ? Math.max(1, Math.floor(nums.length / 3)) : 9;
     end = Math.min(Math.ceil(hole / size) * size, maxHole);
   }
   return nums.filter((n) => n >= hole && n <= end);

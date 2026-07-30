@@ -245,9 +245,11 @@ export function computeJunk(round: Round): JunkResult {
         }
       }
     } else {
-      // holder — only the last player(s) to trigger it pay, at the end.
+      // holder — only the last player(s) to trigger it pay, at the end. "Last" is by
+      // hole number (the only ordering we have), so sort rather than trust array order.
       let holders: PlayerId[] = [];
-      for (const h of course.holes) {
+      const holesInOrder = [...course.holes].sort((a, b) => a.number - b.number);
+      for (const h of holesInOrder) {
         const E = earnersOn(type, cfg, h.number, h.par);
         if (E.length > 0) {
           holders = E;

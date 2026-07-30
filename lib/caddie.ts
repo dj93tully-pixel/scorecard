@@ -71,12 +71,14 @@ export function suggestForHole(
   type Opt = { mode: CaddieSuggestion["mode"]; partnerId?: PlayerId; label: string; ev: number };
   const opts: Opt[] = [];
 
-  // 2v2: each possible partner.
+  // 2v2: each possible partner. Skip when picking a partner would leave no opponents
+  // (a 2-player game) — Math.min(...[]) is Infinity, which floated a bogus "2v2"
+  // suggestion to the top.
   for (const partner of others) {
+    const opponents = others.filter((o) => o.id !== partner.id);
+    if (opponents.length === 0) continue;
     const teamBest = Math.min(wolfNet, net.get(partner.id)!);
-    const fieldBest = Math.min(
-      ...others.filter((o) => o.id !== partner.id).map((o) => net.get(o.id)!)
-    );
+    const fieldBest = Math.min(...opponents.map((o) => net.get(o.id)!));
     opts.push({
       mode: "2v2",
       partnerId: partner.id,

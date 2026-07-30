@@ -88,6 +88,10 @@ export function computeNassau(round: Round): GameResult {
   const holeNums = course.holes.map((h) => h.number);
   const frontNums = holeNums.filter((n) => n <= 9);
   const backNums = holeNums.filter((n) => n >= 10);
+  // On a 9-hole round there is no back nine, so the "overall" (all holes) bet is the
+  // SAME holes as "front" — settling both would pay the front result twice. Only run
+  // the overall bet when a distinct back nine exists.
+  const hasBack = backNums.length > 0;
 
   const ledger: Record<PlayerId, number> = {};
   const base: Record<PlayerId, Record<SegKey, number>> = {};
@@ -118,6 +122,8 @@ export function computeNassau(round: Round): GameResult {
         };
         for (const key of ["front", "back", "overall"] as SegKey[]) {
           if (segHoles[key].length === 0) continue;
+          if (key === "overall" && !hasBack) continue; // 9-hole: overall == front
+
           let aWon = 0;
           let bWon = 0;
           for (const n of segHoles[key]) {
@@ -179,10 +185,10 @@ export function computeNassau(round: Round): GameResult {
         }
       };
 
-      // The three base bets.
+      // The three base bets (overall only when there's a distinct back nine).
       settleBet(frontNums, (id, amt) => (base[id].front += amt));
       settleBet(backNums, (id, amt) => (base[id].back += amt));
-      settleBet(holeNums, (id, amt) => (base[id].overall += amt));
+      if (hasBack) settleBet(holeNums, (id, amt) => (base[id].overall += amt));
 
       // Presses: each flagged hole opens a fresh match-play bet over the rest of
       // its nine ("seg") and/or the rest of the round ("full"), into `press`.

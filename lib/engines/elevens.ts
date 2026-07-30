@@ -73,7 +73,10 @@ export function computeElevens(round: Round): GameResult {
       deltas[id] = d * value;
     }
     for (const id of ids) ledger[id] += deltas[id];
-    holeResults.push({ hole: h.number, decided: true, detail: "", deltas });
+    // decided = money actually moved (all counted values tying is a wash), per the
+    // GameHoleResult contract that a tie/no-money hole is false.
+    const anyMoney = ids.some((id) => deltas[id] !== 0);
+    holeResults.push({ hole: h.number, decided: anyMoney, detail: "", deltas });
   }
 
   const stats: Record<PlayerId, Record<string, number>> = {};

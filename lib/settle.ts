@@ -14,10 +14,22 @@ export interface Payment {
 export function settleUp(people: { name: string; amount: number }[]): Payment[] {
   const creditors: { name: string; amt: number }[] = [];
   const debtors: { name: string; amt: number }[] = [];
-  for (const p of people) {
-    const cents = Math.round(p.amount * 100);
-    if (cents > 0) creditors.push({ name: p.name, amt: cents });
-    else if (cents < 0) debtors.push({ name: p.name, amt: -cents });
+  // Round to integer cents. Sub-cent inputs (e.g. a stake split three ways) can make
+  // the rounded set not net to exactly zero, which would leave the greedy loop with an
+  // unpaid remainder. Fold that residual into the largest-magnitude balance so the
+  // books balance and every payment reconciles.
+  const rounded = people.map((p) => ({ name: p.name, cents: Math.round(p.amount * 100) }));
+  const residual = rounded.reduce((s, r) => s + r.cents, 0);
+  if (residual !== 0 && rounded.length > 0) {
+    let idx = 0;
+    for (let i = 1; i < rounded.length; i++) {
+      if (Math.abs(rounded[i].cents) > Math.abs(rounded[idx].cents)) idx = i;
+    }
+    rounded[idx].cents -= residual;
+  }
+  for (const r of rounded) {
+    if (r.cents > 0) creditors.push({ name: r.name, amt: r.cents });
+    else if (r.cents < 0) debtors.push({ name: r.name, amt: -r.cents });
   }
   creditors.sort((a, b) => b.amt - a.amt);
   debtors.sort((a, b) => b.amt - a.amt);

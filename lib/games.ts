@@ -11,6 +11,7 @@ import {
   RoundSettings,
   GameTypeId,
   DEFAULT_SETTINGS,
+  sanitizeEntries,
 } from "./wolf";
 import { blankCourse, defaultPlayers } from "./storage";
 import { GAME_TYPES } from "./gametypes";
@@ -84,12 +85,27 @@ function rowToEntry(r: EntryRow): HoleEntry {
 }
 
 function rowsToRound(game: GameRow, entries: EntryRow[]): Round {
+  // Guard the raw JSON columns: a legacy/hand-edited row with a null course/players/
+  // tee_order would otherwise crash the game screen (settings already default-merge).
+  const players = Array.isArray(game.players) ? game.players : [];
+  const course =
+    game.course && Array.isArray(game.course.holes) ? game.course : blankCourse();
+  const teeOrder =
+    Array.isArray(game.tee_order) && game.tee_order.length > 0
+      ? game.tee_order
+      : players.map((p) => p.id); // re-derive from players when absent
   return {
-    course: game.course,
-    players: game.players,
-    teeOrder: game.tee_order,
+    course,
+    players,
+    teeOrder,
     settings: { ...DEFAULT_SETTINGS, ...game.settings },
-    entries: entries.map(rowToEntry).sort((a, b) => a.hole - b.hole),
+    // sanitizeEntries makes a stale wolf/partner reference (e.g. a player removed in a
+    // prior session) self-heal on every load, so it never voids a hole.
+    entries: sanitizeEntries(
+      entries.map(rowToEntry).sort((a, b) => a.hole - b.hole),
+      players,
+      teeOrder
+    ),
     gameType: game.game_type ?? "wolf",
   };
 }

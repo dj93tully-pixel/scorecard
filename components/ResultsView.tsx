@@ -26,20 +26,23 @@ const PRESS = "#E8590C"; // orange — matches the press accent
 const TOTAL_TINT = "#EEF4F0";
 const TILE_ACTIVE = "#EAF1FF";
 
-// Money to at most one decimal: $2.50 → $2.5, $5 → $5.
+// Money to cents: $5 → $5, $2.50 → $2.50, $0.75 → $0.75. Uses 2 decimals (matching
+// formatMoney + settle-up) so the Card-tab standings/ledger never disagree with the
+// amount a player is actually told to pay (1-decimal rounding turned $0.75 into $0.8).
 function money1(v: number): string {
-  const r = Math.round(v * 10) / 10;
+  const r = Math.round(v * 100) / 100;
   const sign = r > 0 ? "+" : r < 0 ? "-" : "";
   const abs = Math.abs(r);
-  return `${sign}$${Number.isInteger(abs) ? abs : abs.toFixed(1)}`;
+  return `${sign}$${Number.isInteger(abs) ? abs : abs.toFixed(2)}`;
 }
 
-// Ledger style: signed +/- with no $ sign. +2.5 / -2.5, zero → placeholder.
+// Ledger style: signed +/- with no $ sign. +2.50 / -2.50, zero → placeholder. Also 2dp
+// so per-hole cells reconcile with the row total and the settle-up.
 function ledgerFmt(v: number, zero = "·"): string {
-  const r = Math.round(v * 10) / 10;
+  const r = Math.round(v * 100) / 100;
   if (r === 0) return zero;
   const abs = Math.abs(r);
-  const body = Number.isInteger(abs) ? `${abs}` : abs.toFixed(1);
+  const body = Number.isInteger(abs) ? `${abs}` : abs.toFixed(2);
   return r < 0 ? `-${body}` : `+${body}`;
 }
 
