@@ -63,7 +63,7 @@ export function AdminGameEditor({
           onClick={onClose}
           className="rounded-lg bg-primary px-4 py-2 font-semibold text-on-dark"
         >
-          ← Back to admin
+          ← Back to games
         </button>
       </div>
     );
