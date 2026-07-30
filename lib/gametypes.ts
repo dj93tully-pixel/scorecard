@@ -52,7 +52,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     id: "skins",
     label: "Skins",
     blurb: "Lowest net score wins the hole; ties carry the skins forward.",
-    players: { min: 2, max: 6 },
+    players: { min: 2, max: 8 },
     hasTeams: false,
     rotatesTeams: false,
     statColumns: [{ key: "skins", label: "Skins", kind: "number" }],
