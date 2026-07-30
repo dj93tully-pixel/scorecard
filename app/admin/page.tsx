@@ -60,6 +60,7 @@ export default function AdminPage() {
     setHeader({
       title: editingId ? "Edit game" : picking ? "New game" : "Admin",
       backHref: "/",
+      variant: "admin",
       rightButton:
         editingId || picking
           ? undefined
@@ -146,7 +147,7 @@ export default function AdminPage() {
       <li>
         <button
           onClick={() => setEditingId(g.id)}
-          className="flex w-full items-center justify-between gap-2 rounded-xl border border-card-border bg-card-bg px-4 py-3 text-left"
+          className="flex w-full items-center justify-between gap-2 rounded-xl border border-dashed border-card-border bg-card-bg/70 px-4 py-3 text-left"
         >
           <span className="min-w-0">
             <span className="block truncate font-semibold">{g.name}</span>

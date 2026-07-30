@@ -68,6 +68,7 @@ export function Header() {
   const router = useRouter();
   const { config } = useHeader();
   const ticker = config.ticker;
+  const isAdmin = config.variant === "admin";
   const headerRef = useRef<HTMLElement>(null);
 
   // Expose the live header height so in-page tab bars can stick right below it.
@@ -85,7 +86,7 @@ export function Header() {
   return (
     <header
       ref={headerRef}
-      className="safe-top sticky top-0 z-30 bg-header-bg text-on-dark"
+      className={`safe-top sticky top-0 z-30 text-on-dark ${isAdmin ? "bg-[#1E1608]" : "bg-header-bg"}`}
     >
       <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-2">
         <div className="flex min-w-0 flex-1 items-center gap-1">
@@ -93,7 +94,7 @@ export function Header() {
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="truncate text-lg font-bold uppercase tracking-tight">
               {config.title ? (
-                <span>{config.title}</span>
+                <span style={isAdmin ? { color: "#F5B33F" } : undefined}>{config.title}</span>
               ) : (
                 <>
                   <span style={{ color: "#FFFFFF" }}>HACKER</span>

@@ -37,6 +37,9 @@ export interface HeaderConfig {
   rightButton?: HeaderButton;
   /** If set, render a broadcast ticker strip beneath the header. */
   ticker?: TickerData | null;
+  /** "admin" tints the header chrome (warm) + shows the title in amber, so it's
+   *  obvious you're in the admin area rather than the play/games view. */
+  variant?: "admin";
 }
 
 interface Ctx {
