@@ -105,9 +105,11 @@ export function Header() {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {config.backHref && (
+          {(config.backHref || config.backOnClick) && (
             <button
-              onClick={() => router.push(config.backHref!)}
+              onClick={() =>
+                config.backOnClick ? config.backOnClick() : router.push(config.backHref!)
+              }
               className="flex items-center gap-1 rounded-lg bg-avatar-bg px-2.5 py-1.5 text-sm font-semibold text-on-dark"
             >
               <ChevronLeft className="h-4 w-4" />

@@ -31,8 +31,11 @@ export interface HeaderButton {
 export interface HeaderConfig {
   /** Secondary line under the brand wordmark — e.g. the current game name. */
   title?: string;
-  /** If set, show a back button on the left of the right cluster. */
+  /** If set, show a back button (dark "‹ Games") that navigates to this route. */
   backHref?: string;
+  /** Like backHref, but runs a handler instead of navigating — for in-page views
+   *  (e.g. the game editor lives as state on the home route, not its own URL). */
+  backOnClick?: () => void;
   /** Generic right-side action (e.g. Admin / Edit / Done). */
   rightButton?: HeaderButton;
   /** If set, render a broadcast ticker strip beneath the header. */

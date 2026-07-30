@@ -59,18 +59,25 @@ export default function Home() {
   // (the management flow) the chrome warms to the "admin" variant + a title, so it
   // reads as a distinct mode from the games list and from scoring.
   useEffect(() => {
+    const inFlow = editingId || picking;
     setHeader({
       title: editingId ? "Edit game" : picking ? "New game" : undefined,
-      variant: editingId || picking ? "admin" : undefined,
-      rightButton:
-        editingId || picking
-          ? undefined
-          : {
-              label: "New game",
-              icon: <Plus className="h-4 w-4" />,
-              primary: true,
-              onClick: () => setPicking(true),
-            },
+      variant: inFlow ? "admin" : undefined,
+      backOnClick: inFlow
+        ? () => {
+            setEditingId(null);
+            setPicking(false);
+            refresh();
+          }
+        : undefined,
+      rightButton: inFlow
+        ? undefined
+        : {
+            label: "New game",
+            icon: <Plus className="h-4 w-4" />,
+            primary: true,
+            onClick: () => setPicking(true),
+          },
     });
     return () => setHeader({});
   }, [editingId, picking, setHeader]);
@@ -101,12 +108,6 @@ export default function Home() {
   if (picking) {
     return (
       <div className="mt-4 animate-fade-in space-y-3">
-        <button
-          onClick={() => setPicking(false)}
-          className="text-sm font-semibold text-accent-on-light"
-        >
-          ‹ All games
-        </button>
         <h2 className="text-xl font-bold">Pick a game</h2>
         {error && (
           <p className="rounded-lg bg-tint-bad px-3 py-2 text-sm text-negative">{error}</p>
