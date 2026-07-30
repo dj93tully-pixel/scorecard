@@ -7,12 +7,19 @@ import { GameSummary, listGames, subscribeGamesList } from "@/lib/games";
 import { supabaseConfigured } from "@/lib/supabase";
 import { useHeader } from "@/lib/header-context";
 import { GAME_TYPES } from "@/lib/gametypes";
+import { PillTabs, PillTab } from "@/components/PillTabs";
+
+const TABS: PillTab[] = [
+  { id: "active", label: "Active" },
+  { id: "completed", label: "Completed" },
+];
 
 export default function Home() {
   const router = useRouter();
   const { setHeader } = useHeader();
   const [games, setGames] = useState<GameSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"active" | "completed">("active");
 
   function refresh() {
     listGames()
@@ -51,6 +58,7 @@ export default function Home() {
 
   const active = (games ?? []).filter((g) => g.published && !g.completed);
   const completed = (games ?? []).filter((g) => g.completed);
+  const shown = tab === "active" ? active : completed;
 
   function GameRow({ g }: { g: GameSummary }) {
     return (
@@ -133,35 +141,31 @@ export default function Home() {
           create and publish one.
         </div>
       ) : (
-        <>
-          <section className="space-y-2">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">
-              Active
-            </h3>
-            {active.length === 0 ? (
-              <p className="text-sm text-text-faint">No active games.</p>
-            ) : (
-              <ul className="space-y-2">
-                {active.map((g) => (
-                  <GameRow key={g.id} g={g} />
-                ))}
-              </ul>
-            )}
-          </section>
+        <div>
+          <div
+            className="sticky z-20 -mx-3 mb-4 bg-page-bg px-3 pb-2 pt-2"
+            style={{ top: "var(--header-h, 88px)" }}
+          >
+            <PillTabs
+              tabs={TABS}
+              activeId={tab}
+              onChange={(t) => setTab(t as "active" | "completed")}
+              ariaLabel="Game views"
+            />
+          </div>
 
-          {completed.length > 0 && (
-            <section className="space-y-2">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-text-muted">
-                Completed
-              </h3>
-              <ul className="space-y-2 opacity-75">
-                {completed.map((g) => (
-                  <GameRow key={g.id} g={g} />
-                ))}
-              </ul>
-            </section>
+          {shown.length === 0 ? (
+            <p className="text-sm text-text-faint">
+              {tab === "active" ? "No active games." : "No completed games yet."}
+            </p>
+          ) : (
+            <ul className="animate-fade-in space-y-2">
+              {shown.map((g) => (
+                <GameRow key={g.id} g={g} />
+              ))}
+            </ul>
           )}
-        </>
+        </div>
       )}
     </div>
   );
