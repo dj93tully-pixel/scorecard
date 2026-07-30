@@ -1,73 +1,18 @@
 // components/Header.tsx
-// Global NBC broadcast header: brand + current game name on the left, back +
-// one action button on the right, a live ticker strip beneath, and the
-// NBC-peacock gradient line under it all.
+// Global broadcast header: brand + current game name on the left, back +
+// one action button on the right, and the NBC-peacock gradient line under it.
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { HackerTrackerMark } from "./HackerTrackerMark";
 import { useHeader } from "@/lib/header-context";
 
-// Ticker meta text — continuously scrolls in one direction, but only when it's
-// wider than the available space. Uses two copies + a -50% loop so it wraps
-// seamlessly. flex/items-center keeps it vertically aligned with "Hole N".
-const GAP = 40; // px gap between the looping copies
-
-function TickerMeta({ text }: { text: string }) {
-  const boxRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLSpanElement>(null);
-  const [contentW, setContentW] = useState(0);
-  const [overflow, setOverflow] = useState(false);
-
-  useEffect(() => {
-    function measure() {
-      const box = boxRef.current;
-      const span = textRef.current;
-      if (!box || !span) return;
-      const w = span.scrollWidth; // margin excluded → clean text width
-      setContentW(w);
-      setOverflow(w > box.clientWidth + 4);
-    }
-    measure();
-    const ro = new ResizeObserver(measure);
-    if (boxRef.current) ro.observe(boxRef.current);
-    return () => ro.disconnect();
-  }, [text]);
-
-  const duration = Math.max(8, (contentW + GAP) / 35); // ~35 px/sec
-
-  return (
-    <div ref={boxRef} className="relative ml-1 flex min-w-0 flex-1 items-center overflow-hidden">
-      <div
-        className="flex shrink-0 whitespace-nowrap"
-        style={
-          overflow ? { animation: `marquee-loop ${duration}s linear infinite` } : undefined
-        }
-      >
-        <span
-          ref={textRef}
-          className="text-[12px] text-text-muted"
-          style={overflow ? { marginRight: GAP } : undefined}
-        >
-          {text}
-        </span>
-        {overflow && (
-          <span aria-hidden className="text-[12px] text-text-muted" style={{ marginRight: GAP }}>
-            {text}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function Header() {
   const router = useRouter();
   const { config } = useHeader();
-  const ticker = config.ticker;
   const isAdmin = config.variant === "admin";
   const headerRef = useRef<HTMLElement>(null);
 
@@ -131,23 +76,6 @@ export function Header() {
           )}
         </div>
       </div>
-
-      {/* Live ticker strip */}
-      {ticker && (
-        <div className="bg-ticker-bg">
-          <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-1">
-            <span
-              className={`h-[6px] w-[6px] shrink-0 rounded-full ${
-                ticker.live ? "bg-alert ring-pulse" : "bg-text-muted"
-              }`}
-            />
-            <span className="shrink-0 text-[12px] font-semibold text-on-dark">
-              {ticker.primary}
-            </span>
-            {ticker.meta && <TickerMeta text={ticker.meta} />}
-          </div>
-        </div>
-      )}
 
       {/* NBC peacock line */}
       <div className="h-[3px] w-full bg-signature-gradient" />

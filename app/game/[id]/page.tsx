@@ -5,8 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { computeRound } from "@/lib/wolf";
 import { useGame } from "@/lib/useGame";
 import { useHeader } from "@/lib/header-context";
-import { liveSummary, genericSummary } from "@/lib/live";
-import { computeGame, gameTypeOf } from "@/lib/gametypes";
+import { gameTypeOf } from "@/lib/gametypes";
 import { buildResults } from "@/lib/results";
 import { ScoresTab } from "@/components/ScoresTab";
 import { ResultsView } from "@/components/ResultsView";
@@ -42,17 +41,6 @@ export default function GamePage() {
     () => (round && isWolf ? computeRound(round) : null),
     [round, isWolf]
   );
-  const gameResult = useMemo(
-    () => (round && !isWolf ? computeGame(round) : null),
-    [round, isWolf]
-  );
-  const ticker = useMemo(() => {
-    if (!round) return null;
-    if (isWolf && computation) return liveSummary(round, computation);
-    if (!isWolf && gameResult) return genericSummary(round);
-    return null;
-  }, [round, isWolf, computation, gameResult]);
-
   // Read-only results for the Card tab's interactive page: per player, per hole,
   // split by bet type. Re-reads the engines — changes no settlement logic.
   const results = useMemo(() => (round ? buildResults(round) : null), [round]);
@@ -62,16 +50,14 @@ export default function GamePage() {
     { id: "card", label: "Cards" },
   ];
 
-  // Drive the global header: game name + back + ticker. Editing lives only in
-  // the Admin section (reached from the main page), not here.
+  // Drive the global header: game name + back button.
   useEffect(() => {
     setHeader({
       title: game?.name ?? "",
       backHref: "/",
-      ticker,
     });
     return () => setHeader({});
-  }, [game?.name, ticker, setHeader]);
+  }, [game?.name, setHeader]);
 
   if (loading) {
     return (

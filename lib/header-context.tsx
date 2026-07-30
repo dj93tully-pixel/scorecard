@@ -12,15 +12,6 @@ import {
   ReactNode,
 } from "react";
 
-export interface TickerData {
-  /** Pulsing live dot when true. */
-  live: boolean;
-  /** Lead text, e.g. "Hole 7". */
-  primary: string;
-  /** Muted meta, e.g. "Wolf: Dan · Leader: Alice +$15". */
-  meta?: string;
-}
-
 export interface HeaderButton {
   label: string;
   onClick: () => void;
@@ -38,8 +29,6 @@ export interface HeaderConfig {
   backOnClick?: () => void;
   /** Generic right-side action (e.g. Admin / Edit / Done). */
   rightButton?: HeaderButton;
-  /** If set, render a broadcast ticker strip beneath the header. */
-  ticker?: TickerData | null;
   /** "admin" tints the header chrome (warm) + shows the title in amber, so it's
    *  obvious you're in the admin area rather than the play/games view. */
   variant?: "admin";
