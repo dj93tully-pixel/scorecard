@@ -86,7 +86,7 @@ export function Header() {
   return (
     <header
       ref={headerRef}
-      className={`safe-top sticky top-0 z-30 text-on-dark ${isAdmin ? "bg-[#1E1608]" : "bg-header-bg"}`}
+      className="safe-top sticky top-0 z-30 bg-header-bg text-on-dark"
     >
       <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-2">
         <div className="flex min-w-0 flex-1 items-center gap-1">

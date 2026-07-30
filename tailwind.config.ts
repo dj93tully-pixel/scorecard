@@ -11,7 +11,7 @@ const config: Config = {
     extend: {
       colors: {
         // Dark chrome
-        "header-bg": "#0C0C0E",
+        "header-bg": "#1E1608",
         "ticker-bg": "#060608",
         "on-dark": "#FFFFFF",
         "avatar-bg": "#1C1C22", // dark chips on the header
