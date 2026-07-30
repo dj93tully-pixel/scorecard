@@ -100,6 +100,9 @@ export function SetupTab({
   function resetCourse() {
     updateRound((r) => ({ ...r, course: blankCourse() }));
   }
+  function setCourseName(name: string) {
+    updateRound((r) => ({ ...r, course: { ...r.course, name } }));
+  }
 
   // ── Players ──
   function setPlayer(
@@ -287,6 +290,13 @@ export function SetupTab({
 
         {coursePanel === "manual" && (
           <div className="mt-3 overflow-x-auto">
+            <input
+              type="text"
+              value={course.name === "New Course" ? "" : course.name}
+              onChange={(e) => setCourseName(e.target.value)}
+              placeholder="Course name"
+              className="mb-3 w-full rounded border border-card-border px-2 py-1.5 text-sm outline-none focus:border-primary"
+            />
             <table className="w-full text-center text-sm">
               <thead>
                 <tr className="text-xs text-text-muted">
