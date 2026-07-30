@@ -68,7 +68,7 @@ export default function Home() {
   useEffect(() => {
     const inFlow = editingId || picking;
     setHeader({
-      title: editingId ? "Edit game" : picking ? "New game" : undefined,
+      title: editingId ? "Game Settings" : picking ? "New game" : undefined,
       variant: inFlow ? "admin" : undefined,
       backOnClick: inFlow
         ? () => {
