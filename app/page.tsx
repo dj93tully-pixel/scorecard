@@ -149,7 +149,6 @@ export default function Home() {
   const shown = tab === "active" ? active : completed;
 
   function GameRow({ g }: { g: GameSummary }) {
-    const isDraft = !g.published && !g.completed;
     return (
       <li
         className="flex items-stretch overflow-hidden rounded-xl border bg-white"
@@ -162,15 +161,10 @@ export default function Home() {
         >
           <span className="min-w-0">
             <span className="flex items-center gap-2 font-semibold">
-              {g.published && !g.completed && (
+              {!g.completed && (
                 <span className="h-[6px] w-[6px] shrink-0 rounded-full bg-alert ring-pulse" />
               )}
               <span className="truncate">{g.name}</span>
-              {isDraft && (
-                <span className="shrink-0 rounded-full bg-tint-caution px-2 py-0.5 text-[11px] font-bold text-text-primary">
-                  Draft
-                </span>
-              )}
               <span
                 className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold"
                 style={{ backgroundColor: "#F1F3F6", color: "#5A6675" }}
