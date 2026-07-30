@@ -66,7 +66,7 @@ export function Header() {
               onClick={config.rightButton.onClick}
               className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-semibold ${
                 config.rightButton.primary
-                  ? "bg-primary text-on-dark"
+                  ? "bg-[#FF6A00]/85 text-on-dark" // blaze / hunter orange, slightly translucent
                   : "bg-avatar-bg text-on-dark"
               }`}
             >
