@@ -172,6 +172,7 @@ export async function createGame(
       players,
       tee_order: players.map((p) => p.id),
       settings,
+      published: true, // active immediately — no separate publish step
     })
     .select("id")
     .single();
