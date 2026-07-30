@@ -22,14 +22,15 @@ const svg = (children: React.ReactNode) => ({ className }: IconProps) => (
   </svg>
 );
 
-// Sandie — a sand castle: crenellated tower with a little flag.
+// Sandie — a kids' sand shovel angled in a little mound of sand.
 const SandcastleIcon = svg(
   <>
-    <path d="M18,80 Q34,73 50,75 Q66,77 82,80 L82,83 Q50,88 18,83 Z" fill="currentColor" />
-    <path d="M28,78 L28,58 L72,58 L72,78 Z M45,78 L45,68 Q45,63 50,63 Q55,63 55,68 L55,78 Z" fill="currentColor" fillRule="evenodd" />
-    <path d="M40,58 L40,40 L45,40 L45,44 L48,44 L48,40 L52,40 L52,44 L55,44 L55,40 L60,40 L60,58 Z" fill="currentColor" />
-    <line x1="50" y1="42" x2="50" y2="24" stroke="currentColor" strokeWidth={4} strokeLinecap="round" />
-    <path d="M50,24 L62,27 L50,30 Z" fill="currentColor" />
+    <g transform="rotate(-24 50 54)">
+      <rect x="37" y="16" width="26" height="8" rx="4" fill="currentColor" />
+      <rect x="46.5" y="22" width="7" height="32" rx="3.5" fill="currentColor" />
+      <path d="M39,54 L61,54 L59,68 Q50,77 41,68 Z" fill="currentColor" />
+    </g>
+    <path d="M18,78 Q34,70 50,72 Q66,74 82,78 L82,82 Q50,87 18,82 Z" fill="currentColor" opacity="0.5" />
   </>
 );
 
