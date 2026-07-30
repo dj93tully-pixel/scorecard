@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, ChevronRight, MapPin, Calendar } from "lucide-react";
 import {
@@ -29,6 +29,13 @@ export default function Home() {
   const [tab, setTab] = useState<"active" | "completed">("active");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
+
+  // Arriving at the games list (e.g. Back from a scrolled-down game) should start at
+  // the top, not wherever the previous screen was scrolled. Runs before paint so
+  // there's no flash of the restored scroll position.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   function refresh() {
     listGames()
