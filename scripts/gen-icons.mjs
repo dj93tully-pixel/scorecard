@@ -8,22 +8,26 @@ import { mkdirSync } from "node:fs";
 // Home-screen icons are FULL-BLEED with no transparency — iOS can't show
 // transparent app icons (it fills them with black) and applies its own rounded
 // mask. The dark tile fills the whole square edge-to-edge; iOS rounds the
-// corners. The radar + sweep + ball (including its opacities) is flattened into
-// the bitmap here (the home screen won't render live SVG/opacity). (The in-app
-// header mark in components/HackerTrackerMark is the same mark but tile-less.)
-const TILE = "#08130D";
+// corners. The white golf ball + gold duplex-reticle scope is flattened into the
+// bitmap here (the home screen won't render live SVG). (The in-app header mark in
+// components/HackerTrackerMark is the same mark but tile-less.)
+const TILE = "#17110A";
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
-  <rect width="100" height="100" fill="${TILE}"/>
-  <path d="M50 50 L50 22 A28 28 0 0 1 70 30 Z" fill="#20EBA0" opacity="0.30"/>
-  <circle cx="50" cy="50" r="27" fill="none" stroke="#20EBA0" stroke-width="2.8"/>
-  <circle cx="50" cy="50" r="20" fill="none" stroke="#20EBA0" stroke-width="2.8"/>
-  <circle cx="50" cy="50" r="14" fill="none" stroke="#20EBA0" stroke-width="2.8"/>
-  <line x1="50" y1="50" x2="70" y2="30" stroke="#20EBA0" stroke-width="3.2" stroke-linecap="round"/>
-  <circle cx="70" cy="30" r="3.8" fill="#20EBA0"/>
-  <circle cx="50" cy="50" r="11.5" fill="#FFFFFF" stroke="#07150E" stroke-width="2.6"/>
-  <circle cx="45" cy="47" r="2" fill="#C2D8CD"/>
-  <circle cx="55" cy="48" r="2" fill="#C2D8CD"/>
-  <circle cx="50" cy="55" r="2" fill="#C2D8CD"/>
+  <rect x="4" y="4" width="92" height="92" rx="22" fill="${TILE}"/>
+  <circle cx="50" cy="50" r="16" fill="#FFFFFF"/>
+  <circle cx="43.5" cy="45.5" r="1.5" fill="#CFD3DA"/>
+  <circle cx="56.5" cy="45.5" r="1.5" fill="#CFD3DA"/>
+  <circle cx="50" cy="57" r="1.5" fill="#CFD3DA"/>
+  <g stroke="#F0A824" stroke-linecap="round">
+    <circle cx="50" cy="50" r="25" fill="none" stroke-width="2.8"/>
+    <line x1="50" y1="20" x2="50" y2="38" stroke-width="3.6"/>
+    <line x1="50" y1="62" x2="50" y2="80" stroke-width="3.6"/>
+    <line x1="20" y1="50" x2="38" y2="50" stroke-width="3.6"/>
+    <line x1="62" y1="50" x2="80" y2="50" stroke-width="3.6"/>
+    <line x1="42" y1="50" x2="58" y2="50" stroke-width="1.5"/>
+    <line x1="50" y1="42" x2="50" y2="58" stroke-width="1.5"/>
+  </g>
+  <circle cx="50" cy="50" r="1.6" fill="#F0A824"/>
 </svg>`;
 
 mkdirSync("public", { recursive: true });

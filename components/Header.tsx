@@ -42,8 +42,8 @@ export function Header() {
                 <span style={isAdmin ? { color: "#F5B33F" } : undefined}>{config.title}</span>
               ) : (
                 <>
-                  <span style={{ color: "#FFFFFF" }}>HACKER</span>
-                  <span style={{ color: "#20EBA0" }}>TRACKER</span>
+                  <span style={{ color: "#F0A824" }}>HACKER</span>
+                  <span style={{ color: "#FFC24D" }}>TRACKER</span>
                 </>
               )}
             </h1>
