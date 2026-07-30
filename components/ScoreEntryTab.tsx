@@ -10,7 +10,7 @@ import { Hammer, Flag, Check, Zap } from "lucide-react";
 import { Round, HoleEntry, computePops } from "@/lib/wolf";
 import { computeBaseGame, gameTypeMeta, gameTypeOf, teamTag, TEAM_COLORS } from "@/lib/gametypes";
 import { combinedHoleResults, pressCoverByHole } from "@/lib/engines/press";
-import { carryByHole, wonByHole, anteByHole, HoleCarry, HoleAnte } from "@/lib/carry";
+import { carryByHole, wonByHole, anteByHole, unitStake, HoleCarry, HoleAnte } from "@/lib/carry";
 import { CarryNote } from "./CarryNote";
 import { AnteChips } from "./AnteChips";
 import { PlayerJunkIcons } from "./JunkChips";
@@ -91,7 +91,7 @@ function HoleCard({
   // anteByHole, carry-aware, via the parent). Vegas is excluded: it settles on
   // points × pointValue, not settings.stake, so a fixed ante chip is meaningless
   // — it would just paint the leftover default stake, which Vegas never uses.
-  const showAnte = hammerable && gt !== "vegas" && (round.settings.stake ?? 0) > 0;
+  const showAnte = hammerable && gt !== "vegas" && unitStake(round) > 0;
   // Press is in every game except 11s (Nassau needs two fixed sides → teams only).
   const canPress =
     gt !== "elevens" &&

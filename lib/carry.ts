@@ -17,6 +17,17 @@ import {
   RunResult,
 } from "./engines/press";
 
+// The fixed per-hole cash unit each player antes, for the ante-chip display.
+// Skins settles per SKIN (settings.skinValue), so it must not read settings.stake —
+// that's a leftover default (5) that would paint $5 chips on a $1/skin game. Every
+// other per-hole game antes settings.stake. Mirrors each engine's own unit choice.
+export function unitStake(round: Round): number {
+  if (gameTypeOf(round) === "skins") {
+    return round.settings.skinValue && round.settings.skinValue > 0 ? round.settings.skinValue : 1;
+  }
+  return round.settings.stake ?? 0;
+}
+
 export interface HoleCarry {
   orig: number; // normal (un-hammered base) carry
   press: number; // press bet carry
@@ -161,7 +172,7 @@ export interface HoleAnte {
 // noHammer(round) to get the un-hammered stake.
 function baseStakeInPlay(round: Round): Map<number, number> {
   const gt = gameTypeOf(round);
-  const stake = round.settings.stake ?? 0;
+  const stake = unitStake(round);
   const m = new Map<number, number>();
   const nums = round.course.holes.map((h) => h.number).sort((a, b) => a - b);
   const multByHole = new Map(
@@ -228,7 +239,7 @@ export function anteByHole(round: Round): Map<number, HoleAnte> {
   const gt = gameTypeOf(round);
   if (gt === "nassau" || gt === "elevens") return out; // no per-hole ante
 
-  const stake = round.settings.stake ?? 0;
+  const stake = unitStake(round);
   const baseNo = baseStakeInPlay(noHammer(round));
   const baseWith = baseStakeInPlay(round);
 
