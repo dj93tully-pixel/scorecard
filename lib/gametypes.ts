@@ -92,7 +92,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     id: "stroke",
     label: "Stroke Play",
     blurb: "Net total strokes; win or lose money per stroke vs the field each hole.",
-    players: { min: 2, max: 6 },
+    players: { min: 2, max: 8 },
     hasTeams: false,
     rotatesTeams: false,
     statColumns: [{ key: "strokes", label: "Net", kind: "number" }],
