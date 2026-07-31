@@ -16,6 +16,7 @@ import {
   decomposePresses,
   hasAnyPress,
   pressedHoles,
+  pressCoverByHole,
   eachPress,
   RunResult,
 } from "./engines/press";
@@ -216,22 +217,29 @@ export function buildResults(round: Round): ResultsData {
     if (c.hammer > 0) carriedHammerHoles.push(next); // a hammered value carried in
   }
 
-  // Value-based scorecard dots: one dot per base-stake unit at stake on the hole,
-  // split by bet type (orig/press/hammer) from the carry-aware ante, so the dots add
-  // up to the money on the hole. Purple is filled where the hammer was thrown, hollow
-  // where a hammered value only carried in. Only base-bet games get dots.
+  // Value-based scorecard dots, one dot per base-stake unit. These are PER-HOLE own
+  // contributions (add holes up across a carry to get the pot), NOT the accumulated
+  // carry: gray = the hole's own base bet (1 dot); orange = one per press covering the
+  // hole; purple = the hammer's added value, shown filled on the hole it was thrown
+  // and hollow on the holes it carried through (a relevant reference, not new money).
+  // Only base-bet games (wolf/skins/bestball/sixes) get dots.
   const baseBetGame = gt === "wolf" || gt === "skins" || gt === "bestball" || gt === "sixes";
   const unit = unitStake(round) || 1;
   const hammerThrown = new Set(hammerHoles);
+  const pressCover = pressCoverByHole(round);
+  const ante = anteByHole(round);
   const dotsByHole: Record<number, HoleDots> = {};
   if (baseBetGame) {
-    for (const [h, a] of anteByHole(round)) {
-      const hammerDots = Math.round(a.hammer / unit);
-      dotsByHole[h] = {
-        gray: Math.round(a.orig / unit),
-        press: Math.round(a.press / unit),
-        hammerFilled: hammerThrown.has(h) ? hammerDots : 0,
-        hammerHollow: hammerThrown.has(h) ? 0 : hammerDots,
+    for (const h of round.course.holes) {
+      const n = h.number;
+      const cover = pressCover.get(n);
+      const hammerVal = ante.get(n)?.hammer ?? 0;
+      const hammerDots = Math.round(hammerVal / unit);
+      dotsByHole[n] = {
+        gray: 1, // the hole's own base bet
+        press: cover ? cover.seg + cover.full : 0, // one per covering press
+        hammerFilled: hammerThrown.has(n) ? hammerDots : 0,
+        hammerHollow: hammerThrown.has(n) ? 0 : hammerDots,
       };
     }
   }
