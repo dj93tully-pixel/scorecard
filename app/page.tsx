@@ -21,31 +21,6 @@ const TABS: PillTab[] = [
   { id: "completed", label: "Completed" },
 ];
 
-// Empty state: a large light-gray duplex-scope (matching the logo mark) with a
-// watermark-style "No active / games" centered inside the reticle.
-function NoGamesScope() {
-  const GRAY = "#C4C8CE";
-  return (
-    <div className="flex flex-col items-center justify-center py-14 animate-fade-in">
-      <div className="relative" style={{ width: 168, height: 168 }}>
-        <svg viewBox="0 0 100 100" width="168" height="168" role="img" aria-label="No active games">
-          <g stroke={GRAY} strokeLinecap="round" fill="none">
-            <circle cx="50" cy="50" r="33" strokeWidth="2.2" />
-            <line x1="50" y1="5" x2="50" y2="17" strokeWidth="3" />
-            <line x1="50" y1="83" x2="50" y2="95" strokeWidth="3" />
-            <line x1="5" y1="50" x2="17" y2="50" strokeWidth="3" />
-            <line x1="83" y1="50" x2="95" y2="50" strokeWidth="3" />
-          </g>
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center leading-tight">
-          <span className="font-bold" style={{ color: GRAY, fontSize: 13 }}>No active</span>
-          <span className="font-bold" style={{ color: GRAY, fontSize: 13 }}>games</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
   const router = useRouter();
   const { setHeader } = useHeader();
@@ -248,7 +223,7 @@ export default function Home() {
           ))}
         </div>
       ) : active.length === 0 && completed.length === 0 ? (
-        <NoGamesScope />
+        <p className="text-sm text-text-faint">No active games yet.</p>
       ) : (
         <div>
           <div
@@ -264,11 +239,9 @@ export default function Home() {
           </div>
 
           {shown.length === 0 ? (
-            tab === "active" ? (
-              <NoGamesScope />
-            ) : (
-              <p className="text-sm text-text-faint">No completed games yet.</p>
-            )
+            <p className="text-sm text-text-faint">
+              {tab === "active" ? "No active games yet." : "No completed games yet."}
+            </p>
           ) : (
             <ul className="animate-fade-in space-y-2">
               {shown.map((g) => (
