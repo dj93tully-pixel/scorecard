@@ -67,6 +67,7 @@ export interface ResultsData {
   hammerHoles: number[]; // holes that had a hammer (filled purple dot)
   pressHoles: number[]; // union of every press's holes
   pressCountByHole: Record<number, number>; // presses covering a hole → that many orange dots
+  baseBetGame: boolean; // per-hole base bet exists (wolf/skins/bestball/sixes) → filled gray dot
   carriedHoles: number[]; // holes that RECEIVED a base-bet carry (hollow gray ring)
   carriedHammerHoles: number[]; // holes that received a carried hammer (hollow purple ring)
   presses: PressInfo[]; // each individual press (Press tab sub-selector)
@@ -191,6 +192,9 @@ export function buildResults(round: Round): ResultsData {
   // recipient shows a gray "carried" dot; if the carried pot included a hammered
   // value (Carryover hammers on), it also shows a hollow purple hammer ring.
   const holeOrder = round.course.holes.map((h) => h.number).sort((a, b) => a - b);
+  // Games with a per-hole base bet (so every hole shows a filled gray "original" dot,
+  // except carry recipients which show the hollow gray ring instead).
+  const baseBetGame = gt === "wolf" || gt === "skins" || gt === "bestball" || gt === "sixes";
   const carriedHoles: number[] = [];
   const carriedHammerHoles: number[] = [];
   for (const [h, c] of carryByHole(round)) {
@@ -259,6 +263,7 @@ export function buildResults(round: Round): ResultsData {
     hammerHoles,
     pressHoles,
     pressCountByHole,
+    baseBetGame,
     carriedHoles,
     carriedHammerHoles,
     presses,
