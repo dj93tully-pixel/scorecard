@@ -69,6 +69,7 @@ export interface ResultsData {
   pressCountByHole: Record<number, number>; // presses covering a hole → that many orange dots
   carriedHoles: number[]; // holes that RECEIVED a base-bet carry (hollow gray ring)
   carriedHammerHoles: number[]; // holes that received a carried hammer (hollow purple ring)
+  carriedPressHoles: number[]; // holes that received a carried press pot (hollow orange ring)
   presses: PressInfo[]; // each individual press (Press tab sub-selector)
   tees: ResultTee[]; // course tee yardages (scorecard distance rows)
   isElevens: boolean; // 11s: hide ledger/trendline, show picked-hole tally + dots
@@ -193,11 +194,13 @@ export function buildResults(round: Round): ResultsData {
   const holeOrder = round.course.holes.map((h) => h.number).sort((a, b) => a - b);
   const carriedHoles: number[] = [];
   const carriedHammerHoles: number[] = [];
+  const carriedPressHoles: number[] = [];
   for (const [h, c] of carryByHole(round)) {
     const next = holeOrder[holeOrder.indexOf(h) + 1];
     if (next === undefined) continue; // last hole's carry is dead
     if (c.orig + c.hammer > 0) carriedHoles.push(next); // base-bet carry landed here
     if (c.hammer > 0) carriedHammerHoles.push(next); // a hammered value carried in
+    if (c.press > 0) carriedPressHoles.push(next); // a press pot carried in
   }
 
   // Individual presses, each settled over its own holes (same engine, read-only).
@@ -261,6 +264,7 @@ export function buildResults(round: Round): ResultsData {
     pressCountByHole,
     carriedHoles,
     carriedHammerHoles,
+    carriedPressHoles,
     presses,
     tees,
     isElevens: gt === "elevens",

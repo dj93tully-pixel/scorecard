@@ -174,6 +174,7 @@ function Nine({
   pressCount,
   carriedHoles,
   carriedHammerHoles,
+  carriedPressHoles,
   activeHoles,
   pickShade = INK,
   hideMoney = false,
@@ -185,6 +186,7 @@ function Nine({
   pressCount: Record<number, number>; // presses covering a hole → that many orange dots
   carriedHoles: Set<number>; // received a base-bet carry → hollow gray ring
   carriedHammerHoles: Set<number>; // received a carried hammer → hollow purple ring
+  carriedPressHoles: Set<number>; // received a carried press pot → hollow orange ring
   activeHoles: Set<number> | null; // press view: only these holes carry data
   pickShade?: string; // 11s: this player's pick-dot shade
   hideMoney?: boolean; // 11s: drop the per-hole money row
@@ -237,6 +239,7 @@ function Nine({
                   {x.cell.picked && <span style={filledDot(pickShade)} />}
                   {carriedHoles.has(x.cell.hole) && <span style={hollowRing(MUTED)} />}
                   {carriedHammerHoles.has(x.cell.hole) && <span style={hollowRing(HAMMER)} />}
+                  {carriedPressHoles.has(x.cell.hole) && <span style={hollowRing(PRESS)} />}
                   {Array.from({ length: pressCount[x.cell.hole] ?? 0 }).map((_, i) => (
                     <span key={`pr${i}`} style={filledDot(PRESS)} />
                   ))}
@@ -359,11 +362,12 @@ function Detail({
   setPressSel: (s: number | "all") => void;
   pickShade: string;
 }) {
-  const { betTypes, presses, pressHoles, hammerHoles, carriedHoles, carriedHammerHoles } = results;
+  const { betTypes, presses, pressHoles, hammerHoles, carriedHoles, carriedHammerHoles, carriedPressHoles } = results;
   const tiles: Filter[] = [...betTypes, "total"];
   const hammerSet = useMemo(() => new Set(hammerHoles), [hammerHoles]);
   const carriedSet = useMemo(() => new Set(carriedHoles), [carriedHoles]);
   const carriedHammerSet = useMemo(() => new Set(carriedHammerHoles), [carriedHammerHoles]);
+  const carriedPressSet = useMemo(() => new Set(carriedPressHoles), [carriedPressHoles]);
   // Holes the hammer "affects": the hammered holes themselves, plus any hole the
   // hammer money landed on (carryover). Money is zero-sum, so a hole counts if
   // any player has a non-zero hammer delta there.
@@ -461,9 +465,9 @@ function Detail({
 
       {/* horizontal scorecard */}
       <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
-        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
+        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} carriedPressHoles={carriedPressSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
         <div style={{ borderTop: `1px solid ${BORDER}` }}>
-          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
+          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} carriedPressHoles={carriedPressSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
         </div>
         <div
           className="grid items-center text-xs font-bold tabular-nums"
@@ -649,6 +653,7 @@ function DotsRowFragment({
   pressCount,
   carriedHoles,
   carriedHammerHoles,
+  carriedPressHoles,
   trailing,
   pickers,
 }: {
@@ -657,6 +662,7 @@ function DotsRowFragment({
   pressCount: Record<number, number>; // presses covering a hole → that many orange dots
   carriedHoles: Set<number>; // received a base-bet carry → hollow gray ring
   carriedHammerHoles: Set<number>; // received a carried hammer → hollow purple ring
+  carriedPressHoles: Set<number>; // received a carried press pot → hollow orange ring
   trailing: number;
   pickers?: { picked: Set<number>; shade: string }[];
 }) {
@@ -674,6 +680,7 @@ function DotsRowFragment({
             )}
             {carriedHoles.has(h) && <span style={hollowRing(MUTED)} />}
             {carriedHammerHoles.has(h) && <span style={hollowRing(HAMMER)} />}
+            {carriedPressHoles.has(h) && <span style={hollowRing(PRESS)} />}
             {Array.from({ length: pressCount[h] ?? 0 }).map((_, i) => (
               <span key={`pr${i}`} style={filledDot(PRESS)} />
             ))}
@@ -695,6 +702,7 @@ function ScorecardNine({
   pressCount,
   carriedHoles,
   carriedHammerHoles,
+  carriedPressHoles,
   tees,
 }: {
   players: PlayerResults[];
@@ -705,6 +713,7 @@ function ScorecardNine({
   pressCount: Record<number, number>;
   carriedHoles: Set<number>;
   carriedHammerHoles: Set<number>;
+  carriedPressHoles: Set<number>;
   tees: ResultTee[];
 }) {
   const template = `46px repeat(${holeNums.length}, minmax(0,1fr)) 28px 26px`;
@@ -766,7 +775,7 @@ function ScorecardNine({
           <GridCell h={18} bg="#F4F6F8"> </GridCell>
 
           {/* press / hammer dots + 11s pick dots — their own thin row, below Hcp */}
-          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressCount={pressCount} carriedHoles={carriedHoles} carriedHammerHoles={carriedHammerHoles} trailing={2} pickers={pickers} />
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressCount={pressCount} carriedHoles={carriedHoles} carriedHammerHoles={carriedHammerHoles} carriedPressHoles={carriedPressHoles} trailing={2} pickers={pickers} />
 
           {/* PLAYER rows */}
           {players.map((p) => {
@@ -816,6 +825,7 @@ function LedgerNine({
   pressCount,
   carriedHoles,
   carriedHammerHoles,
+  carriedPressHoles,
 }: {
   players: PlayerResults[];
   holeNums: number[];
@@ -824,6 +834,7 @@ function LedgerNine({
   pressCount: Record<number, number>;
   carriedHoles: Set<number>;
   carriedHammerHoles: Set<number>;
+  carriedPressHoles: Set<number>;
 }) {
   const template = `46px repeat(${holeNums.length}, minmax(0,1fr)) 36px`;
   const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
@@ -848,7 +859,7 @@ function LedgerNine({
           <GridCell h={18} bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
 
           {/* press / hammer dots — their own thin row, below Par */}
-          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressCount={pressCount} carriedHoles={carriedHoles} carriedHammerHoles={carriedHammerHoles} trailing={1} />
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressCount={pressCount} carriedHoles={carriedHoles} carriedHammerHoles={carriedHammerHoles} carriedPressHoles={carriedPressHoles} trailing={1} />
 
           {/* PLAYER money rows */}
           {players.map((p) => {
@@ -965,6 +976,7 @@ export function ResultsView({ results }: { results: ResultsData }) {
   const hammerSet = useMemo(() => new Set(results.hammerHoles), [results.hammerHoles]);
   const carriedSet = useMemo(() => new Set(results.carriedHoles), [results.carriedHoles]);
   const carriedHammerSet = useMemo(() => new Set(results.carriedHammerHoles), [results.carriedHammerHoles]);
+  const carriedPressSet = useMemo(() => new Set(results.carriedPressHoles), [results.carriedPressHoles]);
   const front = useMemo(() => standings[0]?.holes.filter((c) => c.hole <= 9).map((c) => c.hole) ?? [], [standings]);
   const back = useMemo(() => standings[0]?.holes.filter((c) => c.hole >= 10).map((c) => c.hole) ?? [], [standings]);
 
@@ -1016,16 +1028,16 @@ export function ResultsView({ results }: { results: ResultsData }) {
       {!results.isElevens && (
         <section className="space-y-3">
           <h2 className="text-xl font-bold">Ledger</h2>
-          <LedgerNine players={standings} holeNums={front} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} />
-          <LedgerNine players={standings} holeNums={back} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} />
+          <LedgerNine players={standings} holeNums={front} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} carriedPressHoles={carriedPressSet} />
+          <LedgerNine players={standings} holeNums={back} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} carriedPressHoles={carriedPressSet} />
         </section>
       )}
 
       {/* Traditional course-style all-players scorecard */}
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Scorecard</h2>
-        <ScorecardNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} tees={results.tees} />
-        <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} tees={results.tees} />
+        <ScorecardNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} carriedPressHoles={carriedPressSet} tees={results.tees} />
+        <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} carriedPressHoles={carriedPressSet} tees={results.tees} />
         {(() => {
           const withPops = standings
             .map((p) => ({ name: p.name, pops: p.holes.reduce((s, c) => s + c.pop, 0) }))
