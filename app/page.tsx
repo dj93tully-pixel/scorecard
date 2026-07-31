@@ -21,6 +21,31 @@ const TABS: PillTab[] = [
   { id: "completed", label: "Completed" },
 ];
 
+// Empty state: a large gold duplex-scope (matching the logo mark) with a message
+// centered inside the reticle.
+function NoGamesScope({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
+      <div className="relative" style={{ width: 224, height: 224 }}>
+        <svg viewBox="0 0 100 100" width="224" height="224" role="img" aria-label={message}>
+          <g stroke="#F0A824" strokeLinecap="round" fill="none">
+            <circle cx="50" cy="50" r="33" strokeWidth="2.2" />
+            <line x1="50" y1="5" x2="50" y2="17" strokeWidth="3" />
+            <line x1="50" y1="83" x2="50" y2="95" strokeWidth="3" />
+            <line x1="5" y1="50" x2="17" y2="50" strokeWidth="3" />
+            <line x1="83" y1="50" x2="95" y2="50" strokeWidth="3" />
+          </g>
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center px-9 text-center">
+          <span className="font-bold leading-tight" style={{ color: "#B8860B", fontSize: 16 }}>
+            {message}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const router = useRouter();
   const { setHeader } = useHeader();
@@ -223,10 +248,7 @@ export default function Home() {
           ))}
         </div>
       ) : active.length === 0 && completed.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-card-border bg-card-bg p-8 text-center text-sm text-text-muted">
-          No games yet. Tap <span className="font-semibold">New game</span> in the header to
-          create one.
-        </div>
+        <NoGamesScope message="No active games" />
       ) : (
         <div>
           <div
@@ -242,9 +264,11 @@ export default function Home() {
           </div>
 
           {shown.length === 0 ? (
-            <p className="text-sm text-text-faint">
-              {tab === "active" ? "No active games." : "No completed games yet."}
-            </p>
+            tab === "active" ? (
+              <NoGamesScope message="No active games" />
+            ) : (
+              <p className="text-sm text-text-faint">No completed games yet.</p>
+            )
           ) : (
             <ul className="animate-fade-in space-y-2">
               {shown.map((g) => (
