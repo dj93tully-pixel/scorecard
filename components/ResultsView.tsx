@@ -176,6 +176,7 @@ function Nine({
   carriedHammerHoles,
   carriedPressHoles,
   activeHoles,
+  filter,
   pickShade = INK,
   hideMoney = false,
 }: {
@@ -188,9 +189,15 @@ function Nine({
   carriedHammerHoles: Set<number>; // received a carried hammer → hollow purple ring
   carriedPressHoles: Set<number>; // received a carried press pot → hollow orange ring
   activeHoles: Set<number> | null; // press view: only these holes carry data
+  filter: Filter; // active bet filter — dots show only their own type unless "total"
   pickShade?: string; // 11s: this player's pick-dot shade
   hideMoney?: boolean; // 11s: drop the per-hole money row
 }) {
+  // Which dot families to draw for the active filter: Total shows all; each bet
+  // filter shows only its own color (gray = base carry, orange = press, purple = hammer).
+  const showBase = filter === "total" || filter === "original";
+  const showPress = filter === "total" || filter === "press";
+  const showHammer = filter === "total" || filter === "hammer";
   // Trailing OUT/IN total column is wider than the hole columns so a big 9-hole
   // money tally (e.g. hammered "+$240") doesn't overflow and overlap.
   const template = `30px repeat(${cells.length}, minmax(0,1fr)) 52px`;
@@ -237,13 +244,14 @@ function Nine({
               {on(x.cell.hole) && (
                 <span className="flex items-center" style={{ gap: 1 }}>
                   {x.cell.picked && <span style={filledDot(pickShade)} />}
-                  {carriedHoles.has(x.cell.hole) && <span style={hollowRing(MUTED)} />}
-                  {carriedHammerHoles.has(x.cell.hole) && <span style={hollowRing(HAMMER)} />}
-                  {carriedPressHoles.has(x.cell.hole) && <span style={hollowRing(PRESS)} />}
-                  {Array.from({ length: pressCount[x.cell.hole] ?? 0 }).map((_, i) => (
-                    <span key={`pr${i}`} style={filledDot(PRESS)} />
-                  ))}
-                  {hammerHoles.has(x.cell.hole) && <span style={filledDot(HAMMER)} />}
+                  {showBase && carriedHoles.has(x.cell.hole) && <span style={hollowRing(MUTED)} />}
+                  {showHammer && carriedHammerHoles.has(x.cell.hole) && <span style={hollowRing(HAMMER)} />}
+                  {showPress && carriedPressHoles.has(x.cell.hole) && <span style={hollowRing(PRESS)} />}
+                  {showPress &&
+                    Array.from({ length: pressCount[x.cell.hole] ?? 0 }).map((_, i) => (
+                      <span key={`pr${i}`} style={filledDot(PRESS)} />
+                    ))}
+                  {showHammer && hammerHoles.has(x.cell.hole) && <span style={filledDot(HAMMER)} />}
                 </span>
               )}
             </div>
@@ -368,16 +376,18 @@ function Detail({
   const carriedSet = useMemo(() => new Set(carriedHoles), [carriedHoles]);
   const carriedHammerSet = useMemo(() => new Set(carriedHammerHoles), [carriedHammerHoles]);
   const carriedPressSet = useMemo(() => new Set(carriedPressHoles), [carriedPressHoles]);
-  // Holes the hammer "affects": the hammered holes themselves, plus any hole the
-  // hammer money landed on (carryover). Money is zero-sum, so a hole counts if
-  // any player has a non-zero hammer delta there.
+  // Holes the hammer "affects": the hammered holes themselves, every hole a carried
+  // hammer rolled THROUGH (so a hammer thrown on 1 that pushes to 2 then wins on 3
+  // shows all three), plus any hole a hammer delta actually landed on. Money is
+  // zero-sum, so a hole counts if any player has a non-zero hammer delta there.
   const hammerActive = useMemo(() => {
     const s = new Set<number>(hammerHoles);
+    for (const h of carriedHammerHoles) s.add(h);
     player.holes.forEach((c, i) => {
       if (results.players.some((pl) => (pl.money.hammer[i] ?? 0) !== 0)) s.add(c.hole);
     });
     return s;
-  }, [hammerHoles, results.players, player.holes]);
+  }, [hammerHoles, carriedHammerHoles, results.players, player.holes]);
 
   // Active money + (for press) the holes the press covers.
   let active: number[];
@@ -465,9 +475,9 @@ function Detail({
 
       {/* horizontal scorecard */}
       <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
-        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} carriedPressHoles={carriedPressSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
+        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} carriedPressHoles={carriedPressSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
         <div style={{ borderTop: `1px solid ${BORDER}` }}>
-          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} carriedPressHoles={carriedPressSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
+          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} carriedPressHoles={carriedPressSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
         </div>
         <div
           className="grid items-center text-xs font-bold tabular-nums"
