@@ -130,21 +130,36 @@ export function buildResults(round: Round): ResultsData {
     const idxOf = new Map(holes.map((h, i) => [h.number, i]));
     const withH = run(round);
     const noH = run(zeroHammer(round));
-    const press = decomposePresses(round, run).press;
+    // Presses computed both WITH and WITHOUT the hammer. "press" money is the
+    // un-hammered press; the press's hammer extra (when Carryover hammers inside
+    // press bets is on) is folded into "hammer" — NOT left in press — so the split
+    // matches the ante chips (hammer absorbs every hammered value, base + press).
+    const pressWith = decomposePresses(round, run).press;
+    const pressNo = decomposePresses(zeroHammer(round), run).press;
     const noByHole = new Map(noH.holeResults.map((r) => [r.hole, r.deltas]));
+    const pressNoByHole = new Map(pressNo.holeResults.map((r) => [r.hole, r.deltas]));
 
     for (const hr of noH.holeResults) {
       const i = idxOf.get(hr.hole);
       if (i === undefined) continue;
       for (const id of ids) orig[id][i] += hr.deltas[id] ?? 0;
     }
+    // hammer = base-bet hammer extra …
     for (const hr of withH.holeResults) {
       const i = idxOf.get(hr.hole);
       if (i === undefined) continue;
       const n = noByHole.get(hr.hole) ?? {};
       for (const id of ids) ham[id][i] += (hr.deltas[id] ?? 0) - (n[id] ?? 0);
     }
-    for (const hr of press.holeResults) {
+    // … plus the press-bet hammer extra (press with hammer − press without).
+    for (const hr of pressWith.holeResults) {
+      const i = idxOf.get(hr.hole);
+      if (i === undefined) continue;
+      const n = pressNoByHole.get(hr.hole) ?? {};
+      for (const id of ids) ham[id][i] += (hr.deltas[id] ?? 0) - (n[id] ?? 0);
+    }
+    // press = the un-hammered press money.
+    for (const hr of pressNo.holeResults) {
       const i = idxOf.get(hr.hole);
       if (i === undefined) continue;
       for (const id of ids) prs[id][i] += hr.deltas[id] ?? 0;
