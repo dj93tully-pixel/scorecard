@@ -10,7 +10,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { ResultsData, PlayerResults, BetType, ResultTee, HoleDots } from "@/lib/results";
+import { ResultsData, PlayerResults, BetType, ResultTee } from "@/lib/results";
 import { formatToPar } from "@/lib/storage";
 import { SettleUp } from "./SettleUp";
 import { JunkIcon, hasJunkIcon } from "./JunkChips";
@@ -57,57 +57,22 @@ const FILTER_LABEL: Record<Filter, string> = {
 const moneyColor = (v: number) => (v > 0 ? GREEN : v < 0 ? RED : MUTED);
 const dollars = (v: number) => (v === 0 ? "—" : money1(v));
 
-// Scorecard marker dots (below the par band). One dot per base-stake unit at stake, so
-// the dots add up to the money on the hole: gray = base bet, orange = press, purple =
-// hammer (filled where thrown, hollow where a hammered value only carried in).
-const DOT = 4; // px — same footprint for filled and hollow so rows wrap evenly
+// Scorecard marker dots (below the par band). Filled = the bet is live ON this hole
+// (gray = base bet on every hole, orange = press, purple = hammer). Hollow purple ring =
+// a hammered value was CARRIED into this hole (relevant, but no new money added there).
 const filledDot = (color: string): React.CSSProperties => ({
-  width: DOT,
-  height: DOT,
+  width: 4,
+  height: 4,
   borderRadius: "50%",
   background: color,
 });
 const hollowRing = (color: string): React.CSSProperties => ({
-  width: DOT,
-  height: DOT,
+  width: 5,
+  height: 5,
   borderRadius: "50%",
   border: `1px solid ${color}`,
   boxSizing: "border-box",
 });
-
-// A hole's dot stack: filled dots first (gray → orange → purple), hollow purple last,
-// optional 11s pick dots leading. Wraps at 4 per row into new rows below. `show*` gate
-// each family to the active filter (Total shows all). Returns null when empty.
-function DotStack({
-  dots,
-  showBase = true,
-  showPress = true,
-  showHammer = true,
-  pickShades = [],
-}: {
-  dots?: HoleDots;
-  showBase?: boolean;
-  showPress?: boolean;
-  showHammer?: boolean;
-  pickShades?: string[];
-}) {
-  const nodes: React.ReactNode[] = [];
-  pickShades.forEach((shade, i) => nodes.push(<span key={`pk${i}`} style={filledDot(shade)} />));
-  if (dots) {
-    if (showBase) for (let i = 0; i < dots.gray; i++) nodes.push(<span key={`g${i}`} style={filledDot(MUTED)} />);
-    if (showPress) for (let i = 0; i < dots.press; i++) nodes.push(<span key={`o${i}`} style={filledDot(PRESS)} />);
-    if (showHammer) for (let i = 0; i < dots.hammerFilled; i++) nodes.push(<span key={`hf${i}`} style={filledDot(HAMMER)} />);
-    // hollow always last
-    if (showHammer) for (let i = 0; i < dots.hammerHollow; i++) nodes.push(<span key={`hh${i}`} style={hollowRing(HAMMER)} />);
-  }
-  if (nodes.length === 0) return null;
-  // maxWidth fits exactly 4 dots (4·DOT + 3·gap); a 5th wraps to the next row.
-  return (
-    <span className="flex flex-wrap items-center justify-center" style={{ gap: 1, maxWidth: DOT * 4 + 3 }}>
-      {nodes}
-    </span>
-  );
-}
 
 // ── Gross / Net segmented toggle ─────────────────────────────────────────────
 function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boolean) => void }) {
@@ -205,7 +170,10 @@ function Nine({
   cells,
   net,
   label,
-  dots,
+  hammerHoles,
+  pressCount,
+  baseBetGame,
+  carriedHammerHoles,
   activeHoles,
   filter,
   pickShade = INK,
@@ -214,7 +182,10 @@ function Nine({
   cells: { cell: PlayerResults["holes"][number]; m: number }[];
   net: boolean;
   label: "OUT" | "IN";
-  dots: Record<number, HoleDots>; // value-based dot counts per hole
+  hammerHoles: Set<number>;
+  pressCount: Record<number, number>; // presses covering a hole → that many orange dots
+  baseBetGame: boolean; // per-hole base bet exists → filled gray dot on non-carry holes
+  carriedHammerHoles: Set<number>; // received a carried hammer → hollow purple ring
   activeHoles: Set<number> | null; // press view: only these holes carry data
   filter: Filter; // active bet filter — dots show only their own type unless "total"
   pickShade?: string; // 11s: this player's pick-dot shade
@@ -262,24 +233,27 @@ function Nine({
           ))}
           <Cell tint>{parTotal}</Cell>
         </div>
-        {/* value dots — a thin row after par; wraps to more rows when a hole is busy.
-            On a press/hammer filter, only that family's dots show (like scores/money). */}
-        <div className="grid items-start" style={{ gridTemplateColumns: template }}>
-          <div style={{ minHeight: 9 }} />
+        {/* press / hammer dots — thin row after par. On a press/hammer filter,
+            only the holes that filter covers keep their dots (like scores/money). */}
+        <div className="grid items-center" style={{ gridTemplateColumns: template }}>
+          <div style={{ height: 9 }} />
           {cells.map((x) => (
-            <div key={x.cell.hole} className="flex justify-center" style={{ minHeight: 9, paddingTop: 1 }}>
+            <div key={x.cell.hole} className="flex items-center justify-center" style={{ height: 9 }}>
               {on(x.cell.hole) && (
-                <DotStack
-                  dots={dots[x.cell.hole]}
-                  showBase={showBase}
-                  showPress={showPress}
-                  showHammer={showHammer}
-                  pickShades={x.cell.picked ? [pickShade] : []}
-                />
+                <span className="flex items-center" style={{ gap: 1 }}>
+                  {x.cell.picked && <span style={filledDot(pickShade)} />}
+                  {showBase && baseBetGame && <span style={filledDot(MUTED)} />}
+                  {showHammer && carriedHammerHoles.has(x.cell.hole) && <span style={hollowRing(HAMMER)} />}
+                  {showPress &&
+                    Array.from({ length: pressCount[x.cell.hole] ?? 0 }).map((_, i) => (
+                      <span key={`pr${i}`} style={filledDot(PRESS)} />
+                    ))}
+                  {showHammer && hammerHoles.has(x.cell.hole) && <span style={filledDot(HAMMER)} />}
+                </span>
               )}
             </div>
           ))}
-          <div style={{ minHeight: 9 }} />
+          <div style={{ height: 9 }} />
         </div>
         {/* scores */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
@@ -395,6 +369,8 @@ function Detail({
 }) {
   const { betTypes, presses, pressHoles, hammerHoles, carriedHammerHoles } = results;
   const tiles: Filter[] = [...betTypes, "total"];
+  const hammerSet = useMemo(() => new Set(hammerHoles), [hammerHoles]);
+  const carriedHammerSet = useMemo(() => new Set(carriedHammerHoles), [carriedHammerHoles]);
   // Holes the hammer "affects": the hammered holes themselves, every hole a carried
   // hammer rolled THROUGH (so a hammer thrown on 1 that pushes to 2 then wins on 3
   // shows all three), plus any hole a hammer delta actually landed on. Money is
@@ -494,9 +470,9 @@ function Detail({
 
       {/* horizontal scorecard */}
       <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
-        <Nine cells={front} net={net} label="OUT" dots={results.dotsByHole} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
+        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
         <div style={{ borderTop: `1px solid ${BORDER}` }}>
-          <Nine cells={back} net={net} label="IN" dots={results.dotsByHole} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
+          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
         </div>
         <div
           className="grid items-center text-xs font-bold tabular-nums"
@@ -678,25 +654,40 @@ const PICK_SHADES = ["#16181D", "#2563EB", "#0D9488", "#B45309", "#7C3AED", "#BE
 // number of empty cells after the holes (OUT, and +/- on the scorecard).
 function DotsRowFragment({
   holeNums,
-  dots,
+  hammerHoles,
+  pressCount,
+  baseBetGame,
+  carriedHammerHoles,
   trailing,
   pickers,
 }: {
   holeNums: number[];
-  dots: Record<number, HoleDots>; // value-based dot counts per hole
+  hammerHoles: Set<number>;
+  pressCount: Record<number, number>; // presses covering a hole → that many orange dots
+  baseBetGame: boolean; // per-hole base bet exists → filled gray dot on non-carry holes
+  carriedHammerHoles: Set<number>; // received a carried hammer → hollow purple ring
   trailing: number;
   pickers?: { picked: Set<number>; shade: string }[];
 }) {
-  const blank = (k: string) => <div key={k} style={{ background: "#FFFFFF", minHeight: 9 }} />;
+  const blank = (k: string) => <div key={k} style={{ background: "#FFFFFF", height: 9 }} />;
   return (
     <>
       {blank("lead")}
       {holeNums.map((h) => (
-        <div key={`dot${h}`} className="flex justify-center" style={{ background: "#FFFFFF", minHeight: 9, paddingTop: 1 }}>
-          <DotStack
-            dots={dots[h]}
-            pickShades={(pickers ?? []).filter((pk) => pk.picked.has(h)).map((pk) => pk.shade)}
-          />
+        <div key={`dot${h}`} className="flex items-center justify-center" style={{ background: "#FFFFFF", height: 9 }}>
+          <span className="flex items-center" style={{ gap: 1 }}>
+            {pickers?.map((pk, i) =>
+              pk.picked.has(h) ? (
+                <span key={`p${i}`} style={{ width: 3, height: 3, borderRadius: "50%", background: pk.shade }} />
+              ) : null
+            )}
+            {baseBetGame && <span style={filledDot(MUTED)} />}
+            {carriedHammerHoles.has(h) && <span style={hollowRing(HAMMER)} />}
+            {Array.from({ length: pressCount[h] ?? 0 }).map((_, i) => (
+              <span key={`pr${i}`} style={filledDot(PRESS)} />
+            ))}
+            {hammerHoles.has(h) && <span style={filledDot(HAMMER)} />}
+          </span>
         </div>
       ))}
       {Array.from({ length: trailing }, (_, i) => blank(`t${i}`))}
@@ -709,14 +700,20 @@ function ScorecardNine({
   holeNums,
   net,
   label,
-  dots,
+  hammerHoles,
+  pressCount,
+  baseBetGame,
+  carriedHammerHoles,
   tees,
 }: {
   players: PlayerResults[];
   holeNums: number[];
   net: boolean;
   label: "OUT" | "IN";
-  dots: Record<number, HoleDots>;
+  hammerHoles: Set<number>;
+  pressCount: Record<number, number>;
+  baseBetGame: boolean;
+  carriedHammerHoles: Set<number>;
   tees: ResultTee[];
 }) {
   const template = `46px repeat(${holeNums.length}, minmax(0,1fr)) 28px 26px`;
@@ -778,7 +775,7 @@ function ScorecardNine({
           <GridCell h={18} bg="#F4F6F8"> </GridCell>
 
           {/* press / hammer dots + 11s pick dots — their own thin row, below Hcp */}
-          <DotsRowFragment holeNums={holeNums} dots={dots} trailing={2} pickers={pickers} />
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressCount={pressCount} baseBetGame={baseBetGame} carriedHammerHoles={carriedHammerHoles} trailing={2} pickers={pickers} />
 
           {/* PLAYER rows */}
           {players.map((p) => {
@@ -824,12 +821,18 @@ function LedgerNine({
   players,
   holeNums,
   label,
-  dots,
+  hammerHoles,
+  pressCount,
+  baseBetGame,
+  carriedHammerHoles,
 }: {
   players: PlayerResults[];
   holeNums: number[];
   label: "OUT" | "IN";
-  dots: Record<number, HoleDots>;
+  hammerHoles: Set<number>;
+  pressCount: Record<number, number>;
+  baseBetGame: boolean;
+  carriedHammerHoles: Set<number>;
 }) {
   const template = `46px repeat(${holeNums.length}, minmax(0,1fr)) 36px`;
   const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
@@ -854,7 +857,7 @@ function LedgerNine({
           <GridCell h={18} bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
 
           {/* press / hammer dots — their own thin row, below Par */}
-          <DotsRowFragment holeNums={holeNums} dots={dots} trailing={1} />
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressCount={pressCount} baseBetGame={baseBetGame} carriedHammerHoles={carriedHammerHoles} trailing={1} />
 
           {/* PLAYER money rows */}
           {players.map((p) => {
@@ -968,6 +971,8 @@ export function ResultsView({ results }: { results: ResultsData }) {
   const [filter, setFilter] = useState<Filter>("total");
   const [pressSel, setPressSel] = useState<number | "all">("all");
 
+  const hammerSet = useMemo(() => new Set(results.hammerHoles), [results.hammerHoles]);
+  const carriedHammerSet = useMemo(() => new Set(results.carriedHammerHoles), [results.carriedHammerHoles]);
   const front = useMemo(() => standings[0]?.holes.filter((c) => c.hole <= 9).map((c) => c.hole) ?? [], [standings]);
   const back = useMemo(() => standings[0]?.holes.filter((c) => c.hole >= 10).map((c) => c.hole) ?? [], [standings]);
 
@@ -1019,16 +1024,16 @@ export function ResultsView({ results }: { results: ResultsData }) {
       {!results.isElevens && (
         <section className="space-y-3">
           <h2 className="text-xl font-bold">Ledger</h2>
-          <LedgerNine players={standings} holeNums={front} label="OUT" dots={results.dotsByHole} />
-          <LedgerNine players={standings} holeNums={back} label="IN" dots={results.dotsByHole} />
+          <LedgerNine players={standings} holeNums={front} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} />
+          <LedgerNine players={standings} holeNums={back} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} />
         </section>
       )}
 
       {/* Traditional course-style all-players scorecard */}
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Scorecard</h2>
-        <ScorecardNine players={standings} holeNums={front} net={net} label="OUT" dots={results.dotsByHole} tees={results.tees} />
-        <ScorecardNine players={standings} holeNums={back} net={net} label="IN" dots={results.dotsByHole} tees={results.tees} />
+        <ScorecardNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} tees={results.tees} />
+        <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} tees={results.tees} />
         {(() => {
           const withPops = standings
             .map((p) => ({ name: p.name, pops: p.holes.reduce((s, c) => s + c.pop, 0) }))
