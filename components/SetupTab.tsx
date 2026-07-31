@@ -657,7 +657,7 @@ export function SetupTab({
           )}
           {showCarry && (
             <Field
-              label="Carryover hammered value"
+              label="Carryover hammers"
               hint="If the tied hole was hammered, roll forward the full doubled amount instead of just the base stake. (Needs Carryover ties on.)"
               disabled={!settings.carryover}
             >
