@@ -64,7 +64,7 @@ export function Header() {
           {config.rightButton && (
             <button
               onClick={config.rightButton.onClick}
-              className="flex items-center gap-1 rounded-lg bg-[#F0A824] px-2.5 py-1.5 text-sm font-semibold text-[#1B1407]"
+              className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-sm font-semibold text-on-dark"
             >
               {config.rightButton.icon}
               {config.rightButton.label}

@@ -67,7 +67,7 @@ export function PillTabs({
             }}
             className={`relative flex-1 rounded-full py-[6px] text-[14px] font-medium transition-all duration-150 ${
               isActive
-                ? "bg-white text-[#B8860B]"
+                ? "bg-white text-accent-on-light"
                 : "bg-transparent text-text-faint"
             }`}
           >
