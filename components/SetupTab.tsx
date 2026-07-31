@@ -672,21 +672,6 @@ export function SetupTab({
           )}
           {showCarry && (
             <Field
-              label="Carryover ties into new press bets"
-              hint="When you open a press right after a tie, the money carrying from that tie is copied into the new press so it starts bigger (it still stays in the main bet too). (Needs Carryover ties on.)"
-              disabled={!settings.carryover}
-            >
-              <input
-                type="checkbox"
-                disabled={!settings.carryover}
-                checked={settings.pressCarryover ?? false}
-                onChange={(e) => setSetting("pressCarryover", e.target.checked)}
-                className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
-              />
-            </Field>
-          )}
-          {showCarry && (
-            <Field
               label="Carryover hammers inside press bets"
               hint="Inside a press, a hammered tie carries at its doubled size instead of the base stake — like Carryover hammered value, but for the press. (Needs Carryover ties on.)"
               disabled={!settings.carryover}
@@ -696,6 +681,21 @@ export function SetupTab({
                 disabled={!settings.carryover}
                 checked={settings.pressHammerCarry ?? false}
                 onChange={(e) => setSetting("pressHammerCarry", e.target.checked)}
+                className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
+              />
+            </Field>
+          )}
+          {showCarry && (
+            <Field
+              label="Carryover ties into new press bets"
+              hint="When you open a press right after a tie, the money carrying from that tie is copied into the new press so it starts bigger (it still stays in the main bet too). (Needs Carryover ties on.)"
+              disabled={!settings.carryover}
+            >
+              <input
+                type="checkbox"
+                disabled={!settings.carryover}
+                checked={settings.pressCarryover ?? false}
+                onChange={(e) => setSetting("pressCarryover", e.target.checked)}
                 className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
               />
             </Field>
