@@ -210,7 +210,7 @@ export default function Home() {
   }
 
   return (
-    <div className="mt-4 animate-fade-in space-y-6">
+    <div className="animate-fade-in space-y-6">
       {error && (
         <p className="rounded-lg bg-tint-bad px-3 py-2 text-sm text-negative">{error}</p>
       )}
