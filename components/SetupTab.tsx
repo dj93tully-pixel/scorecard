@@ -399,12 +399,6 @@ export function SetupTab({
             Pops
           </button>
         </div>
-        <p className="mb-2 text-xs text-text-muted">
-          {isDirect
-            ? "Enter how many strokes (pops) each player gets directly."
-            : "Enter handicaps; pops are calculated automatically."}
-        </p>
-
         {!isDirect && (
           <div className="mb-3">
             <Field label="Handicap mode">
@@ -494,6 +488,9 @@ export function SetupTab({
           </button>
         </div>
         <p className="mt-2 text-xs text-text-faint">
+          {isDirect
+            ? "Enter how many strokes (pops) each player gets directly. "
+            : "Enter handicaps; pops are calculated automatically. "}
           {isWolf
             ? "List order is the tee order — the wolf rotates down this list each hole (override on any hole in Scores)."
             : meta.rotatesTeams
