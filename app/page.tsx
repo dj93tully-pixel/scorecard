@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, ChevronRight, MapPin, Calendar } from "lucide-react";
+import { Plus, Settings, MapPin, Calendar } from "lucide-react";
 import {
   GameSummary,
   listGames,
@@ -151,15 +151,15 @@ export default function Home() {
   function GameRow({ g }: { g: GameSummary }) {
     return (
       <li
-        className="flex items-stretch overflow-hidden rounded-xl border bg-white"
+        className="relative overflow-hidden rounded-xl border bg-white"
         style={{ borderColor: "#E8EBEF" }}
       >
-        {/* Tap the card body to score the game */}
+        {/* Tap the card to score the game */}
         <button
           onClick={() => router.push(`/game/${g.id}`)}
-          className="flex min-w-0 flex-1 items-center justify-between gap-2 p-3 text-left"
+          className="flex w-full items-center p-3 pr-10 text-left"
         >
-          <span className="min-w-0">
+          <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2 font-semibold">
               {!g.completed && (
                 <span className="h-[6px] w-[6px] shrink-0 rounded-full bg-alert ring-pulse" />
@@ -196,16 +196,14 @@ export default function Home() {
               </span>
             </span>
           </span>
-          <ChevronRight className="h-4 w-4 shrink-0" style={{ color: "#C4C8CE" }} />
         </button>
-        {/* Edit button — opens the game editor (setup / delete / complete) */}
+        {/* Small gear in the top-right corner — opens Game Settings */}
         <button
           onClick={() => setEditingId(g.id)}
-          aria-label={`Edit ${g.name}`}
-          className="flex shrink-0 items-center justify-center border-l px-3.5 text-text-muted active:bg-surface-2"
-          style={{ borderColor: "#E8EBEF" }}
+          aria-label={`Game settings for ${g.name}`}
+          className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full text-text-muted active:bg-surface-2"
         >
-          <Pencil className="h-[17px] w-[17px]" />
+          <Settings className="h-[18px] w-[18px]" />
         </button>
       </li>
     );
