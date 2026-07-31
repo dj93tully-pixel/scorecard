@@ -24,7 +24,6 @@ const INK = "#16181D";
 const HAMMER = "#7C3AED"; // purple — matches the Scores tab hammer accent
 const PRESS = "#E8590C"; // orange — matches the press accent
 const TOTAL_TINT = "#EEF4F0";
-const TILE_ACTIVE = "#EAF1FF";
 
 // Money to cents: $5 → $5, $2.50 → $2.50, $0.75 → $0.75. Uses 2 decimals (matching
 // formatMoney + settle-up) so the Card-tab standings/ledger never disagree with the
@@ -57,10 +56,18 @@ const FILTER_LABEL: Record<Filter, string> = {
 const moneyColor = (v: number) => (v > 0 ? GREEN : v < 0 ? RED : MUTED);
 const dollars = (v: number) => (v === 0 ? "—" : money1(v));
 
+// Medal-tinted rank badge: gold / silver / bronze / neutral by finish position.
+function rankBadge(rank: number): { fg: string; bg: string } {
+  if (rank === 1) return { fg: "#F0A824", bg: "#FBF1DB" };
+  if (rank === 2) return { fg: "#8A93A3", bg: "#EEF0F3" };
+  if (rank === 3) return { fg: "#C88A3E", bg: "#F6EBDD" };
+  return { fg: "#AEB4BE", bg: "#F1F3F6" };
+}
+
 // ── Gross / Net segmented toggle ─────────────────────────────────────────────
 function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boolean) => void }) {
   return (
-    <div className="inline-flex rounded-full bg-divider p-[2px] text-sm font-semibold">
+    <div className="inline-flex rounded-full bg-[#EAECF1] p-[2px] text-sm font-semibold">
       {(["gross", "net"] as const).map((v) => {
         const active = net === (v === "net");
         return (
@@ -69,7 +76,7 @@ function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boole
             onClick={() => onChange(v === "net")}
             style={active ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
             className={`rounded-full px-3 py-0.5 capitalize transition ${
-              active ? "bg-white text-accent-on-light" : "text-text-faint"
+              active ? "bg-white text-[#B67F12]" : "text-text-faint"
             }`}
           >
             {v}
@@ -396,7 +403,7 @@ function Detail({
                 if (next === "press") setPressSel("all");
               }}
               className="flex min-w-[68px] flex-1 flex-col items-start rounded-lg border px-2.5 py-1.5"
-              style={{ borderColor: on ? BLUE : BORDER, background: on ? TILE_ACTIVE : "#FFFFFF" }}
+              style={{ borderColor: on ? "#F0A824" : BORDER, background: on ? "#FDF6E7" : "#FFFFFF" }}
             >
               <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>
                 {FILTER_LABEL[t]}
@@ -456,6 +463,7 @@ function Detail({
         <div className="mt-4">
           <div className="mb-1 flex items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>Winnings by hole</span>
+            <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(grand) }}>{dollars(grand)}</span>
           </div>
           <Trendline money={active} />
         </div>
@@ -500,13 +508,26 @@ function PlayerBar({
     toPar = (toPar ?? 0) + s - c.par;
     if (c.picked) elevenToPar = (elevenToPar ?? 0) + s - c.par;
   }
+  const badge = rankBadge(rank);
+  const isLeader = rank === 1;
   return (
-    <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER, borderLeft: `4px solid ${open ? BLUE : "#AFC6FF"}` }}>
+    <div
+      className="overflow-hidden rounded-[13px] border bg-card-bg"
+      style={{
+        borderColor: isLeader ? "#F3E4C2" : "#ECEEF2",
+        boxShadow: isLeader ? "0 2px 10px rgba(240,168,36,.10)" : undefined,
+      }}
+    >
       <button onClick={onToggle} className="flex w-full items-center gap-3 px-3 py-3 text-left">
-        <span className="w-4 text-center font-serif text-base font-bold" style={{ color: MUTED }}>{rank}</span>
+        <span
+          className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full text-[12px] font-bold tabular-nums"
+          style={{ color: badge.fg, background: badge.bg }}
+        >
+          {rank}
+        </span>
         <span className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="truncate font-semibold" style={{ color: INK }}>{player.name}</span>
-          <span className="shrink-0 font-serif text-sm font-bold tabular-nums" style={{ color: net ? BLUE : INK }}>
+          <span className="shrink-0 text-xs font-semibold tabular-nums" style={{ color: MUTED }}>
             {toPar === null ? "–" : formatToPar(toPar)}
           </span>
           {results.isElevens && (
@@ -518,7 +539,7 @@ function PlayerBar({
             </span>
           )}
         </span>
-        <span className="font-serif text-lg font-extrabold tabular-nums" style={{ color: moneyColor(player.grand) }}>
+        <span className="text-[15px] font-bold tabular-nums" style={{ color: moneyColor(player.grand) }}>
           {money1(player.grand)}
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} style={{ color: MUTED }} />
@@ -915,8 +936,8 @@ export function ResultsView({ results }: { results: ResultsData }) {
     [results.players]
   );
   const [net, setNet] = useState(false);
-  // No bar is open by default — the player must tap one.
-  const [openId, setOpenId] = useState<string | null>(null);
+  // Leader (top of standings) is expanded by default.
+  const [openId, setOpenId] = useState<string | null>(() => standings[0]?.id ?? null);
   const [filter, setFilter] = useState<Filter>("total");
   const [pressSel, setPressSel] = useState<number | "all">("all");
 
