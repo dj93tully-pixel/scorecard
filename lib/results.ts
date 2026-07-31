@@ -67,8 +67,7 @@ export interface ResultsData {
   hammerHoles: number[]; // holes that had a hammer (filled purple dot)
   pressHoles: number[]; // union of every press's holes
   pressCountByHole: Record<number, number>; // presses covering a hole → that many orange dots
-  baseBetGame: boolean; // per-hole base bet exists (wolf/skins/bestball/sixes) → filled gray dot
-  carriedHoles: number[]; // holes that RECEIVED a base-bet carry (hollow gray ring)
+  baseBetGame: boolean; // per-hole base bet exists (wolf/skins/bestball/sixes) → filled gray dot on every hole
   carriedHammerHoles: number[]; // holes that received a carried hammer (hollow purple ring)
   presses: PressInfo[]; // each individual press (Press tab sub-selector)
   tees: ResultTee[]; // course tee yardages (scorecard distance rows)
@@ -195,12 +194,10 @@ export function buildResults(round: Round): ResultsData {
   // Games with a per-hole base bet (so every hole shows a filled gray "original" dot,
   // except carry recipients which show the hollow gray ring instead).
   const baseBetGame = gt === "wolf" || gt === "skins" || gt === "bestball" || gt === "sixes";
-  const carriedHoles: number[] = [];
   const carriedHammerHoles: number[] = [];
   for (const [h, c] of carryByHole(round)) {
     const next = holeOrder[holeOrder.indexOf(h) + 1];
     if (next === undefined) continue; // last hole's carry is dead
-    if (c.orig + c.hammer > 0) carriedHoles.push(next); // base-bet carry landed here
     if (c.hammer > 0) carriedHammerHoles.push(next); // a hammered value carried in
   }
 
@@ -264,7 +261,6 @@ export function buildResults(round: Round): ResultsData {
     pressHoles,
     pressCountByHole,
     baseBetGame,
-    carriedHoles,
     carriedHammerHoles,
     presses,
     tees,
