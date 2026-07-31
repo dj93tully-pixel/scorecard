@@ -44,7 +44,15 @@ function HoleCard({
   fullCover?: number; // 18-presses covering this hole (for the ⚡18 ×N label)
   upsertEntry: (h: number, patch: Partial<HoleEntry>, base: HoleEntry) => void;
 }) {
-  const { players, course } = round;
+  const { course } = round;
+  // Render players in tee order (the order set in Setup), not the raw players array.
+  // Any player somehow absent from teeOrder is appended so nobody drops off.
+  const players = [
+    ...round.teeOrder
+      .map((id) => round.players.find((p) => p.id === id))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p)),
+    ...round.players.filter((p) => !round.teeOrder.includes(p.id)),
+  ];
   const courseHole = course.holes.find((h) => h.number === hole);
   const par = courseHole?.par ?? null;
   const existing = round.entries.find((e) => e.hole === hole);
