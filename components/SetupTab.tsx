@@ -405,6 +405,21 @@ export function SetupTab({
             : "Enter handicaps; pops are calculated automatically."}
         </p>
 
+        {!isDirect && (
+          <div className="mb-3">
+            <Field label="Handicap mode">
+              <select
+                value={settings.handicapMode}
+                onChange={(e) => setSetting("handicapMode", e.target.value as HandicapMode)}
+                className="rounded-lg border border-card-border px-2 py-2"
+              >
+                <option value="offLow">Off Low (Relative)</option>
+                <option value="full">Full (Absolute)</option>
+              </select>
+            </Field>
+          </div>
+        )}
+
         <div className="space-y-2">
           {orderedPlayers.map((p, i) => (
             <div key={p.id} className="flex items-center gap-2">
@@ -698,18 +713,6 @@ export function SetupTab({
                 onChange={(e) => setSetting("pressCarryover", e.target.checked)}
                 className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
               />
-            </Field>
-          )}
-          {!isDirect && (
-            <Field label="Handicap mode">
-              <select
-                value={settings.handicapMode}
-                onChange={(e) => setSetting("handicapMode", e.target.value as HandicapMode)}
-                className="rounded-lg border border-card-border px-2 py-2"
-              >
-                <option value="offLow">Off low</option>
-                <option value="full">Full</option>
-              </select>
             </Field>
           )}
         </div>
