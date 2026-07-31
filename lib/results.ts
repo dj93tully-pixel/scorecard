@@ -16,15 +16,24 @@ import {
   decomposePresses,
   hasAnyPress,
   pressedHoles,
-  pressCoverByHole,
   eachPress,
   RunResult,
 } from "./engines/press";
 import { nassauPressLedger } from "./engines/nassau";
 import { computeJunk, JunkBetView } from "./junk";
-import { carryByHole } from "./carry";
+import { carryByHole, anteByHole, unitStake } from "./carry";
 
 export type BetType = "original" | "press" | "hammer";
+
+// Per-hole scorecard dot counts — one dot per base-stake unit at stake, so the dots
+// add up to the money on the hole. Gray = base bet, orange = press, purple = hammer
+// (filled where the hammer was thrown, hollow where a hammered value carried in).
+export interface HoleDots {
+  gray: number;
+  press: number;
+  hammerFilled: number;
+  hammerHollow: number;
+}
 
 // One individual press for the Press tab's sub-selector. money is per-player,
 // per-hole (aligned to the course holes; 0 outside the press's holes).
@@ -64,11 +73,10 @@ export interface ResultTee {
 export interface ResultsData {
   players: PlayerResults[];
   betTypes: BetType[]; // the non-total bet types that EXIST (Total is always shown)
-  hammerHoles: number[]; // holes that had a hammer (filled purple dot)
+  hammerHoles: number[]; // holes that had a hammer (used for the Hammer filter's active holes)
   pressHoles: number[]; // union of every press's holes
-  pressCountByHole: Record<number, number>; // presses covering a hole → that many orange dots
-  baseBetGame: boolean; // per-hole base bet exists (wolf/skins/bestball/sixes) → filled gray dot on every hole
-  carriedHammerHoles: number[]; // holes that received a carried hammer (hollow purple ring)
+  dotsByHole: Record<number, HoleDots>; // value-based scorecard dots per hole
+  carriedHammerHoles: number[]; // holes a hammered value carried THROUGH (Hammer filter reach)
   presses: PressInfo[]; // each individual press (Press tab sub-selector)
   tees: ResultTee[]; // course tee yardages (scorecard distance rows)
   isElevens: boolean; // 11s: hide ledger/trendline, show picked-hole tally + dots
@@ -197,23 +205,35 @@ export function buildResults(round: Round): ResultsData {
 
   const hammerHoles = round.entries.filter((e) => (e.hammer ?? 0) > 0).map((e) => e.hole);
   const pressHoles = [...pressedHoles(round)].sort((a, b) => a - b);
-  // Number of presses covering each hole (seg + full) → one orange dot each, so a
-  // hole under both a 9-hole and an 18-hole press shows two dots.
-  const pressCountByHole: Record<number, number> = {};
-  for (const [h, c] of pressCoverByHole(round)) pressCountByHole[h] = c.seg + c.full;
 
-  // Carry-in markers: a base-bet push rolls its pot to the NEXT played hole. That
-  // recipient shows a gray "carried" dot; if the carried pot included a hammered
-  // value (Carryover hammers on), it also shows a hollow purple hammer ring.
+  // Holes a hammered value carried THROUGH — used to extend the Hammer filter's
+  // reach (a hammer thrown on 1 that pushes to 2 then wins on 3 spans all three).
   const holeOrder = round.course.holes.map((h) => h.number).sort((a, b) => a - b);
-  // Games with a per-hole base bet (so every hole shows a filled gray "original" dot,
-  // except carry recipients which show the hollow gray ring instead).
-  const baseBetGame = gt === "wolf" || gt === "skins" || gt === "bestball" || gt === "sixes";
   const carriedHammerHoles: number[] = [];
   for (const [h, c] of carryByHole(round)) {
     const next = holeOrder[holeOrder.indexOf(h) + 1];
     if (next === undefined) continue; // last hole's carry is dead
     if (c.hammer > 0) carriedHammerHoles.push(next); // a hammered value carried in
+  }
+
+  // Value-based scorecard dots: one dot per base-stake unit at stake on the hole,
+  // split by bet type (orig/press/hammer) from the carry-aware ante, so the dots add
+  // up to the money on the hole. Purple is filled where the hammer was thrown, hollow
+  // where a hammered value only carried in. Only base-bet games get dots.
+  const baseBetGame = gt === "wolf" || gt === "skins" || gt === "bestball" || gt === "sixes";
+  const unit = unitStake(round) || 1;
+  const hammerThrown = new Set(hammerHoles);
+  const dotsByHole: Record<number, HoleDots> = {};
+  if (baseBetGame) {
+    for (const [h, a] of anteByHole(round)) {
+      const hammerDots = Math.round(a.hammer / unit);
+      dotsByHole[h] = {
+        gray: Math.round(a.orig / unit),
+        press: Math.round(a.press / unit),
+        hammerFilled: hammerThrown.has(h) ? hammerDots : 0,
+        hammerHollow: hammerThrown.has(h) ? 0 : hammerDots,
+      };
+    }
   }
 
   // Individual presses, each settled over its own holes (same engine, read-only).
@@ -274,8 +294,7 @@ export function buildResults(round: Round): ResultsData {
     betTypes,
     hammerHoles,
     pressHoles,
-    pressCountByHole,
-    baseBetGame,
+    dotsByHole,
     carriedHammerHoles,
     presses,
     tees,
