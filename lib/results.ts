@@ -16,6 +16,7 @@ import {
   decomposePresses,
   hasAnyPress,
   pressedHoles,
+  pressCoverByHole,
   eachPress,
   RunResult,
 } from "./engines/press";
@@ -64,8 +65,9 @@ export interface ResultsData {
   players: PlayerResults[];
   betTypes: BetType[]; // the non-total bet types that EXIST (Total is always shown)
   hammerHoles: number[]; // holes that had a hammer (filled purple dot)
-  pressHoles: number[]; // union of every press's holes (filled orange dot)
-  carriedHoles: number[]; // holes that RECEIVED a base-bet carry (gray dot)
+  pressHoles: number[]; // union of every press's holes
+  pressCountByHole: Record<number, number>; // presses covering a hole → that many orange dots
+  carriedHoles: number[]; // holes that RECEIVED a base-bet carry (hollow gray ring)
   carriedHammerHoles: number[]; // holes that received a carried hammer (hollow purple ring)
   presses: PressInfo[]; // each individual press (Press tab sub-selector)
   tees: ResultTee[]; // course tee yardages (scorecard distance rows)
@@ -180,6 +182,10 @@ export function buildResults(round: Round): ResultsData {
 
   const hammerHoles = round.entries.filter((e) => (e.hammer ?? 0) > 0).map((e) => e.hole);
   const pressHoles = [...pressedHoles(round)].sort((a, b) => a - b);
+  // Number of presses covering each hole (seg + full) → one orange dot each, so a
+  // hole under both a 9-hole and an 18-hole press shows two dots.
+  const pressCountByHole: Record<number, number> = {};
+  for (const [h, c] of pressCoverByHole(round)) pressCountByHole[h] = c.seg + c.full;
 
   // Carry-in markers: a base-bet push rolls its pot to the NEXT played hole. That
   // recipient shows a gray "carried" dot; if the carried pot included a hammered
@@ -252,6 +258,7 @@ export function buildResults(round: Round): ResultsData {
     betTypes,
     hammerHoles,
     pressHoles,
+    pressCountByHole,
     carriedHoles,
     carriedHammerHoles,
     presses,
