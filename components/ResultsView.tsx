@@ -69,7 +69,7 @@ function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boole
             onClick={() => onChange(v === "net")}
             style={active ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
             className={`rounded-full px-3 py-0.5 capitalize transition ${
-              active ? "bg-white text-[#B8860B]" : "text-text-faint"
+              active ? "bg-white text-accent-on-light" : "text-text-faint"
             }`}
           >
             {v}
