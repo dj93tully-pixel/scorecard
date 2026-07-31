@@ -187,9 +187,9 @@ function Nine({
   return (
     <div className="overflow-x-auto">
       <div style={{ minWidth: 340 }}>
-        {/* hole numbers */}
+        {/* hole numbers — OUT/IN label only on the right (totals) side */}
         <div className="grid items-center" style={{ gridTemplateColumns: template }}>
-          <HoleHead n={label} />
+          <HoleHead n="" />
           {cells.map((x) => (
             <HoleHead key={x.cell.hole} n={x.cell.hole} />
           ))}
@@ -401,7 +401,7 @@ function Detail({
               <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>
                 {FILTER_LABEL[t]}
               </span>
-              <span className="font-serif text-sm font-extrabold tabular-nums" style={{ color: moneyColor(sumMoney(t)) }}>
+              <span className="text-sm font-extrabold tabular-nums" style={{ color: moneyColor(sumMoney(t)) }}>
                 {dollars(sumMoney(t))}
               </span>
             </button>
