@@ -30,12 +30,13 @@ export default function Home() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
 
-  // Arriving at the games list (e.g. Back from a scrolled-down game) should start at
-  // the top, not wherever the previous screen was scrolled. Runs before paint so
+  // Whenever the games list is showing (on mount, and on Back from the editor/picker
+  // — which are in-page views, not routes, so the component never remounts), start at
+  // the top rather than wherever the previous view was scrolled. Runs before paint so
   // there's no flash of the restored scroll position.
   useLayoutEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+    if (!editingId && !picking) window.scrollTo(0, 0);
+  }, [editingId, picking]);
 
   function refresh() {
     listGames()
