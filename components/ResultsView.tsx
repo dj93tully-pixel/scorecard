@@ -57,6 +57,23 @@ const FILTER_LABEL: Record<Filter, string> = {
 const moneyColor = (v: number) => (v > 0 ? GREEN : v < 0 ? RED : MUTED);
 const dollars = (v: number) => (v === 0 ? "—" : money1(v));
 
+// Scorecard marker dots (below the par band). Filled = event happened ON this hole
+// (orange press, purple hammer, gray = base carry landed here). Hollow purple ring =
+// a hammered value was CARRIED into this hole.
+const filledDot = (color: string): React.CSSProperties => ({
+  width: 4,
+  height: 4,
+  borderRadius: "50%",
+  background: color,
+});
+const hollowRing = (color: string): React.CSSProperties => ({
+  width: 5,
+  height: 5,
+  borderRadius: "50%",
+  border: `1px solid ${color}`,
+  boxSizing: "border-box",
+});
+
 // ── Gross / Net segmented toggle ─────────────────────────────────────────────
 function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boolean) => void }) {
   return (
@@ -155,6 +172,8 @@ function Nine({
   label,
   hammerHoles,
   pressHoles,
+  carriedHoles,
+  carriedHammerHoles,
   activeHoles,
   pickShade = INK,
   hideMoney = false,
@@ -164,6 +183,8 @@ function Nine({
   label: "OUT" | "IN";
   hammerHoles: Set<number>;
   pressHoles: Set<number>;
+  carriedHoles: Set<number>; // received a base-bet carry → gray dot
+  carriedHammerHoles: Set<number>; // received a carried hammer → hollow purple ring
   activeHoles: Set<number> | null; // press view: only these holes carry data
   pickShade?: string; // 11s: this player's pick-dot shade
   hideMoney?: boolean; // 11s: drop the per-hole money row
@@ -213,9 +234,11 @@ function Nine({
             <div key={x.cell.hole} className="flex items-center justify-center" style={{ height: 9 }}>
               {on(x.cell.hole) && (
                 <span className="flex items-center" style={{ gap: 1 }}>
-                  {x.cell.picked && <span style={{ width: 4, height: 4, borderRadius: "50%", background: pickShade }} />}
-                  {pressHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: PRESS }} />}
-                  {hammerHoles.has(x.cell.hole) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: HAMMER }} />}
+                  {x.cell.picked && <span style={filledDot(pickShade)} />}
+                  {carriedHoles.has(x.cell.hole) && <span style={filledDot(MUTED)} />}
+                  {carriedHammerHoles.has(x.cell.hole) && <span style={hollowRing(HAMMER)} />}
+                  {pressHoles.has(x.cell.hole) && <span style={filledDot(PRESS)} />}
+                  {hammerHoles.has(x.cell.hole) && <span style={filledDot(HAMMER)} />}
                 </span>
               )}
             </div>
@@ -334,10 +357,12 @@ function Detail({
   setPressSel: (s: number | "all") => void;
   pickShade: string;
 }) {
-  const { betTypes, presses, pressHoles, hammerHoles } = results;
+  const { betTypes, presses, pressHoles, hammerHoles, carriedHoles, carriedHammerHoles } = results;
   const tiles: Filter[] = [...betTypes, "total"];
   const hammerSet = useMemo(() => new Set(hammerHoles), [hammerHoles]);
   const pressSet = useMemo(() => new Set(pressHoles), [pressHoles]);
+  const carriedSet = useMemo(() => new Set(carriedHoles), [carriedHoles]);
+  const carriedHammerSet = useMemo(() => new Set(carriedHammerHoles), [carriedHammerHoles]);
   // Holes the hammer "affects": the hammered holes themselves, plus any hole the
   // hammer money landed on (carryover). Money is zero-sum, so a hole counts if
   // any player has a non-zero hammer delta there.
@@ -435,9 +460,9 @@ function Detail({
 
       {/* horizontal scorecard */}
       <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
-        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
+        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
         <div style={{ borderTop: `1px solid ${BORDER}` }}>
-          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
+          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} pickShade={pickShade} hideMoney={results.isElevens} />
         </div>
         <div
           className="grid items-center text-xs font-bold tabular-nums"
@@ -621,12 +646,16 @@ function DotsRowFragment({
   holeNums,
   hammerHoles,
   pressHoles,
+  carriedHoles,
+  carriedHammerHoles,
   trailing,
   pickers,
 }: {
   holeNums: number[];
   hammerHoles: Set<number>;
   pressHoles: Set<number>;
+  carriedHoles: Set<number>; // received a base-bet carry → gray dot
+  carriedHammerHoles: Set<number>; // received a carried hammer → hollow purple ring
   trailing: number;
   pickers?: { picked: Set<number>; shade: string }[];
 }) {
@@ -642,8 +671,10 @@ function DotsRowFragment({
                 <span key={`p${i}`} style={{ width: 3, height: 3, borderRadius: "50%", background: pk.shade }} />
               ) : null
             )}
-            {pressHoles.has(h) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: PRESS }} />}
-            {hammerHoles.has(h) && <span style={{ width: 4, height: 4, borderRadius: "50%", background: HAMMER }} />}
+            {carriedHoles.has(h) && <span style={filledDot(MUTED)} />}
+            {carriedHammerHoles.has(h) && <span style={hollowRing(HAMMER)} />}
+            {pressHoles.has(h) && <span style={filledDot(PRESS)} />}
+            {hammerHoles.has(h) && <span style={filledDot(HAMMER)} />}
           </span>
         </div>
       ))}
@@ -659,6 +690,8 @@ function ScorecardNine({
   label,
   hammerHoles,
   pressHoles,
+  carriedHoles,
+  carriedHammerHoles,
   tees,
 }: {
   players: PlayerResults[];
@@ -667,6 +700,8 @@ function ScorecardNine({
   label: "OUT" | "IN";
   hammerHoles: Set<number>;
   pressHoles: Set<number>;
+  carriedHoles: Set<number>;
+  carriedHammerHoles: Set<number>;
   tees: ResultTee[];
 }) {
   const template = `46px repeat(${holeNums.length}, minmax(0,1fr)) 28px 26px`;
@@ -728,7 +763,7 @@ function ScorecardNine({
           <GridCell h={18} bg="#F4F6F8"> </GridCell>
 
           {/* press / hammer dots + 11s pick dots — their own thin row, below Hcp */}
-          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={2} pickers={pickers} />
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} carriedHoles={carriedHoles} carriedHammerHoles={carriedHammerHoles} trailing={2} pickers={pickers} />
 
           {/* PLAYER rows */}
           {players.map((p) => {
@@ -776,12 +811,16 @@ function LedgerNine({
   label,
   hammerHoles,
   pressHoles,
+  carriedHoles,
+  carriedHammerHoles,
 }: {
   players: PlayerResults[];
   holeNums: number[];
   label: "OUT" | "IN";
   hammerHoles: Set<number>;
   pressHoles: Set<number>;
+  carriedHoles: Set<number>;
+  carriedHammerHoles: Set<number>;
 }) {
   const template = `46px repeat(${holeNums.length}, minmax(0,1fr)) 36px`;
   const parByHole = new Map(players[0]?.holes.map((c) => [c.hole, c.par]) ?? []);
@@ -806,7 +845,7 @@ function LedgerNine({
           <GridCell h={18} bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
 
           {/* press / hammer dots — their own thin row, below Par */}
-          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} trailing={1} />
+          <DotsRowFragment holeNums={holeNums} hammerHoles={hammerHoles} pressHoles={pressHoles} carriedHoles={carriedHoles} carriedHammerHoles={carriedHammerHoles} trailing={1} />
 
           {/* PLAYER money rows */}
           {players.map((p) => {
@@ -922,6 +961,8 @@ export function ResultsView({ results }: { results: ResultsData }) {
 
   const hammerSet = useMemo(() => new Set(results.hammerHoles), [results.hammerHoles]);
   const pressSet = useMemo(() => new Set(results.pressHoles), [results.pressHoles]);
+  const carriedSet = useMemo(() => new Set(results.carriedHoles), [results.carriedHoles]);
+  const carriedHammerSet = useMemo(() => new Set(results.carriedHammerHoles), [results.carriedHammerHoles]);
   const front = useMemo(() => standings[0]?.holes.filter((c) => c.hole <= 9).map((c) => c.hole) ?? [], [standings]);
   const back = useMemo(() => standings[0]?.holes.filter((c) => c.hole >= 10).map((c) => c.hole) ?? [], [standings]);
 
@@ -973,16 +1014,16 @@ export function ResultsView({ results }: { results: ResultsData }) {
       {!results.isElevens && (
         <section className="space-y-3">
           <h2 className="text-xl font-bold">Ledger</h2>
-          <LedgerNine players={standings} holeNums={front} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} />
-          <LedgerNine players={standings} holeNums={back} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} />
+          <LedgerNine players={standings} holeNums={front} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} />
+          <LedgerNine players={standings} holeNums={back} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} />
         </section>
       )}
 
       {/* Traditional course-style all-players scorecard */}
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Scorecard</h2>
-        <ScorecardNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} tees={results.tees} />
-        <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} tees={results.tees} />
+        <ScorecardNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressHoles={pressSet} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} tees={results.tees} />
+        <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressHoles={pressSet} carriedHoles={carriedSet} carriedHammerHoles={carriedHammerSet} tees={results.tees} />
         {(() => {
           const withPops = standings
             .map((p) => ({ name: p.name, pops: p.holes.reduce((s, c) => s + c.pop, 0) }))

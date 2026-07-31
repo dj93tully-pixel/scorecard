@@ -21,6 +21,7 @@ import {
 } from "./engines/press";
 import { nassauPressLedger } from "./engines/nassau";
 import { computeJunk, JunkBetView } from "./junk";
+import { carryByHole } from "./carry";
 
 export type BetType = "original" | "press" | "hammer";
 
@@ -62,8 +63,10 @@ export interface ResultTee {
 export interface ResultsData {
   players: PlayerResults[];
   betTypes: BetType[]; // the non-total bet types that EXIST (Total is always shown)
-  hammerHoles: number[]; // holes that had a hammer (purple marker on the card)
-  pressHoles: number[]; // union of every press's holes
+  hammerHoles: number[]; // holes that had a hammer (filled purple dot)
+  pressHoles: number[]; // union of every press's holes (filled orange dot)
+  carriedHoles: number[]; // holes that RECEIVED a base-bet carry (gray dot)
+  carriedHammerHoles: number[]; // holes that received a carried hammer (hollow purple ring)
   presses: PressInfo[]; // each individual press (Press tab sub-selector)
   tees: ResultTee[]; // course tee yardages (scorecard distance rows)
   isElevens: boolean; // 11s: hide ledger/trendline, show picked-hole tally + dots
@@ -178,6 +181,19 @@ export function buildResults(round: Round): ResultsData {
   const hammerHoles = round.entries.filter((e) => (e.hammer ?? 0) > 0).map((e) => e.hole);
   const pressHoles = [...pressedHoles(round)].sort((a, b) => a - b);
 
+  // Carry-in markers: a base-bet push rolls its pot to the NEXT played hole. That
+  // recipient shows a gray "carried" dot; if the carried pot included a hammered
+  // value (Carryover hammers on), it also shows a hollow purple hammer ring.
+  const holeOrder = round.course.holes.map((h) => h.number).sort((a, b) => a - b);
+  const carriedHoles: number[] = [];
+  const carriedHammerHoles: number[] = [];
+  for (const [h, c] of carryByHole(round)) {
+    const next = holeOrder[holeOrder.indexOf(h) + 1];
+    if (next === undefined) continue; // last hole's carry is dead
+    if (c.orig + c.hammer > 0) carriedHoles.push(next); // base-bet carry landed here
+    if (c.hammer > 0) carriedHammerHoles.push(next); // a hammered value carried in
+  }
+
   // Individual presses, each settled over its own holes (same engine, read-only).
   const idxOf = new Map(holes.map((h, i) => [h.number, i]));
   const counts: Record<string, number> = {};
@@ -236,6 +252,8 @@ export function buildResults(round: Round): ResultsData {
     betTypes,
     hammerHoles,
     pressHoles,
+    carriedHoles,
+    carriedHammerHoles,
     presses,
     tees,
     isElevens: gt === "elevens",
