@@ -76,7 +76,7 @@ function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boole
             onClick={() => onChange(v === "net")}
             style={active ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
             className={`rounded-full px-3 py-0.5 capitalize transition ${
-              active ? "bg-white text-[#B67F12]" : "text-text-faint"
+              active ? "bg-white text-accent-on-light" : "text-text-faint"
             }`}
           >
             {v}
@@ -527,7 +527,7 @@ function PlayerBar({
         </span>
         <span className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="truncate font-semibold" style={{ color: INK }}>{player.name}</span>
-          <span className="shrink-0 text-xs font-semibold tabular-nums" style={{ color: MUTED }}>
+          <span className="shrink-0 text-xs font-semibold tabular-nums" style={{ color: net ? BLUE : INK }}>
             {toPar === null ? "–" : formatToPar(toPar)}
           </span>
           {results.isElevens && (
