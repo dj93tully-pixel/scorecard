@@ -687,7 +687,7 @@ export function SetupTab({
           )}
           {showCarry && (
             <Field
-              label="Carryover hammers into press bets"
+              label="Carryover hammers inside press bets"
               hint="Inside a press, a hammered tie carries at its doubled size instead of the base stake — like Carryover hammered value, but for the press. (Needs Carryover ties on.)"
               disabled={!settings.carryover}
             >
