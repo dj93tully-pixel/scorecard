@@ -23,7 +23,6 @@ const BORDER = "#EAECEF";
 const INK = "#16181D";
 const HAMMER = "#7C3AED"; // purple — matches the Scores tab hammer accent
 const PRESS = "#E8590C"; // orange — matches the press accent
-const TOTAL_TINT = "#EEF4F0";
 const TILE_ACTIVE = "#EAF1FF";
 
 // Money to cents: $5 → $5, $2.50 → $2.50, $0.75 → $0.75. Uses 2 decimals (matching
@@ -199,12 +198,12 @@ function Nine({
     <div className="overflow-x-auto">
       <div style={{ minWidth: 340, border: `1px solid ${GRID}` }}>
         <div style={{ display: "grid", gridTemplateColumns: template, gap: "1px", background: GRID }}>
-          {/* HEADER band — green, white hole numbers + OUT/IN */}
-          <GridCell bg={HEADER_BG} color="#fff" bold left>HOLE</GridCell>
+          {/* HEADER band — white hole numbers + OUT/IN (thin) */}
+          <GridCell h={20} bg={HEADER_BG} color="#fff" bold left>HOLE</GridCell>
           {cells.map((x) => (
-            <HeaderHoleCell key={`hd${x.cell.hole}`} n={x.cell.hole} />
+            <HeaderHoleCell key={`hd${x.cell.hole}`} n={x.cell.hole} h={20} />
           ))}
-          <GridCell bg={HEADER_BG} color="#fff" bold>{label}</GridCell>
+          <GridCell h={20} bg={HEADER_BG} color="#fff" bold>{label}</GridCell>
 
           {/* PAR */}
           <GridCell h={18} bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
@@ -384,6 +383,14 @@ function Detail({
   const scoreTotal = player.holes
     .filter((c) => liveHole(c.hole))
     .reduce((s, c) => s + ((net ? c.net : c.gross) ?? 0), 0);
+  // Round score to-par (played holes only) for the summary "Total ±N".
+  let roundToPar: number | null = null;
+  for (const c of player.holes) {
+    if (!liveHole(c.hole)) continue;
+    const s = net ? c.net : c.gross;
+    if (s === null) continue;
+    roundToPar = (roundToPar ?? 0) + s - c.par;
+  }
   const grand = active.reduce((s, v) => s + v, 0);
 
   return (
@@ -447,9 +454,9 @@ function Detail({
         <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
         <div
           className="grid items-center rounded-md text-xs font-bold tabular-nums"
-          style={{ gridTemplateColumns: popsTotal > 0 ? "1fr auto auto auto auto" : "1fr auto auto auto", background: TOTAL_TINT, border: `1px solid ${GRID}`, padding: "6px 10px", gap: "14px" }}
+          style={{ gridTemplateColumns: popsTotal > 0 ? "1fr auto auto auto auto" : "1fr auto auto auto", background: "#EAF1FF", border: `1px solid ${GRID}`, padding: "6px 10px", gap: "14px" }}
         >
-          <span style={{ color: INK }}>Total</span>
+          <span style={{ color: INK }}>Total {roundToPar === null ? "–" : formatToPar(roundToPar)}</span>
           {popsTotal > 0 && <span style={{ color: BLUE }}>Pops ({popsTotal})</span>}
           <span style={{ color: MUTED }}>Par {parTotal}</span>
           <span style={{ color: INK }}>Score {scoreTotal || "–"}</span>
@@ -608,9 +615,9 @@ function GridCell({
 }
 
 // Header hole cell: white number on the header band.
-function HeaderHoleCell({ n, bg = HEADER_BG }: { n: number | string; bg?: string }) {
+function HeaderHoleCell({ n, bg = HEADER_BG, h = 26 }: { n: number | string; bg?: string; h?: number }) {
   return (
-    <div className="flex h-[26px] items-center justify-center" style={{ background: bg }}>
+    <div className="flex items-center justify-center" style={{ height: h, background: bg }}>
       <span className="text-[10px] font-bold leading-none text-white">{n}</span>
     </div>
   );
