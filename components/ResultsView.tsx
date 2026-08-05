@@ -154,17 +154,6 @@ function ScoreCell({ score, par, pop }: { score: number | null; par: number; pop
   );
 }
 
-// Hole-number cell (the press/hammer dots get their own thin row below the par).
-function HoleHead({ n, style }: { n: number | string; style?: React.CSSProperties }) {
-  return (
-    <div className="flex h-7 items-center justify-center" style={style}>
-      <span className="text-[10px] font-bold leading-none" style={{ color: MUTED }}>
-        {n}
-      </span>
-    </div>
-  );
-}
-
 // ── One nine of a player's scorecard: holes, par, score, money ───────────────
 function Nine({
   cells,
@@ -198,7 +187,7 @@ function Nine({
   const showHammer = filter === "total" || filter === "hammer";
   // Trailing OUT/IN total column is wider than the hole columns so a big 9-hole
   // money tally (e.g. hammered "+$240") doesn't overflow and overlap.
-  const template = `30px repeat(${cells.length}, minmax(0,1fr)) 52px`;
+  const template = `36px repeat(${cells.length}, minmax(0,1fr)) 52px`;
   const on = (h: number) => !activeHoles || activeHoles.has(h);
   const scoreOf = (c: PlayerResults["holes"][number]) => (net ? c.net : c.gross);
   const live = cells.filter((x) => on(x.cell.hole));
@@ -206,39 +195,30 @@ function Nine({
   const scoreTotal = live.reduce((s, x) => s + (scoreOf(x.cell) ?? 0), 0);
   const moneyTotal = live.reduce((s, x) => s + x.m, 0);
 
-  const Cell = ({ children, tint }: { children: React.ReactNode; tint?: boolean }) => (
-    <div className="flex h-7 items-center justify-center tabular-nums" style={tint ? { background: "#F6F7F9" } : undefined}>
-      {children}
-    </div>
-  );
-
   return (
     <div className="overflow-x-auto">
-      <div style={{ minWidth: 340 }}>
-        {/* hole numbers — OUT/IN label only on the right (totals) side */}
-        <div className="grid items-center" style={{ gridTemplateColumns: template }}>
-          <HoleHead n="" />
+      <div style={{ minWidth: 340, border: `1px solid ${GRID}` }}>
+        <div style={{ display: "grid", gridTemplateColumns: template, gap: "1px", background: GRID }}>
+          {/* HEADER band — green, white hole numbers + OUT/IN */}
+          <GridCell bg={HEADER_BG} color="#fff" bold left>HOLE</GridCell>
           {cells.map((x) => (
-            <HoleHead key={x.cell.hole} n={x.cell.hole} />
+            <HeaderHoleCell key={`hd${x.cell.hole}`} n={x.cell.hole} />
           ))}
-          <HoleHead n={label} />
-        </div>
-        {/* par band */}
-        <div className="grid items-center text-[10px]" style={{ gridTemplateColumns: template, background: "#F6F7F9", color: MUTED }}>
-          <Cell tint>Par</Cell>
+          <GridCell bg={HEADER_BG} color="#fff" bold>{label}</GridCell>
+
+          {/* PAR */}
+          <GridCell h={18} bg="#E8EBF0" color={MUTED} bold left>Par</GridCell>
           {cells.map((x) => (
-            <Cell key={x.cell.hole} tint>
+            <GridCell key={`par${x.cell.hole}`} h={18} bg="#E8EBF0" color={INK} bold>
               {on(x.cell.hole) ? x.cell.par : "·"}
-            </Cell>
+            </GridCell>
           ))}
-          <Cell tint>{parTotal}</Cell>
-        </div>
-        {/* press / hammer dots — thin row after par. On a press/hammer filter,
-            only the holes that filter covers keep their dots (like scores/money). */}
-        <div className="grid items-center" style={{ gridTemplateColumns: template }}>
-          <div style={{ height: 9 }} />
+          <GridCell h={18} bg="#E8EBF0" color={INK} bold>{parTotal}</GridCell>
+
+          {/* press / hammer / base dots — thin row below Par */}
+          <GridCell h={11}> </GridCell>
           {cells.map((x) => (
-            <div key={x.cell.hole} className="flex items-center justify-center" style={{ height: 9 }}>
+            <GridCell key={`dot${x.cell.hole}`} h={11}>
               {on(x.cell.hole) && (
                 <span className="flex items-center" style={{ gap: 1 }}>
                   {x.cell.picked && <span style={filledDot(pickShade)} />}
@@ -251,51 +231,43 @@ function Nine({
                   {showHammer && hammerHoles.has(x.cell.hole) && <span style={filledDot(HAMMER)} />}
                 </span>
               )}
-            </div>
+            </GridCell>
           ))}
-          <div style={{ height: 9 }} />
-        </div>
-        {/* scores */}
-        <div className="grid items-center" style={{ gridTemplateColumns: template }}>
-          <Cell>
-            <span className="text-[10px] font-semibold" style={{ color: MUTED }}>Score</span>
-          </Cell>
-          {cells.map((x) =>
-            on(x.cell.hole) ? (
-              <Cell key={x.cell.hole}>
+          <GridCell h={11}> </GridCell>
+
+          {/* SCORE */}
+          <GridCell color={MUTED} bold left>Score</GridCell>
+          {cells.map((x) => (
+            <GridCell key={`sc${x.cell.hole}`}>
+              {on(x.cell.hole) ? (
                 <ScoreCell score={scoreOf(x.cell)} par={x.cell.par} pop={x.cell.pop} />
-              </Cell>
-            ) : (
-              <Cell key={x.cell.hole}>
+              ) : (
                 <span style={{ color: "#C4C8CE" }}>·</span>
-              </Cell>
-            )
+              )}
+            </GridCell>
+          ))}
+          <GridCell bold color={INK}>{scoreTotal || "–"}</GridCell>
+
+          {/* MONEY +/- (hidden for 11s — it settles on the sum of picked holes) */}
+          {!hideMoney && (
+            <>
+              <GridCell h={20} color={MUTED} bold left>$</GridCell>
+              {cells.map((x) => {
+                const show = on(x.cell.hole) && x.m !== 0;
+                return (
+                  <GridCell key={`m${x.cell.hole}`} h={20}>
+                    <span style={{ fontSize: 8.5, fontWeight: 700, color: show ? moneyColor(x.m) : "#C4C8CE" }}>
+                      {show ? money1(x.m) : "·"}
+                    </span>
+                  </GridCell>
+                );
+              })}
+              <GridCell h={20} bold>
+                <span style={{ fontSize: 10, fontWeight: 700, color: moneyColor(moneyTotal) }}>{dollars(moneyTotal)}</span>
+              </GridCell>
+            </>
           )}
-          <Cell>
-            <span className="text-xs font-bold" style={{ color: INK }}>{scoreTotal || "–"}</span>
-          </Cell>
         </div>
-        {/* money (hidden for 11s — it settles on the sum of picked holes) */}
-        {!hideMoney && (
-          <div className="grid items-center" style={{ gridTemplateColumns: template, borderTop: `1px solid ${BORDER}` }}>
-            <Cell>
-              <span className="text-[10px] font-semibold" style={{ color: MUTED }}>$</span>
-            </Cell>
-            {cells.map((x) => {
-              const show = on(x.cell.hole) && x.m !== 0;
-              return (
-                <Cell key={x.cell.hole}>
-                  <span className="text-[9px] font-bold tabular-nums" style={{ color: show ? moneyColor(x.m) : "#C4C8CE" }}>
-                    {show ? money1(x.m) : "·"}
-                  </span>
-                </Cell>
-              );
-            })}
-            <Cell>
-              <span className="text-[11px] font-bold tabular-nums" style={{ color: moneyColor(moneyTotal) }}>{dollars(moneyTotal)}</span>
-            </Cell>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -468,15 +440,14 @@ function Detail({
         </div>
       )}
 
-      {/* horizontal scorecard */}
-      <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER }}>
+      {/* horizontal scorecard — traditional grid look; front + back stacked, then
+          a summary strip (matches the all-players scorecard at the bottom). */}
+      <div className="space-y-2">
         <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
-        <div style={{ borderTop: `1px solid ${BORDER}` }}>
-          <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
-        </div>
+        <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
         <div
-          className="grid items-center text-xs font-bold tabular-nums"
-          style={{ gridTemplateColumns: popsTotal > 0 ? "1fr auto auto auto auto" : "1fr auto auto auto", background: TOTAL_TINT, borderTop: `1px solid ${BORDER}`, padding: "6px 10px", gap: "14px" }}
+          className="grid items-center rounded-md text-xs font-bold tabular-nums"
+          style={{ gridTemplateColumns: popsTotal > 0 ? "1fr auto auto auto auto" : "1fr auto auto auto", background: TOTAL_TINT, border: `1px solid ${GRID}`, padding: "6px 10px", gap: "14px" }}
         >
           <span style={{ color: INK }}>Total</span>
           {popsTotal > 0 && <span style={{ color: BLUE }}>Pops ({popsTotal})</span>}
