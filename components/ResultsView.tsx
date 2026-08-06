@@ -1158,8 +1158,11 @@ export function ResultsView({ results }: { results: ResultsData }) {
       {/* Side bets (junk) breakdown per player. */}
       <SideBets results={results} />
 
-      {/* Who pays whom — main game money + side bets combined. */}
-      <SettleUp people={results.players.map((p) => ({ name: p.name, amount: p.grand + p.junk }))} />
+      {/* Who pays whom — main game money + side bets combined. Hidden when there's
+          nothing to settle (e.g. a $0 game with no side-bet money). */}
+      {results.players.some((p) => Math.round((p.grand + p.junk) * 100) !== 0) && (
+        <SettleUp people={results.players.map((p) => ({ name: p.name, amount: p.grand + p.junk }))} />
+      )}
     </div>
   );
 }
