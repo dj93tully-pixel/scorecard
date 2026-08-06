@@ -998,6 +998,18 @@ function SideBets({ results }: { results: ResultsData }) {
   );
 }
 
+// A player's score to-par over played holes (net or gross), or null if unscored —
+// used as the standings tiebreaker so a $0 game (all money tied) sorts by score.
+function toParOf(p: PlayerResults, net: boolean): number | null {
+  let tp: number | null = null;
+  for (const c of p.holes) {
+    const s = net ? c.net : c.gross;
+    if (s === null) continue;
+    tp = (tp ?? 0) + s - c.par;
+  }
+  return tp;
+}
+
 // A boolean that persists to localStorage — per device/browser, so each user
 // keeps their own toggle choice across tab switches and reloads. (ResultsView
 // only mounts on a client tap of the Cards tab, so reading storage here is safe.)
@@ -1023,10 +1035,6 @@ function usePersistentBool(key: string, initial: boolean): [boolean, (v: boolean
 }
 
 export function ResultsView({ results }: { results: ResultsData }) {
-  const standings = useMemo(
-    () => [...results.players].sort((a, b) => b.grand - a.grand),
-    [results.players]
-  );
   // Gross/Net + Players/Teams persist per device (localStorage), so the choice
   // survives tab switches and reloads — and is private to each user's browser.
   const [net, setNet] = usePersistentBool("ht.cards.net", false);
@@ -1038,9 +1046,25 @@ export function ResultsView({ results }: { results: ResultsData }) {
   const hasTeams = (results.teams?.length ?? 0) >= 2;
   const teamPlayers = useMemo(() => buildTeamPlayers(results), [results]);
   const showTeam = teamView && hasTeams;
+
+  // Standings order: most money first, then best score to-par as the tiebreaker —
+  // so a $0-per-hole game (all money tied) sorts purely by score.
+  const cmp = useMemo(
+    () => (a: PlayerResults, b: PlayerResults) => {
+      if (b.grand !== a.grand) return b.grand - a.grand;
+      const ta = toParOf(a, net);
+      const tb = toParOf(b, net);
+      if (ta === null && tb === null) return 0;
+      if (ta === null) return 1;
+      if (tb === null) return -1;
+      return ta - tb;
+    },
+    [net]
+  );
+  const standings = useMemo(() => [...results.players].sort(cmp), [results.players, cmp]);
   const standingsRows = useMemo(
-    () => [...(showTeam ? teamPlayers : results.players)].sort((a, b) => b.grand - a.grand),
-    [showTeam, teamPlayers, results.players]
+    () => [...(showTeam ? teamPlayers : results.players)].sort(cmp),
+    [showTeam, teamPlayers, results.players, cmp]
   );
 
   const hammerSet = useMemo(() => new Set(results.hammerHoles), [results.hammerHoles]);
@@ -1083,7 +1107,7 @@ export function ResultsView({ results }: { results: ResultsData }) {
       </div>
       <div className="space-y-2">
         {standingsRows.map((p, idx) => {
-          const rank = 1 + standingsRows.filter((q) => q.grand > p.grand).length;
+          const rank = 1 + standingsRows.filter((q) => cmp(q, p) < 0).length;
           return (
             <PlayerBar
               key={p.id}
