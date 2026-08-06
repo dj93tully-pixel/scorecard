@@ -74,9 +74,9 @@ const hollowRing = (color: string): React.CSSProperties => ({
 });
 
 // ── Gross / Net segmented toggle ─────────────────────────────────────────────
-function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boolean) => void }) {
+function GrossNetToggle({ net, onChange, compact = false }: { net: boolean; onChange: (net: boolean) => void; compact?: boolean }) {
   return (
-    <div className="inline-flex rounded-full bg-divider p-[2px] text-sm font-semibold">
+    <div className={`inline-flex rounded-full bg-divider p-[2px] font-semibold ${compact ? "text-[11px]" : "text-sm"}`}>
       {(["gross", "net"] as const).map((v) => {
         const active = net === (v === "net");
         return (
@@ -84,7 +84,7 @@ function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boole
             key={v}
             onClick={() => onChange(v === "net")}
             style={active ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
-            className={`rounded-full px-3 py-0.5 capitalize transition ${
+            className={`rounded-full ${compact ? "px-2" : "px-3"} py-0.5 capitalize transition ${
               active ? "bg-white text-accent-on-light" : "text-text-faint"
             }`}
           >
@@ -97,9 +97,9 @@ function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boole
 }
 
 // ── Players / Teams segmented toggle (team games only) ────────────────────────
-function ViewToggle({ team, onChange }: { team: boolean; onChange: (team: boolean) => void }) {
+function ViewToggle({ team, onChange, compact = false }: { team: boolean; onChange: (team: boolean) => void; compact?: boolean }) {
   return (
-    <div className="inline-flex rounded-full bg-divider p-[2px] text-sm font-semibold">
+    <div className={`inline-flex rounded-full bg-divider p-[2px] font-semibold ${compact ? "text-[11px]" : "text-sm"}`}>
       {([false, true] as const).map((v) => {
         const active = team === v;
         return (
@@ -107,7 +107,7 @@ function ViewToggle({ team, onChange }: { team: boolean; onChange: (team: boolea
             key={String(v)}
             onClick={() => onChange(v)}
             style={active ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
-            className={`rounded-full px-3 py-0.5 transition ${
+            className={`rounded-full ${compact ? "px-2" : "px-3"} py-0.5 transition ${
               active ? "bg-white text-accent-on-light" : "text-text-faint"
             }`}
           >
@@ -1038,21 +1038,22 @@ export function ResultsView({ results }: { results: ResultsData }) {
       {/* Standings header + Gross/Net — pinned for the whole card tab, since the
           toggle affects every section below, not just the standings. */}
       <div
-        className="sticky z-20 -mx-3 flex flex-wrap items-center justify-between gap-2 bg-page-bg px-3 py-2"
+        className="sticky z-20 -mx-3 flex items-center justify-between gap-2 bg-page-bg px-3 py-2"
         style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
       >
-        <h2 className="text-xl font-bold">Standings</h2>
-        <div className="flex items-center gap-2">
+        <h2 className="shrink-0 text-xl font-bold">Standings</h2>
+        <div className="flex items-center gap-1.5">
           {hasTeams && (
             <ViewToggle
               team={teamView}
+              compact
               onChange={(t) => {
                 setTeamView(t);
                 setOpenId(null);
               }}
             />
           )}
-          <GrossNetToggle net={net} onChange={setNet} />
+          <GrossNetToggle net={net} onChange={setNet} compact={hasTeams} />
         </div>
       </div>
       <div className="space-y-2">
