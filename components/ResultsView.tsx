@@ -1132,16 +1132,16 @@ export function ResultsView({ results }: { results: ResultsData }) {
       {!results.isElevens && (
         <section className="space-y-3">
           <h2 className="text-xl font-bold">Ledger</h2>
-          <LedgerNine players={standings} holeNums={front} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} />
-          <LedgerNine players={standings} holeNums={back} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} />
+          <LedgerNine players={standingsRows} holeNums={front} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} />
+          <LedgerNine players={standingsRows} holeNums={back} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} />
         </section>
       )}
 
       {/* Traditional course-style all-players scorecard */}
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Scorecard</h2>
-        <ScorecardNine players={standings} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} tees={results.tees} />
-        <ScorecardNine players={standings} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} tees={results.tees} />
+        <ScorecardNine players={standingsRows} holeNums={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} tees={results.tees} />
+        <ScorecardNine players={standingsRows} holeNums={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} tees={results.tees} />
         {(() => {
           const withPops = standings
             .map((p) => ({ name: p.name, pops: p.holes.reduce((s, c) => s + c.pop, 0) }))
