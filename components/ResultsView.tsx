@@ -998,18 +998,43 @@ function SideBets({ results }: { results: ResultsData }) {
   );
 }
 
+// A boolean that persists to localStorage — per device/browser, so each user
+// keeps their own toggle choice across tab switches and reloads. (ResultsView
+// only mounts on a client tap of the Cards tab, so reading storage here is safe.)
+function usePersistentBool(key: string, initial: boolean): [boolean, (v: boolean) => void] {
+  const [v, setV] = useState<boolean>(() => {
+    if (typeof window === "undefined") return initial;
+    try {
+      const s = window.localStorage.getItem(key);
+      return s === null ? initial : s === "1";
+    } catch {
+      return initial;
+    }
+  });
+  const set = (next: boolean) => {
+    setV(next);
+    try {
+      window.localStorage.setItem(key, next ? "1" : "0");
+    } catch {
+      /* ignore quota / private-mode errors */
+    }
+  };
+  return [v, set];
+}
+
 export function ResultsView({ results }: { results: ResultsData }) {
   const standings = useMemo(
     () => [...results.players].sort((a, b) => b.grand - a.grand),
     [results.players]
   );
-  const [net, setNet] = useState(false);
+  // Gross/Net + Players/Teams persist per device (localStorage), so the choice
+  // survives tab switches and reloads — and is private to each user's browser.
+  const [net, setNet] = usePersistentBool("ht.cards.net", false);
+  const [teamView, setTeamView] = usePersistentBool("ht.cards.teams", false);
   // No bar is open by default — the player must tap one.
   const [openId, setOpenId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("total");
   const [pressSel, setPressSel] = useState<number | "all">("all");
-  // Players/Teams toggle — only offered when the game has ≥2 fixed teams.
-  const [teamView, setTeamView] = useState(false);
   const hasTeams = (results.teams?.length ?? 0) >= 2;
   const teamPlayers = useMemo(() => buildTeamPlayers(results), [results]);
   const showTeam = teamView && hasTeams;
