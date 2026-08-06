@@ -1,13 +1,92 @@
 // lib/engines/bestball.ts
-// Best Ball (net). Two teams; a team's hole score is its best (lowest) net ball.
-// The lower team score wins the hole, settled with the SAME pot-split Wolf uses,
-// including a separate per-team stake so an uneven 2v3 (5 players) stays zero-sum.
+// Best Ball (net). Each team's hole score is its best (lowest) net ball; the lowest
+// team wins the hole. Two teams use the Wolf pot-split (with a separate Team-A stake
+// so an uneven 2v3 stays zero-sum). Three-to-four teams (A–D) use a flat model: the
+// winning team collects the stake from EVERY non-winning player, split among its
+// members. A tie for low pushes and carries (when carryover is on).
 
 import { Round, PlayerId, computePops } from "../wolf";
 import { GameResult, GameHoleResult } from "./types";
-import { splitTeams } from "./teams";
+import { splitTeams, teamGroups, usesMultiTeam } from "./teams";
 
 export function computeBestBall(round: Round): GameResult {
+  return usesMultiTeam(round) ? computeBestBallMulti(round) : computeBestBallTwo(round);
+}
+
+// ── Three-to-four team Best Ball ──────────────────────────────────────────────
+function computeBestBallMulti(round: Round): GameResult {
+  const { players, course, settings } = round;
+  const ids = players.map((p) => p.id);
+  const pops = computePops(players, course, settings.handicapMode);
+  const stake = settings.stake ?? 1; // 0 = no money; every player risks this
+  const groups = teamGroups(round);
+  const teamOf = new Map<PlayerId, string>();
+  groups.forEach((g) => g.ids.forEach((id) => teamOf.set(id, g.letter)));
+  const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
+
+  const ledger: Record<PlayerId, number> = {};
+  for (const id of ids) ledger[id] = 0;
+  const holesWon: Record<string, number> = {};
+  groups.forEach((g) => (holesWon[g.letter] = 0));
+
+  const holeResults: GameHoleResult[] = [];
+  let carried = 0;
+
+  for (const h of course.holes) {
+    const e = entryByHole.get(h.number);
+    const deltas: Record<PlayerId, number> = {};
+    for (const id of ids) deltas[id] = 0;
+
+    const allScored = !!e && ids.every((id) => typeof e.grossScores[id] === "number");
+    if (!allScored) {
+      holeResults.push({ hole: h.number, decided: false, detail: "—", deltas });
+      continue;
+    }
+
+    const net: Record<PlayerId, number> = {};
+    for (const id of ids) net[id] = e!.grossScores[id]! - (pops[id]?.[h.number] ?? 0);
+    const bests = groups.map((g) => ({ letter: g.letter, best: Math.min(...g.ids.map((id) => net[id])) }));
+    const low = Math.min(...bests.map((b) => b.best));
+    const winners = bests.filter((b) => b.best === low);
+
+    const applied = stake + carried;
+    const hammerMult = 2 ** Math.max(0, Math.floor(e!.hammer ?? 0));
+
+    let detail: string;
+    if (winners.length === 1) {
+      const win = winners[0].letter;
+      const winIds = groups.find((g) => g.letter === win)!.ids;
+      const losers = ids.filter((id) => teamOf.get(id) !== win);
+      const share = (applied * losers.length) / winIds.length;
+      for (const id of losers) deltas[id] = -applied;
+      for (const id of winIds) deltas[id] = share;
+      holesWon[win] += 1;
+      carried = 0;
+      detail = `Team ${win} wins · ${low}`;
+    } else {
+      // Tie for low → push. Carry (hammered when hammerCarry is on) or void.
+      carried = settings.carryover ? applied * (settings.hammerCarry ? hammerMult : 1) : 0;
+      detail = settings.carryover && carried > 0 ? `Push — $${carried} carries` : "Push";
+    }
+
+    if (hammerMult !== 1) for (const id of ids) deltas[id] *= hammerMult;
+    for (const id of ids) ledger[id] += deltas[id];
+    holeResults.push({
+      hole: h.number,
+      decided: winners.length === 1,
+      detail,
+      deltas,
+      carry: winners.length === 1 ? 0 : carried,
+    });
+  }
+
+  const stats: Record<PlayerId, Record<string, number>> = {};
+  for (const id of ids) stats[id] = { holesUp: holesWon[teamOf.get(id) ?? "A"] ?? 0 };
+  return { ledger, pops, holeResults, stats };
+}
+
+// ── Two-team Best Ball (original) ─────────────────────────────────────────────
+function computeBestBallTwo(round: Round): GameResult {
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);
   const pops = computePops(players, course, settings.handicapMode);

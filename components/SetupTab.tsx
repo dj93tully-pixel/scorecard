@@ -151,7 +151,7 @@ export function SetupTab({
     });
   }
 
-  function setTeam(id: string, team: "A" | "B") {
+  function setTeam(id: string, team: "A" | "B" | "C" | "D") {
     updateRound((r) => ({
       ...r,
       settings: { ...r.settings, teams: { ...(r.settings.teams ?? {}), [id]: team } },
@@ -504,22 +504,25 @@ export function SetupTab({
         <section className="rounded-xl border border-card-border bg-card-bg p-4">
           <h3 className="mb-1 font-bold">Teams</h3>
           <p className="mb-3 text-xs text-text-muted">
-            Assign each player to team A or B (any split — 1v3, 2v2, 2v3…).
+            {gameType === "bestball"
+              ? "Assign each player to a team (A–D). Two teams or up to four — any split."
+              : "Assign each player to team A or B (any split — 1v3, 2v2, 2v3…)."}
           </p>
           <div className="space-y-2">
             {orderedPlayers.map((p) => {
               const team = settings.teams?.[p.id] ?? "A";
+              const teamOptions = gameType === "bestball" ? (["A", "B", "C", "D"] as const) : (["A", "B"] as const);
               return (
                 <div key={p.id} className="flex items-center justify-between gap-2">
                   <span className="min-w-0 flex-1 truncate font-medium">
                     {p.name || "Unnamed"}
                   </span>
                   <div className="flex overflow-hidden rounded-lg border border-card-border">
-                    {(["A", "B"] as const).map((t) => (
+                    {teamOptions.map((t) => (
                       <button
                         key={t}
                         onClick={() => setTeam(p.id, t)}
-                        className="px-4 py-1.5 text-sm font-bold"
+                        className="px-3.5 py-1.5 text-sm font-bold"
                         style={
                           team === t
                             ? { background: TEAM_COLORS[t], color: "#fff" }

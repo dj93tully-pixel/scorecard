@@ -121,6 +121,37 @@ describe("best ball", () => {
     expect(sum(ledger)).toBe(0);
   });
 
+  it("4 teams: winner collects the stake from every other player", () => {
+    const round = makeRound(
+      "bestball",
+      scratch(["a", "b", "c", "d", "e", "f", "g", "h"]),
+      [{ hole: 18, wolfId: "", mode: "2v2", grossScores: { a: 3, b: 5, c: 5, d: 5, e: 5, f: 6, g: 6, h: 6 } }],
+      { stake: 5, teams: { a: "A", b: "A", c: "B", d: "B", e: "C", f: "C", g: "D", h: "D" } }
+    );
+    // Team A's best net (3) is lowest. A collects $5 from each of the 6 non-A
+    // players = $30, split 2 ways → +$15 each; everyone else −$5.
+    const { ledger } = computeBestBall(round);
+    expect(ledger.a).toBe(15);
+    expect(ledger.b).toBe(15);
+    expect(ledger.c).toBe(-5);
+    expect(ledger.h).toBe(-5);
+    expect(sum(ledger)).toBe(0);
+  });
+
+  it("4 teams: a tie for low pushes (zero-sum, no money)", () => {
+    const round = makeRound(
+      "bestball",
+      scratch(["a", "b", "c", "d", "e", "f", "g", "h"]),
+      [{ hole: 18, wolfId: "", mode: "2v2", grossScores: { a: 4, b: 5, c: 4, d: 5, e: 6, f: 6, g: 6, h: 6 } }],
+      { stake: 5, carryover: true, teams: { a: "A", b: "A", c: "B", d: "B", e: "C", f: "C", g: "D", h: "D" } }
+    );
+    // A and B both best net 4 → tie for low → push, nobody paid.
+    const { ledger } = computeBestBall(round);
+    expect(ledger.a).toBe(0);
+    expect(ledger.c).toBe(0);
+    expect(sum(ledger)).toBe(0);
+  });
+
   it("uneven 2v3 stays zero-sum with a separate team stake", () => {
     const teams = { a: "A", b: "A", c: "B", d: "B", e: "B" } as const;
     // Team A wins: field $2 each (×3 = 6) split among 2 → +3 each.

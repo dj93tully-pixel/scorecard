@@ -88,8 +88,9 @@ export interface RoundSettings {
   handicapMode: HandicapMode;
 
   // ── Fields for the non-Wolf game types (all optional; ignored by Wolf) ──
-  /** Team assignment for Best Ball / Vegas: playerId → "A" | "B". */
-  teams?: Record<PlayerId, "A" | "B">;
+  /** Team assignment: playerId → team letter. Vegas/Nassau use A/B; Best Ball
+   *  supports up to four teams (A–D). */
+  teams?: Record<PlayerId, "A" | "B" | "C" | "D">;
   /** Skins: value of one skin, contributed by each player. */
   skinValue?: number;
   /** Vegas: dollars per point of the team-number difference. */

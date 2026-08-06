@@ -15,7 +15,7 @@ import { computeStableford, computeModifiedStableford } from "./engines/stablefo
 import { computeElevens } from "./engines/elevens";
 import { computeNassau } from "./engines/nassau";
 import { withPresses } from "./engines/press";
-import { splitTeams } from "./engines/teams";
+import { splitTeams, teamLetterOf, TeamLetter } from "./engines/teams";
 
 export interface StatColumn {
   key: string;
@@ -222,9 +222,11 @@ export function computeGame(round: Round): GameResult {
   }
 }
 
-export const TEAM_COLORS: Record<"A" | "B", string> = {
-  A: "#2D78FF",
-  B: "#F0524B",
+export const TEAM_COLORS: Record<TeamLetter, string> = {
+  A: "#2D78FF", // blue
+  B: "#F0524B", // red
+  C: "#16A06A", // green
+  D: "#C88A3E", // amber (Best Ball 3rd/4th teams)
 };
 
 /**
@@ -237,7 +239,11 @@ export function teamTag(
   hole: number
 ): { label: string; color: string } | null {
   const t = gameTypeOf(round);
-  if (t === "bestball" || t === "vegas") {
+  if (t === "bestball") {
+    const team = teamLetterOf(round, playerId); // A–D
+    return { label: team, color: TEAM_COLORS[team] };
+  }
+  if (t === "vegas") {
     const team = splitTeams(round).A.includes(playerId) ? "A" : "B";
     return { label: team, color: TEAM_COLORS[team] };
   }
