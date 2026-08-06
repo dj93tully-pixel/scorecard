@@ -23,6 +23,7 @@ import {
 import { nassauPressLedger } from "./engines/nassau";
 import { computeJunk, JunkBetView } from "./junk";
 import { carryByHole } from "./carry";
+import { teamLetterOf, TeamLetter, TEAM_LETTERS } from "./engines/teams";
 
 export type BetType = "original" | "press" | "hammer";
 
@@ -73,6 +74,9 @@ export interface ResultsData {
   tees: ResultTee[]; // course tee yardages (scorecard distance rows)
   isElevens: boolean; // 11s: hide ledger/trendline, show picked-hole tally + dots
   junkBets: JunkBetView[]; // side bets, per-bet per-player breakdown (empty if none)
+  // Static team groups (Best Ball / Vegas / team Nassau) → enables the Cards-tab
+  // Players/Teams toggle. Undefined for games without fixed teams.
+  teams?: { label: TeamLetter; playerIds: string[] }[];
 }
 
 const zeroHammer = (round: Round): Round => ({
@@ -269,6 +273,20 @@ export function buildResults(round: Round): ResultsData {
     return { name: t.name, color: t.color, distanceByHole };
   });
 
+  // Static team groups → the Cards-tab Players/Teams toggle. Sixes rotates teams
+  // by segment, so it has no fixed grouping; Nassau only in team format.
+  const nassauTeams = gt === "nassau" && (round.settings.nassauFormat ?? "teams") === "teams";
+  let teams: { label: TeamLetter; playerIds: string[] }[] | undefined;
+  if (gt === "bestball" || gt === "vegas" || nassauTeams) {
+    const byLetter = new Map<TeamLetter, string[]>();
+    for (const p of round.players) {
+      const letter = teamLetterOf(round, p.id);
+      if (!byLetter.has(letter)) byLetter.set(letter, []);
+      byLetter.get(letter)!.push(p.id);
+    }
+    teams = TEAM_LETTERS.filter((l) => byLetter.has(l)).map((l) => ({ label: l, playerIds: byLetter.get(l)! }));
+  }
+
   return {
     players,
     betTypes,
@@ -281,5 +299,6 @@ export function buildResults(round: Round): ResultsData {
     tees,
     isElevens: gt === "elevens",
     junkBets: junk.bets,
+    teams,
   };
 }

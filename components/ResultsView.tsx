@@ -96,6 +96,66 @@ function GrossNetToggle({ net, onChange }: { net: boolean; onChange: (net: boole
   );
 }
 
+// ── Players / Teams segmented toggle (team games only) ────────────────────────
+function ViewToggle({ team, onChange }: { team: boolean; onChange: (team: boolean) => void }) {
+  return (
+    <div className="inline-flex rounded-full bg-divider p-[2px] text-sm font-semibold">
+      {([false, true] as const).map((v) => {
+        const active = team === v;
+        return (
+          <button
+            key={String(v)}
+            onClick={() => onChange(v)}
+            style={active ? { boxShadow: "0 1px 2px rgba(0,0,0,0.12)" } : undefined}
+            className={`rounded-full px-3 py-0.5 transition ${
+              active ? "bg-white text-accent-on-light" : "text-text-faint"
+            }`}
+          >
+            {v ? "Teams" : "Players"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Aggregate individual results into one pseudo-player per team: best-ball score
+// per hole (the counting ball), summed money, summed junk. Zero-sum across teams.
+function buildTeamPlayers(results: ResultsData): PlayerResults[] {
+  if (!results.teams) return [];
+  const byId = new Map(results.players.map((p) => [p.id, p]));
+  const n = results.players[0]?.holes.length ?? 0;
+  return results.teams.map((team) => {
+    const members = team.playerIds.map((id) => byId.get(id)).filter((p): p is PlayerResults => !!p);
+    const holes: PlayerResults["holes"] = Array.from({ length: n }, (_, i) => {
+      const base = members[0].holes[i];
+      const grosses = members.map((m) => m.holes[i].gross).filter((v): v is number => v !== null);
+      const nets = members.map((m) => m.holes[i].net).filter((v): v is number => v !== null);
+      return {
+        hole: base.hole,
+        par: base.par,
+        si: base.si,
+        gross: grosses.length ? Math.min(...grosses) : null,
+        net: nets.length ? Math.min(...nets) : null,
+        pop: 0,
+        picked: false,
+      };
+    });
+    const sumArr = (key: "original" | "press" | "hammer" | "total") =>
+      Array.from({ length: n }, (_, i) => members.reduce((s, m) => s + (m.money[key][i] ?? 0), 0));
+    const names = members.map((m) => (m.name || "Unnamed").split(/\s+/)[0]).join(" / ");
+    return {
+      id: `team-${team.label}`,
+      name: names || `Team ${team.label}`,
+      handicap: 0,
+      holes,
+      money: { original: sumArr("original"), press: sumArr("press"), hammer: sumArr("hammer"), total: sumArr("total") },
+      grand: members.reduce((s, m) => s + m.grand, 0),
+      junk: members.reduce((s, m) => s + m.junk, 0),
+    };
+  });
+}
+
 // Concentric rings = strokes from par (cap 4). Under par = circles, over = squares.
 const RING_GAP = "#F4F6FA"; // gap colour between rings
 function ringStyle(rel: number, ring: string = INK): React.CSSProperties {
@@ -948,6 +1008,15 @@ export function ResultsView({ results }: { results: ResultsData }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("total");
   const [pressSel, setPressSel] = useState<number | "all">("all");
+  // Players/Teams toggle — only offered when the game has ≥2 fixed teams.
+  const [teamView, setTeamView] = useState(false);
+  const hasTeams = (results.teams?.length ?? 0) >= 2;
+  const teamPlayers = useMemo(() => buildTeamPlayers(results), [results]);
+  const showTeam = teamView && hasTeams;
+  const standingsRows = useMemo(
+    () => [...(showTeam ? teamPlayers : results.players)].sort((a, b) => b.grand - a.grand),
+    [showTeam, teamPlayers, results.players]
+  );
 
   const hammerSet = useMemo(() => new Set(results.hammerHoles), [results.hammerHoles]);
   const carriedHammerSet = useMemo(() => new Set(results.carriedHammerHoles), [results.carriedHammerHoles]);
@@ -969,15 +1038,26 @@ export function ResultsView({ results }: { results: ResultsData }) {
       {/* Standings header + Gross/Net — pinned for the whole card tab, since the
           toggle affects every section below, not just the standings. */}
       <div
-        className="sticky z-20 -mx-3 flex items-center justify-between bg-page-bg px-3 py-2"
+        className="sticky z-20 -mx-3 flex flex-wrap items-center justify-between gap-2 bg-page-bg px-3 py-2"
         style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
       >
         <h2 className="text-xl font-bold">Standings</h2>
-        <GrossNetToggle net={net} onChange={setNet} />
+        <div className="flex items-center gap-2">
+          {hasTeams && (
+            <ViewToggle
+              team={teamView}
+              onChange={(t) => {
+                setTeamView(t);
+                setOpenId(null);
+              }}
+            />
+          )}
+          <GrossNetToggle net={net} onChange={setNet} />
+        </div>
       </div>
       <div className="space-y-2">
-        {standings.map((p, idx) => {
-          const rank = 1 + standings.filter((q) => q.grand > p.grand).length;
+        {standingsRows.map((p, idx) => {
+          const rank = 1 + standingsRows.filter((q) => q.grand > p.grand).length;
           return (
             <PlayerBar
               key={p.id}
