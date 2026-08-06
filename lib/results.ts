@@ -73,6 +73,7 @@ export interface ResultsData {
   presses: PressInfo[]; // each individual press (Press tab sub-selector)
   tees: ResultTee[]; // course tee yardages (scorecard distance rows)
   isElevens: boolean; // 11s: hide ledger/trendline, show picked-hole tally + dots
+  hasMoney: boolean; // the main game's stake is > 0 (else hide the money Ledger)
   junkBets: JunkBetView[]; // side bets, per-bet per-player breakdown (empty if none)
   // Static team groups (Best Ball / Vegas / team Nassau) → enables the Cards-tab
   // Players/Teams toggle. Undefined for games without fixed teams.
@@ -298,6 +299,12 @@ export function buildResults(round: Round): ResultsData {
     presses,
     tees,
     isElevens: gt === "elevens",
+    hasMoney:
+      (gt === "skins"
+        ? (round.settings.skinValue ?? 0)
+        : gt === "vegas"
+          ? (round.settings.pointValue ?? 0)
+          : (round.settings.stake ?? 0)) > 0,
     junkBets: junk.bets,
     teams,
   };

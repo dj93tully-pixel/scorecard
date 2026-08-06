@@ -1127,9 +1127,9 @@ export function ResultsView({ results }: { results: ResultsData }) {
         })}
       </div>
 
-      {/* By-hole ledger — styled like the scorecard grid (HOLE + Par only). 11s
-          settles on the sum of picked holes, so a per-hole ledger isn't relevant. */}
-      {!results.isElevens && (
+      {/* By-hole ledger — styled like the scorecard grid (HOLE + Par only). Hidden
+          for 11s (settles on picked-hole totals) and for $0 games (no money). */}
+      {!results.isElevens && results.hasMoney && (
         <section className="space-y-3">
           <h2 className="text-xl font-bold">Ledger</h2>
           <LedgerNine players={standingsRows} holeNums={front} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} />
