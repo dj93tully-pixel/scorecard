@@ -209,8 +209,6 @@ export default function Home() {
             <div key={i} className="skeleton h-[68px] w-full rounded-xl" />
           ))}
         </div>
-      ) : active.length === 0 && completed.length === 0 ? (
-        <p className="text-sm text-text-faint">No active games yet.</p>
       ) : (
         <div>
           <div
