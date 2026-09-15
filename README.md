@@ -7,9 +7,9 @@ ledger are all computed by a pure engine and persisted locally.
 ## Stack
 
 - **Next.js 15** (App Router) + **TypeScript** + **Tailwind CSS**
-- **Supabase** (Postgres + Realtime) as a shared games database — no login. Anyone
-  with the link can create / open / edit / delete games, and edits sync live via
-  Supabase Realtime. Access is gated by the link being private + permissive RLS.
+- **localStorage** as the games database — everything lives on this device/browser,
+  no server, no login. Other tabs on the same device pick up changes live; nothing
+  syncs across devices.
 - A thin server proxy for course lookups (keeps the course-API key off the browser).
 
 ### Pages
@@ -23,10 +23,8 @@ ledger are all computed by a pure engine and persisted locally.
 Copy `.env.example` → `.env.local` and fill in:
 
 - `GOLF_COURSE_API_KEY` — server-only, for course import (optional).
-- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — the Supabase
-  project URL + publishable key. These are browser-safe public values.
 
-On Vercel, add the same three as environment variables.
+On Vercel, add the same variable as an environment variable.
 
 ## Getting started
 

@@ -9,7 +9,6 @@ import {
   createGame,
   subscribeGamesList,
 } from "@/lib/games";
-import { supabaseConfigured } from "@/lib/supabase";
 import { useHeader } from "@/lib/header-context";
 import { GAME_TYPES, GAME_TYPE_LIST } from "@/lib/gametypes";
 import { GameTypeId } from "@/lib/wolf";
@@ -55,7 +54,6 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!supabaseConfigured) return;
     refresh();
     const unsub = subscribeGamesList(refresh);
     const edit = new URLSearchParams(window.location.search).get("edit");
@@ -89,17 +87,6 @@ export default function Home() {
     });
     return () => setHeader({});
   }, [editingId, picking, setHeader]);
-
-  if (!supabaseConfigured) {
-    return (
-      <div className="mt-6 rounded-xl border border-card-border bg-card-bg p-6 text-sm text-text-muted">
-        The games database isn&apos;t configured yet. Add{" "}
-        <code className="rounded bg-page-bg px-1">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-        <code className="rounded bg-page-bg px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to your
-        environment.
-      </div>
-    );
-  }
 
   if (editingId) {
     return (

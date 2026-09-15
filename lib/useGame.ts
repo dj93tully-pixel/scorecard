@@ -1,7 +1,8 @@
 // lib/useGame.ts
-// Loads a game from Supabase, persists edits (debounced; per-hole upserts so
-// concurrent edits to different holes don't clobber), and applies realtime
-// updates from other players — while protecting fields THIS client just edited.
+// Loads a game from local storage, persists edits (debounced; per-hole upserts
+// so concurrent edits to different holes don't clobber), and applies updates
+// from other tabs on this device — while protecting fields THIS client just
+// edited.
 
 "use client";
 

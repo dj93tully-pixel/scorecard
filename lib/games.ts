@@ -1,8 +1,8 @@
 // lib/games.ts
-// Data layer over Supabase. Maps the DB shape (games + game_entries) to/from the
-// engine's Round, and exposes CRUD + realtime helpers. No engine math here.
+// Data layer over localStorage. Maps the stored shape (games + entries) to/from
+// the engine's Round, and exposes CRUD + a same-device change-notification
+// helper. No engine math here.
 
-import { supabase } from "./supabase";
 import {
   Round,
   HoleEntry,
@@ -13,8 +13,10 @@ import {
   DEFAULT_SETTINGS,
   sanitizeEntries,
 } from "./wolf";
-import { blankCourse, defaultPlayers } from "./storage";
+import { blankCourse, defaultPlayers, uid } from "./storage";
 import { GAME_TYPES } from "./gametypes";
+
+const STORE_KEY = "wolf:games:v1";
 
 export interface GameSummary {
   id: string;
@@ -43,12 +45,13 @@ interface GameRow {
   settings: RoundSettings;
   game_type: GameTypeId | null;
   created_at: string;
+  updated_at: string;
   completed: boolean;
   published: boolean;
+  entries: EntryRow[];
 }
 
 interface EntryRow {
-  game_id: string;
   hole: number;
   wolf_id: string | null;
   mode: HoleEntry["mode"];
@@ -58,14 +61,32 @@ interface EntryRow {
   forfeit: "A" | "B" | null;
   meta: {
     elevenPicks?: HoleEntry["elevenPicks"];
-    // Press flags. Some rows stored these as numbers (a brief stacking model) →
-    // coerced back to booleans.
-    pressSeg?: number | boolean;
-    pressFull?: number | boolean;
-    /** Legacy: the original Nassau single-press flag (→ pressSeg). */
-    nassauPress?: boolean;
+    pressSeg?: boolean;
+    pressFull?: boolean;
     junk?: HoleEntry["junk"];
   } | null;
+}
+
+type Store = Record<string, GameRow>;
+
+// ── Raw storage ──────────────────────────────────────────────────────────
+
+function readStore(): Store {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(STORE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Store;
+  } catch {
+    return {};
+  }
+}
+
+function writeStore(store: Store): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+  // Notify same-tab listeners (the `storage` event only fires in OTHER tabs).
+  window.dispatchEvent(new CustomEvent("wolf:games-changed"));
 }
 
 function rowToEntry(r: EntryRow): HoleEntry {
@@ -78,15 +99,34 @@ function rowToEntry(r: EntryRow): HoleEntry {
     hammer: r.hammer ?? 0,
     forfeit: r.forfeit ?? undefined,
     elevenPicks: r.meta?.elevenPicks ?? undefined,
-    pressSeg: !!(r.meta?.pressSeg ?? r.meta?.nassauPress),
+    pressSeg: !!r.meta?.pressSeg,
     pressFull: !!r.meta?.pressFull,
     junk: r.meta?.junk ?? undefined,
   };
 }
 
-function rowsToRound(game: GameRow, entries: EntryRow[]): Round {
-  // Guard the raw JSON columns: a legacy/hand-edited row with a null course/players/
-  // tee_order would otherwise crash the game screen (settings already default-merge).
+function entryToRow(entry: HoleEntry): EntryRow {
+  return {
+    hole: entry.hole,
+    wolf_id: entry.wolfId || null,
+    mode: entry.mode,
+    partner_id: entry.partnerId ?? null,
+    gross_scores: entry.grossScores ?? {},
+    hammer: entry.hammer ?? 0,
+    forfeit: entry.forfeit ?? null,
+    meta: {
+      elevenPicks: entry.elevenPicks ?? {},
+      pressSeg: entry.pressSeg ?? false,
+      pressFull: entry.pressFull ?? false,
+      junk: entry.junk ?? {},
+    },
+  };
+}
+
+function rowToRound(game: GameRow): Round {
+  // Guard the raw JSON fields: a hand-edited/legacy row with a null course/
+  // players/tee_order would otherwise crash the game screen (settings already
+  // default-merge).
   const players = Array.isArray(game.players) ? game.players : [];
   const course =
     game.course && Array.isArray(game.course.holes) ? game.course : blankCourse();
@@ -99,10 +139,10 @@ function rowsToRound(game: GameRow, entries: EntryRow[]): Round {
     players,
     teeOrder,
     settings: { ...DEFAULT_SETTINGS, ...game.settings },
-    // sanitizeEntries makes a stale wolf/partner reference (e.g. a player removed in a
-    // prior session) self-heal on every load, so it never voids a hole.
+    // sanitizeEntries makes a stale wolf/partner reference (e.g. a player removed
+    // in a prior session) self-heal on every load, so it never voids a hole.
     entries: sanitizeEntries(
-      entries.map(rowToEntry).sort((a, b) => a.hole - b.hole),
+      (game.entries ?? []).map(rowToEntry).sort((a, b) => a.hole - b.hole),
       players,
       teeOrder
     ),
@@ -113,40 +153,42 @@ function rowsToRound(game: GameRow, entries: EntryRow[]): Round {
 // ── Reads ──────────────────────────────────────────────────────────────────
 
 export async function listGames(): Promise<GameSummary[]> {
-  const { data, error } = await supabase
-    .from("games")
-    .select("id, name, game_type, created_at, completed, published, courseName:course->>name")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((g) => ({
-    id: g.id,
-    name: g.name,
-    courseName: (g.courseName as string) ?? "",
-    gameType: ((g.game_type as GameTypeId) ?? "wolf"),
-    createdAt: g.created_at,
-    completed: Boolean(g.completed),
-    published: Boolean(g.published),
-  }));
+  const store = readStore();
+  return Object.values(store)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map((g) => ({
+      id: g.id,
+      name: g.name,
+      courseName: g.course?.name ?? "",
+      gameType: g.game_type ?? "wolf",
+      createdAt: g.created_at,
+      completed: Boolean(g.completed),
+      published: Boolean(g.published),
+    }));
 }
 
 export async function getGame(id: string): Promise<Game | null> {
-  const [{ data: game, error: gErr }, { data: entries, error: eErr }] = await Promise.all([
-    supabase.from("games").select("*").eq("id", id).maybeSingle(),
-    supabase.from("game_entries").select("*").eq("game_id", id),
-  ]);
-  if (gErr) throw gErr;
-  if (eErr) throw eErr;
+  const game = readStore()[id];
   if (!game) return null;
   return {
     id: game.id,
     name: game.name,
     completed: Boolean(game.completed),
     published: Boolean(game.published),
-    round: rowsToRound(game as GameRow, (entries ?? []) as EntryRow[]),
+    round: rowToRound(game),
   };
 }
 
 // ── Writes ─────────────────────────────────────────────────────────────────
+
+function touch(id: string, patch: (row: GameRow) => void): void {
+  const store = readStore();
+  const row = store[id];
+  if (!row) return;
+  patch(row);
+  row.updated_at = new Date().toISOString();
+  writeStore(store);
+}
 
 export async function createGame(
   name: string,
@@ -163,121 +205,94 @@ export async function createGame(
       players.map((p, i) => [p.id, i % 2 === 0 ? "A" : "B"])
     );
   }
-  const { data, error } = await supabase
-    .from("games")
-    .insert({
-      name: name.trim() || `${meta.label} Game`,
-      game_type: gameType,
-      course: blankCourse(),
-      players,
-      tee_order: players.map((p) => p.id),
-      settings,
-      published: true, // active immediately — no separate publish step
-    })
-    .select("id")
-    .single();
-  if (error) throw error;
-  return data.id as string;
+  const id = uid();
+  const now = new Date().toISOString();
+  const row: GameRow = {
+    id,
+    name: name.trim() || `${meta.label} Game`,
+    game_type: gameType,
+    course: blankCourse(),
+    players,
+    tee_order: players.map((p) => p.id),
+    settings,
+    created_at: now,
+    updated_at: now,
+    completed: false,
+    published: true, // active immediately — no separate publish step
+    entries: [],
+  };
+  const store = readStore();
+  store[id] = row;
+  writeStore(store);
+  return id;
 }
 
 export async function deleteGame(id: string): Promise<void> {
-  const { error } = await supabase.from("games").delete().eq("id", id);
-  if (error) throw error;
+  const store = readStore();
+  delete store[id];
+  writeStore(store);
 }
 
 export async function setCompleted(id: string, completed: boolean): Promise<void> {
-  const { error } = await supabase
-    .from("games")
-    .update({ completed, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
+  touch(id, (row) => {
+    row.completed = completed;
+  });
 }
 
 export async function setPublished(id: string, published: boolean): Promise<void> {
-  const { error } = await supabase
-    .from("games")
-    .update({ published, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
+  touch(id, (row) => {
+    row.published = published;
+  });
 }
 
 export async function renameGame(id: string, name: string): Promise<void> {
-  const { error } = await supabase
-    .from("games")
-    .update({ name: name.trim() || "Untitled", updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
+  touch(id, (row) => {
+    row.name = name.trim() || "Untitled";
+  });
 }
 
 /** Persist the static round setup (course, players, tee order, settings). */
 export async function saveSetup(id: string, round: Round): Promise<void> {
-  const { error } = await supabase
-    .from("games")
-    .update({
-      course: round.course,
-      players: round.players,
-      tee_order: round.teeOrder,
-      settings: round.settings,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-  if (error) throw error;
+  touch(id, (row) => {
+    row.course = round.course;
+    row.players = round.players;
+    row.tee_order = round.teeOrder;
+    row.settings = round.settings;
+  });
 }
 
-/** Upsert a single hole's entry (per-hole row → no cross-hole clobbering). */
+/** Upsert a single hole's entry. */
 export async function saveEntry(gameId: string, entry: HoleEntry): Promise<void> {
-  const { error } = await supabase.from("game_entries").upsert(
-    {
-      game_id: gameId,
-      hole: entry.hole,
-      wolf_id: entry.wolfId || null,
-      mode: entry.mode,
-      partner_id: entry.partnerId ?? null,
-      gross_scores: entry.grossScores ?? {},
-      hammer: entry.hammer ?? 0,
-      forfeit: entry.forfeit ?? null,
-      meta: {
-        elevenPicks: entry.elevenPicks ?? {},
-        pressSeg: entry.pressSeg ?? false,
-        pressFull: entry.pressFull ?? false,
-        junk: entry.junk ?? {},
-      },
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "game_id,hole" }
-  );
-  if (error) throw error;
+  touch(gameId, (row) => {
+    const idx = row.entries.findIndex((e) => e.hole === entry.hole);
+    const next = entryToRow(entry);
+    if (idx === -1) row.entries.push(next);
+    else row.entries[idx] = next;
+  });
 }
 
-// ── Realtime ───────────────────────────────────────────────────────────────
+// ── Change notifications ────────────────────────────────────────────────────
+// Everything lives in this browser's localStorage, so there's no server to push
+// updates from other devices. These just let other components/tabs on this same
+// device react when the store changes — the `storage` event covers other tabs,
+// the custom event covers this one.
 
-/** Subscribe to inserts/updates/deletes on the games list. Returns unsubscribe. */
+/** Subscribe to any change in the games list. Returns unsubscribe. */
 export function subscribeGamesList(onChange: () => void): () => void {
-  const channel = supabase
-    .channel("games-list")
-    .on("postgres_changes", { event: "*", schema: "public", table: "games" }, onChange)
-    .subscribe();
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === STORE_KEY) onChange();
+  };
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener("wolf:games-changed", onChange);
   return () => {
-    supabase.removeChannel(channel);
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener("wolf:games-changed", onChange);
   };
 }
 
-/** Subscribe to a single game (its row + all its entries). Returns unsubscribe. */
+/** Subscribe to changes to a single game. Returns unsubscribe. */
 export function subscribeGame(id: string, onChange: () => void): () => void {
-  const channel = supabase
-    .channel(`game-${id}`)
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "games", filter: `id=eq.${id}` },
-      onChange
-    )
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "game_entries", filter: `game_id=eq.${id}` },
-      onChange
-    )
-    .subscribe();
-  return () => {
-    supabase.removeChannel(channel);
-  };
+  // Any store write could touch this id; getGame() is cheap, so the consumer
+  // just re-fetches and diffs.
+  return subscribeGamesList(onChange);
 }
