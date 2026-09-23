@@ -622,7 +622,14 @@ export function SetupTab({
             </>
           )}
           {(isWolf || gameType === "bestball") && (
-            <Field label={isWolf ? "Wolf team $/hole (0 = same)" : "Team A $/hole (0 = same)"}>
+            <Field
+              label={isWolf ? "Wolf team $/hole (0 = same)" : "Team A $/hole (0 = same)"}
+              hint={
+                isWolf
+                  ? "For uneven teams (e.g. 5 players). What each wolf-team player risks on a 2v2 hole; the field risks the Stake above. The losing side's total is split among the winners, so wolf $3 vs field $2 balances 2×$3 against 3×$2. Leave at 0 for even teams. Lone/blind holes use the Stake × multiplier instead."
+                  : "For uneven teams. What each Team A player risks; Team B risks the Stake above. The losing side's total is split among the winners. Leave at 0 for even teams."
+              }
+            >
               <input
                 type="number"
                 min={0}
