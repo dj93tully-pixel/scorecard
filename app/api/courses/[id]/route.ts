@@ -177,6 +177,9 @@ export async function GET(
         tee.name = `${tee.name} (${tee.gender.toLowerCase().startsWith("f") ? "W" : "M"})`;
       }
     }
+    // Men's tees first, then women's (stable sort keeps the API's order within each).
+    const isWomens = (g: string) => (g.toLowerCase().startsWith("f") ? 1 : 0);
+    tees.sort((a, b) => isWomens(a.gender) - isWomens(b.gender));
 
     return NextResponse.json({
       name: displayName,
