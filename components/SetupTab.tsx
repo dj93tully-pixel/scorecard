@@ -279,11 +279,20 @@ export function SetupTab({
 
         {/* Current course summary */}
         <div className="mb-2 flex items-center justify-between gap-2 text-xs text-text-muted">
-          <span className="truncate">
+          <span className="min-w-0">
             {hasCourse ? `${course.name} · Par ${coursePar(course)}` : "No course set"}
-            {hasCourse && hasCourseRating(course)
-              ? ` · ${course.rating} / ${course.slope}`
-              : ""}
+            {hasCourse && (
+              <>
+                {" · "}
+                {course.rating && course.slope ? (
+                  <span className="font-semibold text-text-primary">
+                    Rating {course.rating} · Slope {course.slope}
+                  </span>
+                ) : (
+                  <span className="text-text-faint">No rating/slope</span>
+                )}
+              </>
+            )}
           </span>
           {hasCourse &&
             (siIssues.length > 0 ? (
