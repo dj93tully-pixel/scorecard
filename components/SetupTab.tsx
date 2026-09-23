@@ -644,8 +644,10 @@ export function SetupTab({
               label={isWolf ? "Wolf team $/hole (0 = same)" : "Team A $/hole (0 = same)"}
               hint={
                 <>
-                  For uneven teams (e.g. 5 players). Suggested amount is{" "}
-                  <span className="font-semibold text-accent-on-light">{suggestedLabel}</span>.
+                  For uneven teams (e.g. 5 players).{" "}
+                  <span className="font-semibold text-accent-on-light">
+                    Suggested amount is {suggestedLabel}.
+                  </span>
                 </>
               }
             >
