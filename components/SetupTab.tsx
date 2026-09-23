@@ -16,6 +16,7 @@ import {
 import { CourseImport } from "./CourseImport";
 import { gameTypeMeta, TEAM_COLORS } from "@/lib/gametypes";
 import { JUNK_TYPES, junkConfig } from "@/lib/junk";
+import { splitTeams } from "@/lib/engines/teams";
 
 function Field({
   label,
@@ -24,7 +25,7 @@ function Field({
   children,
 }: {
   label: string;
-  hint?: string;
+  hint?: React.ReactNode;
   disabled?: boolean;
   children: React.ReactNode;
 }) {
@@ -75,6 +76,23 @@ export function SetupTab({
   const showTeams = meta.hasTeams || (gameType === "nassau" && nassauFormat === "teams");
   const playerCountOk =
     players.length >= meta.players.min && players.length <= meta.players.max;
+
+  // Suggested wolf-team / Team A stake for uneven teams: the amount that makes
+  // (team size × their stake) equal (other side's size × field stake). Even
+  // teams need no separate stake, so that's "0".
+  const [ownSide, otherSide] = isWolf
+    ? [2, Math.max(0, players.length - 2)] // wolf + partner vs everyone else
+    : gameType === "bestball"
+      ? (() => {
+          const { A, B } = splitTeams(round);
+          return [A.length, B.length];
+        })()
+      : [0, 0];
+  const suggestedWolfStake =
+    ownSide > 0 && otherSide > 0 && ownSide !== otherSide
+      ? Math.round(((settings.stake * otherSide) / ownSide) * 100) / 100
+      : 0;
+  const suggestedLabel = suggestedWolfStake > 0 ? `$${suggestedWolfStake.toFixed(2)}` : "0";
 
   // Select the contents of a number field on focus so typing replaces the
   // existing digit instead of appending to it (e.g. 1 → 3, not 13).
@@ -625,9 +643,10 @@ export function SetupTab({
             <Field
               label={isWolf ? "Wolf team $/hole (0 = same)" : "Team A $/hole (0 = same)"}
               hint={
-                isWolf
-                  ? "For uneven teams (e.g. 5 players). What each wolf-team player risks on a 2v2 hole; the field risks the Stake above. The losing side's total is split among the winners, so wolf $3 vs field $2 balances 2×$3 against 3×$2. Leave at 0 for even teams. Lone/blind holes use the Stake × multiplier instead."
-                  : "For uneven teams. What each Team A player risks; Team B risks the Stake above. The losing side's total is split among the winners. Leave at 0 for even teams."
+                <>
+                  For uneven teams (e.g. 5 players). Suggested amount is{" "}
+                  <span className="font-semibold text-accent-on-light">{suggestedLabel}</span>.
+                </>
               }
             >
               <input
