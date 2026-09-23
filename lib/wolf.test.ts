@@ -6,6 +6,7 @@ import {
   RoundSettings,
   DEFAULT_SETTINGS,
   strokesReceived,
+  courseHandicapFor,
   popsForHole,
   computePops,
   computeRound,
@@ -165,6 +166,68 @@ describe("pops — direct mode", () => {
     const players: Player[] = [{ id: "a", name: "A", handicap: 12 }];
     const r = strokesReceived(players, "direct");
     expect(r.a).toBe(0);
+  });
+});
+
+// ── Pops: index → course handicap ──────────────────────────────────────────
+
+describe("pops — course handicap (index × slope/113 + rating − par)", () => {
+  // Par 72 course, rating 71.2, slope 130.
+  const rated = (): Course => ({ ...makeCourse(), rating: 71.2, slope: 130 });
+
+  it("courseHandicapFor converts and rounds to the nearest whole number", () => {
+    expect(courseHandicapFor(10, rated())).toBe(11); // 11.50 − 0.8 = 10.70
+    expect(courseHandicapFor(4, rated())).toBe(4); // 4.60 − 0.8 = 3.80
+    expect(courseHandicapFor(22, rated())).toBe(25); // 25.31 − 0.8 = 24.51
+    expect(courseHandicapFor(0, rated())).toBe(-1); // 0 − 0.8 = −0.8 (plus course handicap)
+  });
+
+  it("returns the index unchanged without a slope and rating (or off 18 holes)", () => {
+    expect(courseHandicapFor(10, makeCourse())).toBe(10);
+    expect(courseHandicapFor(10, undefined)).toBe(10);
+    expect(courseHandicapFor(10, { ...rated(), slope: null })).toBe(10);
+    expect(courseHandicapFor(10, { ...rated(), holes: rated().holes.slice(0, 9) })).toBe(10);
+  });
+
+  it("offLow: subtracts the lowest COURSE handicap from everyone", () => {
+    const r = strokesReceived(fourPlayers(), "offLow", rated());
+    expect(r.a).toBe(0);
+    expect(r.b).toBe(7); // 11 − 4
+    expect(r.c).toBe(14); // 18 − 4
+    expect(r.d).toBe(21); // 25 − 4
+  });
+
+  it("full: each player gets their whole course handicap", () => {
+    const r = strokesReceived(fourPlayers(), "full", rated());
+    expect([r.a, r.b, r.c, r.d]).toEqual([4, 11, 18, 25]);
+  });
+
+  it("useCourseHandicap=false uses the numbers as entered", () => {
+    const r = strokesReceived(fourPlayers(), "full", rated(), false);
+    expect([r.a, r.b, r.c, r.d]).toEqual([4, 10, 16, 22]);
+  });
+
+  it("computePops honours settings.courseHandicap (undefined = on, false = off)", () => {
+    const on = computePops(fourPlayers(), rated(), "full");
+    const off = computePops(fourPlayers(), rated(), "full", false);
+    // Bob: 11 strokes with conversion (pop on SI 11), 10 without.
+    expect(on.b[11]).toBe(1);
+    expect(off.b[11]).toBe(0);
+  });
+
+  it("direct pops mode ignores the conversion entirely", () => {
+    const players: Player[] = [{ id: "a", name: "A", handicap: 10, pops: 3 }];
+    expect(strokesReceived(players, "direct", rated()).a).toBe(3);
+  });
+
+  it("is a no-op on a course with no rating (existing behaviour)", () => {
+    const r = strokesReceived(fourPlayers(), "offLow", makeCourse());
+    expect([r.a, r.b, r.c, r.d]).toEqual([0, 6, 12, 18]);
+  });
+
+  it("rounds a decimal index to whole strokes when there's no conversion", () => {
+    const players: Player[] = [{ id: "a", name: "A", handicap: 8.4 }];
+    expect(strokesReceived(players, "full", makeCourse()).a).toBe(8);
   });
 });
 

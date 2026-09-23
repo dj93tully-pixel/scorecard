@@ -10,7 +10,7 @@ import { GameResult, GameHoleResult } from "./types";
 export function computeSixes(round: Round): GameResult {
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);
-  const pops = computePops(players, course, settings.handicapMode);
+  const pops = computePops(players, course, settings.handicapMode, settings.courseHandicap);
   const order = round.teeOrder.length === 4 ? round.teeOrder : ids;
   const [p0, p1, p2, p3] = order;
   const stake = settings.stake ?? 1; // 0 = no money

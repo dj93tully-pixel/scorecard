@@ -49,7 +49,7 @@ export function nassauPressLedger(
   const { A, B } = splitTeams(round);
   if (A.length === 0 || B.length === 0) return ledger;
 
-  const pops = computePops(players, course, settings.handicapMode);
+  const pops = computePops(players, course, settings.handicapMode, settings.courseHandicap);
   const stake = settings.stake ?? 1; // 0 = no money
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
   const netOn = (id: PlayerId, hole: number): number | null => {
@@ -81,7 +81,7 @@ export function nassauPressLedger(
 export function computeNassau(round: Round): GameResult {
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);
-  const pops = computePops(players, course, settings.handicapMode);
+  const pops = computePops(players, course, settings.handicapMode, settings.courseHandicap);
   const stake = settings.stake ?? 1; // $ per bet (front / back / overall); 0 = no money
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
 

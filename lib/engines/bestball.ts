@@ -17,7 +17,7 @@ export function computeBestBall(round: Round): GameResult {
 function computeBestBallMulti(round: Round): GameResult {
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);
-  const pops = computePops(players, course, settings.handicapMode);
+  const pops = computePops(players, course, settings.handicapMode, settings.courseHandicap);
   const stake = settings.stake ?? 1; // 0 = no money; every player risks this
   const groups = teamGroups(round);
   const teamOf = new Map<PlayerId, string>();
@@ -89,7 +89,7 @@ function computeBestBallMulti(round: Round): GameResult {
 function computeBestBallTwo(round: Round): GameResult {
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);
-  const pops = computePops(players, course, settings.handicapMode);
+  const pops = computePops(players, course, settings.handicapMode, settings.courseHandicap);
   const { A, B } = splitTeams(round);
   const fieldStake = settings.stake ?? 1; // 0 = no money
   const wolfStake =

@@ -364,7 +364,7 @@ export function ScoreEntryTab({
     );
   }
 
-  const pops = computePops(round.players, round.course, round.settings.handicapMode);
+  const pops = computePops(round.players, round.course, round.settings.handicapMode, round.settings.courseHandicap);
   // Per-hole money = base bet + any press money landing on that hole.
   const combined = combinedHoleResults(round, (r) => {
     const g = computeBaseGame(r);

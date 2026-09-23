@@ -20,6 +20,8 @@ interface TeeDetail {
   color?: string;
   yards: number | null;
   par: number | null;
+  rating?: number | null;
+  slope?: number | null;
   holes: { number: number; par: number; strokeIndex: number }[];
   distances: (number | null)[];
 }
@@ -107,6 +109,8 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
     const course: Course = {
       name: detail.name,
       holes: tee.holes.slice(0, 18),
+      rating: tee.rating ?? null,
+      slope: tee.slope ?? null,
       // Keep ONLY the selected tee's colour + per-hole yardages for the scorecard.
       tees: [
         {
@@ -220,6 +224,7 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
                     {tee.holes.length} holes
                     {tee.par ? ` · Par ${tee.par}` : ""}
                     {tee.yards ? ` · ${tee.yards} yds` : ""}
+                    {tee.rating && tee.slope ? ` · ${tee.rating} / ${tee.slope}` : ""}
                   </span>
                 </span>
                 <span className="rounded-md bg-primary px-3 py-1 text-xs font-semibold text-on-dark">

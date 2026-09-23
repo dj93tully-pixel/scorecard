@@ -10,7 +10,7 @@ import { GameResult, GameHoleResult } from "./types";
 export function computeSkins(round: Round): GameResult {
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);
-  const pops = computePops(players, course, settings.handicapMode);
+  const pops = computePops(players, course, settings.handicapMode, settings.courseHandicap);
   const value = settings.skinValue ?? 1; // 0 is a valid "no money" value
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
 

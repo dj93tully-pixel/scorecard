@@ -182,7 +182,7 @@ export function computeJunk(round: Round): JunkResult {
   const configs = settings.junk ?? [];
   if (configs.length === 0) return { ledger, bets: [] };
 
-  const pops = computePops(players, course, settings.handicapMode);
+  const pops = computePops(players, course, settings.handicapMode, settings.courseHandicap);
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
 
   // Players who earn `type` on a hole (auto = from the score; manual = flags).

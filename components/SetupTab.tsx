@@ -6,7 +6,14 @@
 
 import { useState } from "react";
 import { Pencil, Search } from "lucide-react";
-import { Round, Course, HandicapMode, sanitizeEntries } from "@/lib/wolf";
+import {
+  Round,
+  Course,
+  HandicapMode,
+  sanitizeEntries,
+  courseHandicapFor,
+  hasCourseRating,
+} from "@/lib/wolf";
 import {
   makePlayer,
   blankCourse,
@@ -55,6 +62,10 @@ export function SetupTab({
   const { players, settings, teeOrder, course } = round;
   const siIssues = strokeIndexIssues(course);
   const isDirect = settings.handicapMode === "direct";
+  // Index → course handicap: on by default; only does anything once the course has
+  // both slope and rating.
+  const courseHcpOn = settings.courseHandicap !== false;
+  const courseHcpActive = !isDirect && courseHcpOn && hasCourseRating(course);
   // "New Course" is the blank default — treat anything else as a real course.
   const hasCourse = course.name.trim() !== "" && course.name !== "New Course";
 
@@ -120,6 +131,14 @@ export function SetupTab({
   }
   function setCourseName(name: string) {
     updateRound((r) => ({ ...r, course: { ...r.course, name } }));
+  }
+  // Rating / slope for manual courses; blank clears it.
+  function setCourseRating(key: "rating" | "slope", raw: string) {
+    const n = parseFloat(raw);
+    updateRound((r) => ({
+      ...r,
+      course: { ...r.course, [key]: Number.isFinite(n) && n > 0 ? n : null },
+    }));
   }
 
   // ── Players ──
@@ -262,6 +281,9 @@ export function SetupTab({
         <div className="mb-2 flex items-center justify-between gap-2 text-xs text-text-muted">
           <span className="truncate">
             {hasCourse ? `${course.name} · Par ${coursePar(course)}` : "No course set"}
+            {hasCourse && hasCourseRating(course)
+              ? ` · ${course.rating} / ${course.slope}`
+              : ""}
           </span>
           {hasCourse &&
             (siIssues.length > 0 ? (
@@ -315,6 +337,33 @@ export function SetupTab({
               placeholder="Course name"
               className="mb-3 w-full rounded border border-card-border px-2 py-1.5 text-sm outline-none focus:border-primary"
             />
+            <div className="mb-3 flex items-center gap-3 text-sm">
+              <label className="flex items-center gap-1.5">
+                <span className="text-xs text-text-muted">Rating</span>
+                <input
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  value={course.rating ?? ""}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => setCourseRating("rating", e.target.value)}
+                  placeholder="71.2"
+                  className="w-20 rounded border border-card-border px-1 py-1 text-center"
+                />
+              </label>
+              <label className="flex items-center gap-1.5">
+                <span className="text-xs text-text-muted">Slope</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={course.slope ?? ""}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => setCourseRating("slope", e.target.value)}
+                  placeholder="130"
+                  className="w-20 rounded border border-card-border px-1 py-1 text-center"
+                />
+              </label>
+            </div>
             <table className="w-full text-center text-sm">
               <thead>
                 <tr className="text-xs text-text-muted">
@@ -429,6 +478,26 @@ export function SetupTab({
                 <option value="full">Full (Absolute)</option>
               </select>
             </Field>
+            <Field
+              label="Convert index to course handicap"
+              hint={
+                hasCourseRating(course) ? (
+                  <>
+                    Enter each player&apos;s handicap index. Course handicap = index × slope ÷ 113 +
+                    (rating − par), using this course&apos;s {course.rating} / {course.slope}.
+                  </>
+                ) : (
+                  "Needs a course with slope and rating — import one or enter them under Manual. Until then, handicaps are used as entered."
+                )
+              }
+            >
+              <input
+                type="checkbox"
+                checked={courseHcpOn}
+                onChange={(e) => setSetting("courseHandicap", e.target.checked)}
+                className="h-6 w-6 accent-[#354CA1]"
+              />
+            </Field>
           </div>
         )}
 
@@ -443,7 +512,9 @@ export function SetupTab({
                 className="min-w-0 flex-1 rounded-lg border border-card-border px-3 py-2"
               />
               <div className="flex items-center gap-1">
-                <span className="text-xs text-text-muted">{isDirect ? "Pops" : "HCP"}</span>
+                <span className="text-xs text-text-muted">
+                  {isDirect ? "Pops" : courseHcpActive ? "Index" : "HCP"}
+                </span>
                 {isDirect ? (
                   <input
                     type="number"
@@ -456,13 +527,24 @@ export function SetupTab({
                 ) : (
                   <input
                     type="number"
+                    step={courseHcpActive ? "0.1" : "1"}
                     value={p.handicap}
                     onFocus={selectOnFocus}
                     onChange={(e) =>
-                      setPlayer(p.id, { handicap: parseInt(e.target.value) || 0 })
+                      setPlayer(p.id, {
+                        handicap: (courseHcpActive ? parseFloat : parseInt)(e.target.value) || 0,
+                      })
                     }
                     className={numberInput}
                   />
+                )}
+                {courseHcpActive && (
+                  <span
+                    className="w-9 text-xs font-semibold tabular-nums text-accent-on-light"
+                    title="Course handicap"
+                  >
+                    → {courseHandicapFor(p.handicap, course)}
+                  </span>
                 )}
               </div>
               <div className="flex flex-col">

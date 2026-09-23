@@ -28,12 +28,15 @@ export interface Course {
   name: string;
   holes: CourseHole[];
   tees?: CourseTee[]; // optional — older saved courses won't have it
+  /** Course rating + slope of the selected tee, for index → course handicap. */
+  rating?: number | null;
+  slope?: number | null;
 }
 
 export interface Player {
   id: PlayerId;
   name: string;
-  handicap: number; // integer; used when handicapMode is offLow/full
+  handicap: number; // handicap index (or course handicap if conversion is off); used when handicapMode is offLow/full
   pops?: number; // direct strokes received; used when handicapMode is "direct"
 }
 
@@ -86,6 +89,12 @@ export interface RoundSettings {
    */
   pressHammerCarry?: boolean;
   handicapMode: HandicapMode;
+  /**
+   * Treat each player's handicap as a handicap INDEX and convert it to a course
+   * handicap with the course's slope + rating (see `courseHandicapFor`). Only
+   * takes effect when the course has both; undefined counts as on.
+   */
+  courseHandicap?: boolean;
 
   // ── Fields for the non-Wolf game types (all optional; ignored by Wolf) ──
   /** Team assignment: playerId → team letter. Vegas/Nassau use A/B; Best Ball
@@ -186,20 +195,47 @@ export const DEFAULT_SETTINGS: RoundSettings = {
   pressCarryover: false,
   pressHammerCarry: true,
   handicapMode: "offLow",
+  courseHandicap: true,
 };
 
 // ───────────────────────────────────────────────────────────────────────────
 // Pops engine (handicap strokes)
 // ───────────────────────────────────────────────────────────────────────────
 
+/** True when `course` has the slope + rating needed for index → course handicap. */
+export function hasCourseRating(course: Course | undefined): course is Course {
+  return (
+    !!course &&
+    course.holes.length === 18 && // ratings are 18-hole values
+    typeof course.slope === "number" &&
+    course.slope > 0 &&
+    typeof course.rating === "number" &&
+    course.rating > 0
+  );
+}
+
+/**
+ * WHS course handicap: index × slope / 113 + (course rating − par), rounded to the
+ * nearest whole number. Returns the index unchanged if the course has no slope/rating.
+ */
+export function courseHandicapFor(index: number, course: Course | undefined): number {
+  if (!hasCourseRating(course)) return index;
+  const par = course.holes.reduce((sum, h) => sum + h.par, 0);
+  return Math.round((index * course.slope!) / 113 + (course.rating! - par));
+}
+
 /**
  * Strokes received per player for the round.
  *   offLow: each player gets (handicap - lowestHandicap), floored at 0.
  *   full:   each player gets their full handicap.
+ * When a `course` with slope + rating is given (and `useCourseHandicap` isn't
+ * false), each handicap is first converted from an index to a course handicap.
  */
 export function strokesReceived(
   players: Player[],
-  mode: HandicapMode
+  mode: HandicapMode,
+  course?: Course,
+  useCourseHandicap: boolean = true
 ): Record<PlayerId, number> {
   const out: Record<PlayerId, number> = {};
   if (players.length === 0) return out;
@@ -208,9 +244,13 @@ export function strokesReceived(
     for (const p of players) out[p.id] = Math.max(0, Math.floor(p.pops ?? 0));
     return out;
   }
-  const low = Math.min(...players.map((p) => p.handicap));
+  // Whole strokes only (an index like 8.4 left in place after conversion is turned
+  // off, or on a course with no rating, still rounds to a whole handicap).
+  const hcp = (p: Player) =>
+    Math.round(useCourseHandicap ? courseHandicapFor(p.handicap, course) : p.handicap);
+  const low = Math.min(...players.map(hcp));
   for (const p of players) {
-    out[p.id] = mode === "full" ? Math.max(0, p.handicap) : Math.max(0, p.handicap - low);
+    out[p.id] = mode === "full" ? Math.max(0, hcp(p)) : Math.max(0, hcp(p) - low);
   }
   return out;
 }
@@ -235,9 +275,10 @@ export function popsForHole(received: number, strokeIndex: number): number {
 export function computePops(
   players: Player[],
   course: Course,
-  mode: HandicapMode
+  mode: HandicapMode,
+  courseHandicap?: boolean // settings.courseHandicap; undefined = on
 ): Record<PlayerId, Record<number, number>> {
-  const received = strokesReceived(players, mode);
+  const received = strokesReceived(players, mode, course, courseHandicap !== false);
   const grid: Record<PlayerId, Record<number, number>> = {};
   for (const p of players) {
     grid[p.id] = {};
@@ -382,7 +423,7 @@ function resolveDeltas(
 export function computeRound(round: Round): RoundComputation {
   const { players, course, settings } = round;
   const playerIds = players.map((p) => p.id);
-  const pops = computePops(players, course, settings.handicapMode);
+  const pops = computePops(players, course, settings.handicapMode, settings.courseHandicap);
 
   const ledger: Record<PlayerId, number> = {};
   for (const id of playerIds) ledger[id] = 0;

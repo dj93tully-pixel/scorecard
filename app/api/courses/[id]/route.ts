@@ -24,7 +24,19 @@ interface RawTee {
   color?: string;
   total_yards?: number;
   par_total?: number;
+  course_rating?: number;
+  slope_rating?: number;
+  rating?: number;
+  slope?: number;
   holes?: RawHole[];
+  _gender?: string; // set by us from the male/female group key
+}
+
+// Rating/slope for index → course handicap. Field names are from the upstream
+// schema as best known; both spellings are accepted and anything non-positive is
+// dropped (the app then just skips the conversion for this course).
+function positive(n: unknown): number | null {
+  return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
 }
 
 function mapHoles(holes: RawHole[]) {
@@ -123,34 +135,48 @@ export async function GET(
     if (Array.isArray(t)) {
       teeGroups.push(...t);
     } else if (t && typeof t === "object") {
-      for (const group of Object.values(t)) {
-        if (Array.isArray(group)) teeGroups.push(...(group as RawTee[]));
+      for (const [gender, group] of Object.entries(t)) {
+        if (Array.isArray(group)) {
+          teeGroups.push(...(group as RawTee[]).map((tee) => ({ ...tee, _gender: gender })));
+        }
       }
     }
 
-    // Dedupe by tee name: the API lists male + female tees separately, but their
-    // par + stroke index (all we use) are identical — so "Blue/White/…" would
-    // otherwise appear twice. Keep the first of each name.
-    const seen = new Set<string>();
-    const tees = teeGroups
+    const mapped = teeGroups
       .filter((tee) => Array.isArray(tee.holes) && tee.holes.length > 0)
       .map((tee) => {
         const name = tee.tee_name ?? tee.name ?? "Tee";
         return {
           name,
+          gender: tee._gender ?? "",
           color: teeColor(tee.tee_color ?? tee.color, name),
           yards: tee.total_yards ?? null,
           par: tee.par_total ?? null,
+          rating: positive(tee.course_rating ?? tee.rating),
+          slope: positive(tee.slope_rating ?? tee.slope),
           holes: mapHoles(tee.holes as RawHole[]),
           distances: mapDistances(tee.holes as RawHole[]),
         };
-      })
-      .filter((tee) => {
-        const key = tee.name.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
       });
+
+    // Dedupe: the API lists male + female tees separately. When a same-named tee has
+    // the same rating + slope for both, they're one tee — keep the first. When the
+    // rating/slope differ (they often do), keep both and tag the name (M)/(W), since
+    // strokes depend on them.
+    const seen = new Set<string>();
+    const nameCount = new Map<string, number>();
+    const tees = mapped.filter((tee) => {
+      const key = `${tee.name.toLowerCase()}|${tee.rating}|${tee.slope}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      nameCount.set(tee.name.toLowerCase(), (nameCount.get(tee.name.toLowerCase()) ?? 0) + 1);
+      return true;
+    });
+    for (const tee of tees) {
+      if ((nameCount.get(tee.name.toLowerCase()) ?? 0) > 1 && tee.gender) {
+        tee.name = `${tee.name} (${tee.gender.toLowerCase().startsWith("f") ? "W" : "M"})`;
+      }
+    }
 
     return NextResponse.json({
       name: displayName,

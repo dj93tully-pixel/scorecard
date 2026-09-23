@@ -11,7 +11,7 @@ import { GameResult, GameHoleResult } from "./types";
 export function computeStroke(round: Round): GameResult {
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);
-  const pops = computePops(players, course, settings.handicapMode);
+  const pops = computePops(players, course, settings.handicapMode, settings.courseHandicap);
   const value = settings.stake ?? 1; // dollars per stroke (0 = no money)
   const entryByHole = new Map(round.entries.map((e) => [e.hole, e]));
 

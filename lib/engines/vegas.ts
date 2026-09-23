@@ -26,7 +26,7 @@ function teamNumber(a: number, b: number, highFirst: boolean): number {
 export function computeVegas(round: Round): GameResult {
   const { players, course, settings } = round;
   const ids = players.map((p) => p.id);
-  const pops = computePops(players, course, settings.handicapMode);
+  const pops = computePops(players, course, settings.handicapMode, settings.courseHandicap);
   const { A, B } = splitTeams(round);
   const pointValue = settings.pointValue ?? 1; // 0 = no money
   const flip = settings.birdieFlip ?? true;
