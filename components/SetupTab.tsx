@@ -489,8 +489,8 @@ export function SetupTab({
               hint={
                 hasCourseRating(course) ? (
                   <>
-                    Enter each player&apos;s handicap index. Course handicap = index × slope ÷ 113 +
-                    (rating − par), using this course&apos;s {course.rating} / {course.slope}.
+                    Course handicap = index × slope ÷ 113 + (rating − par), using this
+                    course&apos;s {course.rating} / {course.slope}.
                   </>
                 ) : (
                   "Needs a course with slope and rating — import one or enter them under Manual. Until then, handicaps are used as entered."
