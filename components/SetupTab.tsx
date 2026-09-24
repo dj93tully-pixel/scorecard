@@ -278,12 +278,11 @@ export function SetupTab({
         )}
 
         {/* Current course summary */}
-        <div className="mb-2 flex items-center justify-between gap-2 text-xs text-text-muted">
+        <div className="mb-2 flex items-start justify-between gap-2 text-xs text-text-muted">
           <span className="min-w-0">
             {hasCourse ? `${course.name} · Par ${coursePar(course)}` : "No course set"}
             {hasCourse && (
-              <>
-                {" · "}
+              <span className="block">
                 {course.rating && course.slope ? (
                   <span className="font-semibold text-text-primary">
                     Rating {course.rating} · Slope {course.slope}
@@ -291,7 +290,7 @@ export function SetupTab({
                 ) : (
                   <span className="text-text-faint">No rating/slope</span>
                 )}
-              </>
+              </span>
             )}
           </span>
           {hasCourse &&
