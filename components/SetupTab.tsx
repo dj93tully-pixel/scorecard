@@ -278,30 +278,28 @@ export function SetupTab({
         )}
 
         {/* Current course summary */}
-        <div className="mb-2 flex items-start justify-between gap-2 text-xs text-text-muted">
-          <span className="min-w-0">
+        <div className="mb-2 text-xs text-text-muted">
+          <span className="block">
             {hasCourse ? `${course.name} · Par ${coursePar(course)}` : "No course set"}
-            {hasCourse && (
-              <span className="block">
-                {course.rating && course.slope ? (
-                  <span className="font-semibold text-text-primary">
-                    Rating {course.rating} · Slope {course.slope}
-                  </span>
-                ) : (
-                  <span className="text-text-faint">No rating/slope</span>
-                )}
-              </span>
-            )}
           </span>
-          {hasCourse &&
-            (siIssues.length > 0 ? (
-              <span className="shrink-0 text-negative">
-                SI: {siIssues.slice(0, 2).join(", ")}
-                {siIssues.length > 2 ? "…" : ""}
-              </span>
-            ) : (
-              <span className="shrink-0 text-positive">SI 1–18 ✓</span>
-            ))}
+          {hasCourse && (
+            <span className="block">
+              {course.rating && course.slope ? (
+                <span className="font-semibold text-text-primary">
+                  Rating {course.rating} · Slope {course.slope}
+                </span>
+              ) : (
+                <span className="text-text-faint">No rating/slope</span>
+              )}
+            </span>
+          )}
+          {/* Stroke-index problems only — nothing shown when 1–18 are all present */}
+          {hasCourse && siIssues.length > 0 && (
+            <span className="block text-negative">
+              SI: {siIssues.slice(0, 2).join(", ")}
+              {siIssues.length > 2 ? "…" : ""}
+            </span>
+          )}
         </div>
 
         {/* Two options — each drops down its panel */}
