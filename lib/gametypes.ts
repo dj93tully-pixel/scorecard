@@ -28,6 +28,7 @@ export interface GameTypeMeta {
   id: GameTypeId;
   label: string;
   blurb: string;
+  /** min 1 = can be played solo: a plain scorecard, no money. */
   players: { min: number; max: number };
   /** Fixed two-team assignment (Best Ball, Vegas). */
   hasTeams: boolean;
@@ -92,7 +93,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     id: "stroke",
     label: "Stroke Play",
     blurb: "Net total strokes; win or lose money per stroke vs the field each hole.",
-    players: { min: 2, max: 12 },
+    players: { min: 1, max: 12 },
     hasTeams: false,
     rotatesTeams: false,
     statColumns: [{ key: "strokes", label: "Net", kind: "number" }],
@@ -102,7 +103,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     id: "stableford",
     label: "Stableford",
     blurb: "Points by net score vs par; play the field per point, like a dollar a point.",
-    players: { min: 2, max: 12 },
+    players: { min: 1, max: 12 },
     hasTeams: false,
     rotatesTeams: false,
     statColumns: [{ key: "points", label: "Points", kind: "number" }],
@@ -112,7 +113,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     id: "modifiedstableford",
     label: "Modified Stableford",
     blurb: "PGA-style points (eagle 5, birdie 2, bogey −1); paid per point vs the field.",
-    players: { min: 2, max: 12 },
+    players: { min: 1, max: 12 },
     hasTeams: false,
     rotatesTeams: false,
     statColumns: [{ key: "points", label: "Points", kind: "plusminus" }],
@@ -122,7 +123,7 @@ export const GAME_TYPES: Record<GameTypeId, GameTypeMeta> = {
     id: "elevens",
     label: "11s",
     blurb: "Pick 11 of 18 holes; lowest net total wins, paid like stroke play.",
-    players: { min: 2, max: 12 },
+    players: { min: 1, max: 12 },
     hasTeams: false,
     rotatesTeams: false,
     statColumns: [{ key: "picks", label: "Picks", kind: "number" }],

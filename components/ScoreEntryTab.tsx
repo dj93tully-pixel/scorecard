@@ -98,8 +98,11 @@ function HoleCard({
   // points × pointValue, not settings.stake, so a fixed ante chip is meaningless
   // — it would just paint the leftover default stake, which Vegas never uses.
   const showAnte = hammerable && gt !== "vegas" && unitStake(round) > 0;
+  // Solo rounds are a plain scorecard: no presses or side bets.
+  const solo = round.players.length === 1;
   // Press is in every game except 11s (Nassau needs two fixed sides → teams only).
   const canPress =
+    !solo &&
     gt !== "elevens" &&
     !(gt === "nassau" && (round.settings.nassauFormat ?? "teams") === "robin");
   // Press the rest of this six (Sixes) or this nine — shown as a bare number on
@@ -294,13 +297,15 @@ function HoleCard({
               />
 
               {/* Side bets (junk) tapped per player, to the right of the score. */}
-              <PlayerJunkIcons
-                round={round}
-                hole={hole}
-                playerId={p.id}
-                entry={existing}
-                onChange={(junk) => commit({ junk })}
-              />
+              {!solo && (
+                <PlayerJunkIcons
+                  round={round}
+                  hole={hole}
+                  playerId={p.id}
+                  entry={existing}
+                  onChange={(junk) => commit({ junk })}
+                />
+              )}
             </div>
           );
         })}
@@ -358,7 +363,8 @@ export function ScoreEntryTab({
   if (!ready) {
     return (
       <div className="rounded-xl border border-dashed border-card-border bg-card-bg p-6 text-center text-sm text-text-muted">
-        Add at least {meta.players.min} players and a course on the{" "}
+        Add at least {meta.players.min} {meta.players.min === 1 ? "player" : "players"} and a
+        course on the{" "}
         <span className="font-semibold">Setup</span> tab to start scoring.
       </div>
     );

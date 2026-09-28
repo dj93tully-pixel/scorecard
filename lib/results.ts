@@ -54,6 +54,7 @@ export interface PlayerResults {
   money: { original: number[]; press: number[]; hammer: number[]; total: number[] };
   grand: number; // sum of total — the MAIN game only
   junk: number; // side-bet total (separate ledger); grand + junk is what's owed
+  points: number | null; // Stableford / Modified Stableford net points (else null)
 }
 
 export interface ResultTee {
@@ -74,6 +75,7 @@ export interface ResultsData {
   tees: ResultTee[]; // course tee yardages (scorecard distance rows)
   isElevens: boolean; // 11s: hide ledger/trendline, show picked-hole tally + dots
   hasMoney: boolean; // the main game's stake is > 0 (else hide the money Ledger)
+  solo: boolean; // one player: a plain scorecard — no money, presses or side bets
   junkBets: JunkBetView[]; // side bets, per-bet per-player breakdown (empty if none)
   // Static team groups (Best Ball / Vegas / team Nassau) → enables the Cards-tab
   // Players/Teams toggle. Undefined for games without fixed teams.
@@ -178,6 +180,8 @@ export function buildResults(round: Round): ResultsData {
   if (hasPress) betTypes.push("press");
   if (hasHammer) betTypes.push("hammer");
 
+  const isPoints = gt === "stableford" || gt === "modifiedstableford";
+  const solo = ids.length === 1;
   const players: PlayerResults[] = round.players.map((p) => {
     const holeCells: HoleCell[] = holes.map((h) => {
       const g = entryByHole.get(h.number)?.grossScores[p.id];
@@ -197,6 +201,7 @@ export function buildResults(round: Round): ResultsData {
       money: { original: orig[p.id], press: prs[p.id], hammer: ham[p.id], total },
       grand,
       junk: junk.ledger[p.id] ?? 0,
+      points: isPoints ? Number(result?.stats[p.id]?.points ?? 0) : null,
     };
   });
 
@@ -300,12 +305,14 @@ export function buildResults(round: Round): ResultsData {
     tees,
     isElevens: gt === "elevens",
     hasMoney:
+      !solo &&
       (gt === "skins"
         ? (round.settings.skinValue ?? 0)
         : gt === "vegas"
           ? (round.settings.pointValue ?? 0)
           : (round.settings.stake ?? 0)) > 0,
-    junkBets: junk.bets,
+    solo,
+    junkBets: solo ? [] : junk.bets,
     teams,
   };
 }

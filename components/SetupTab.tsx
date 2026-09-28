@@ -87,6 +87,8 @@ export function SetupTab({
   const showTeams = meta.hasTeams || (gameType === "nassau" && nassauFormat === "teams");
   const playerCountOk =
     players.length >= meta.players.min && players.length <= meta.players.max;
+  // One player = a plain scorecard for tracking your own round: no money or junk.
+  const solo = players.length === 1;
 
   // Suggested wolf-team / Team A stake for uneven teams: the amount that makes
   // (team size × their stake) equal (other side's size × field stake). Even
@@ -646,7 +648,18 @@ export function SetupTab({
         </section>
       )}
 
+      {solo && (
+        <section className="rounded-xl border border-card-border bg-card-bg p-4">
+          <h3 className="mb-1 font-bold">Solo round</h3>
+          <p className="text-xs text-text-muted">
+            Playing by yourself — this is a plain scorecard with no money or side bets.
+            Add a player to turn betting back on.
+          </p>
+        </section>
+      )}
+
       {/* Money & rules */}
+      {!solo && (
       <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <h3 className="mb-1 font-bold">Money &amp; rules</h3>
         <div className="divide-y divide-divider">
@@ -833,8 +846,10 @@ export function SetupTab({
           )}
         </div>
       </section>
+      )}
 
       {/* Side bets (junk) — ride on top of any game type, fold into settle-up */}
+      {!solo && (
       <section className="rounded-xl border border-card-border bg-card-bg p-4">
         <h3 className="mb-1 font-bold">Side bets</h3>
         <p className="mb-3 text-xs text-text-muted">
@@ -880,6 +895,7 @@ export function SetupTab({
           })}
         </div>
       </section>
+      )}
     </div>
   );
 }

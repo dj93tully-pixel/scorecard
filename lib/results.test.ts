@@ -145,3 +145,33 @@ describe("buildResults (results page data)", () => {
     }
   });
 });
+
+describe("solo rounds", () => {
+  const entries: Round["entries"] = [
+    { hole: 1, wolfId: "", mode: "2v2", grossScores: { a: 3 }, elevenPicks: { a: true } },
+    { hole: 2, wolfId: "", mode: "2v2", grossScores: { a: 5 } },
+  ];
+
+  it.each(["stroke", "stableford", "modifiedstableford", "elevens"] as const)(
+    "%s with one player: no money, flagged solo",
+    (gt) => {
+      const data = buildResults(makeRound(gt, scratch(["a"]), entries, { stake: 5 }));
+      expect(data.solo).toBe(true);
+      expect(data.hasMoney).toBe(false);
+      expect(data.junkBets).toEqual([]);
+      expect(data.players[0].grand).toBe(0);
+      expect(data.players[0].holes[0].gross).toBe(3);
+    }
+  );
+
+  it("stableford points ride on the player (birdie 3 + bogey 1)", () => {
+    const data = buildResults(makeRound("stableford", scratch(["a"]), entries));
+    expect(data.players[0].points).toBe(4);
+  });
+
+  it("a multi-player round is not solo", () => {
+    const data = buildResults(makeRound("stroke", scratch(["a", "b"]), entries, { stake: 1 }));
+    expect(data.solo).toBe(false);
+    expect(data.hasMoney).toBe(true);
+  });
+});

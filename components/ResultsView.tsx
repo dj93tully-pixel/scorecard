@@ -152,6 +152,7 @@ function buildTeamPlayers(results: ResultsData): PlayerResults[] {
       money: { original: sumArr("original"), press: sumArr("press"), hammer: sumArr("hammer"), total: sumArr("total") },
       grand: members.reduce((s, m) => s + m.grand, 0),
       junk: members.reduce((s, m) => s + m.junk, 0),
+      points: null,
     };
   });
 }
@@ -399,7 +400,9 @@ function Detail({
   pickShade: string;
 }) {
   const { betTypes, presses, pressHoles, hammerHoles, carriedHammerHoles } = results;
-  const tiles: Filter[] = [...betTypes, "total"];
+  // Solo rounds are a plain scorecard: no bet tiles, money rows or trendline.
+  const solo = results.solo;
+  const tiles: Filter[] = solo ? [] : [...betTypes, "total"];
   const hammerSet = useMemo(() => new Set(hammerHoles), [hammerHoles]);
   const carriedHammerSet = useMemo(() => new Set(carriedHammerHoles), [carriedHammerHoles]);
   // Holes the hammer "affects": the hammered holes themselves, every hole a carried
@@ -456,6 +459,7 @@ function Detail({
   return (
     <div style={{ background: "#FAFBFC", borderTop: `1px solid ${BORDER}`, padding: "10px" }}>
       {/* bet-type tiles (tappable filters) */}
+      {tiles.length > 0 && (
       <div className="mb-2 flex gap-1.5 overflow-x-auto">
         {tiles.map((t) => {
           const on = filter === t;
@@ -482,6 +486,7 @@ function Detail({
           );
         })}
       </div>
+      )}
 
       {/* individual-press sub-selector (Press filter only) */}
       {filter === "press" && presses.length > 0 && (
@@ -510,22 +515,22 @@ function Detail({
       {/* horizontal scorecard — traditional grid look; front + back stacked, then
           a summary strip (matches the all-players scorecard at the bottom). */}
       <div className="space-y-2">
-        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
-        <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens} />
+        <Nine cells={front} net={net} label="OUT" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens || solo} />
+        <Nine cells={back} net={net} label="IN" hammerHoles={hammerSet} pressCount={results.pressCountByHole} baseBetGame={results.baseBetGame} carriedHammerHoles={carriedHammerSet} activeHoles={activeHoles} filter={filter} pickShade={pickShade} hideMoney={results.isElevens || solo} />
         <div
           className="grid items-center rounded-md text-xs font-bold tabular-nums"
-          style={{ gridTemplateColumns: popsTotal > 0 ? "1fr auto auto auto auto" : "1fr auto auto auto", background: "#EAF1FF", border: `1px solid ${GRID}`, padding: "6px 10px", gap: "14px" }}
+          style={{ gridTemplateColumns: `1fr${" auto".repeat(2 + (popsTotal > 0 ? 1 : 0) + (solo ? 0 : 1))}`, background: "#EAF1FF", border: `1px solid ${GRID}`, padding: "6px 10px", gap: "14px" }}
         >
           <span style={{ color: INK }}>Total {roundToPar === null ? "–" : formatToPar(roundToPar)}</span>
           {popsTotal > 0 && <span style={{ color: BLUE }}>Pops ({popsTotal})</span>}
           <span style={{ color: MUTED }}>Par {parTotal}</span>
           <span style={{ color: INK }}>Score {scoreTotal || "–"}</span>
-          <span style={{ color: moneyColor(grand) }}>{dollars(grand)}</span>
+          {!solo && <span style={{ color: moneyColor(grand) }}>{dollars(grand)}</span>}
         </div>
       </div>
 
       {/* winnings by hole — not meaningful for 11s (sum-of-picks game) */}
-      {!results.isElevens && (
+      {!results.isElevens && !solo && (
         <div className="mt-4">
           <div className="mb-1 flex items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>Winnings by hole</span>
@@ -576,7 +581,9 @@ function PlayerBar({
   return (
     <div className="overflow-hidden rounded-xl border bg-card-bg" style={{ borderColor: BORDER, borderLeft: `4px solid ${open ? BLUE : "#AFC6FF"}` }}>
       <button onClick={onToggle} className="flex w-full items-center gap-3 px-3 py-3 text-left">
-        <span className="w-4 text-center text-base font-bold" style={{ color: MUTED }}>{rank}</span>
+        {!results.solo && (
+          <span className="w-4 text-center text-base font-bold" style={{ color: MUTED }}>{rank}</span>
+        )}
         <span className="flex min-w-0 flex-1 items-baseline gap-2">
           <span className="truncate font-semibold" style={{ color: INK }}>{player.name}</span>
           <span className="shrink-0 text-sm font-bold tabular-nums" style={{ color: net ? BLUE : INK }}>
@@ -590,10 +597,20 @@ function PlayerBar({
               {elevenToPar === null ? "–" : formatToPar(elevenToPar)}
             </span>
           )}
+          {player.points !== null && (
+            <span
+              className="shrink-0 self-center rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums"
+              style={{ background: BLUE, color: "#fff" }}
+            >
+              {player.points} pts
+            </span>
+          )}
         </span>
-        <span className="text-lg font-extrabold tabular-nums" style={{ color: moneyColor(player.grand) }}>
-          {money1(player.grand)}
-        </span>
+        {!results.solo && (
+          <span className="text-lg font-extrabold tabular-nums" style={{ color: moneyColor(player.grand) }}>
+            {money1(player.grand)}
+          </span>
+        )}
         <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} style={{ color: MUTED }} />
       </button>
       {open && (
@@ -1090,7 +1107,7 @@ export function ResultsView({ results }: { results: ResultsData }) {
         className="sticky z-20 -mx-3 flex items-center justify-between gap-2 bg-page-bg px-3 py-2"
         style={{ top: "calc(var(--header-h, 88px) + 3.4rem)" }}
       >
-        <h2 className="shrink-0 text-xl font-bold">Standings</h2>
+        <h2 className="shrink-0 text-xl font-bold">{results.solo ? "Your round" : "Standings"}</h2>
         <div className="flex items-center gap-1.5">
           {hasTeams && (
             <ViewToggle
