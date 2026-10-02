@@ -306,6 +306,7 @@ export function SetupTab({
                     <span className="font-semibold text-text-primary">{t.name}</span>
                     <span className="tabular-nums">
                       {t.rating} / {t.slope}
+                      {t.yards ? ` · ${t.yards.toLocaleString()} yds` : ""}
                     </span>
                   </span>
                 ))}

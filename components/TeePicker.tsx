@@ -80,6 +80,7 @@ export function TeePicker({
                     <span className="block truncate text-sm font-semibold">{t.name}</span>
                     <span className="block text-xs tabular-nums text-text-muted">
                       {t.rating} / {t.slope}
+                      {t.yards ? ` · ${t.yards.toLocaleString()} yds` : ""}
                     </span>
                   </span>
                 </button>
