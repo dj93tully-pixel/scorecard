@@ -19,6 +19,7 @@ interface SearchResult {
 interface TeeDetail {
   name: string;
   color?: string;
+  gender?: string; // "male" / "female" from the API, or ""
   yards: number | null;
   par: number | null;
   rating?: number | null;
@@ -136,6 +137,7 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
       tees: tees.map((tee) => ({
         name: tee.name,
         color: tee.color,
+        gender: tee.gender ? (tee.gender.toLowerCase().startsWith("f") ? "W" : "M") : undefined,
         yards: tee.yards,
         distances: tee.distances.slice(0, 18),
         rating: tee.rating ?? null,

@@ -14,7 +14,6 @@ import {
   courseHandicapFor,
   hasCourseRating,
   ratedTees,
-  teeRatingFor,
 } from "@/lib/wolf";
 import {
   makePlayer,
@@ -23,6 +22,7 @@ import {
   strokeIndexIssues,
 } from "@/lib/storage";
 import { CourseImport } from "./CourseImport";
+import { TeePicker, TeeSwatch } from "./TeePicker";
 import { gameTypeMeta, TEAM_COLORS } from "@/lib/gametypes";
 import { JUNK_TYPES, junkConfig } from "@/lib/junk";
 import { splitTeams } from "@/lib/engines/teams";
@@ -116,10 +116,14 @@ export function SetupTab({
       : 0;
   const suggestedLabel = suggestedWolfStake > 0 ? `$${suggestedWolfStake.toFixed(2)}` : "0";
 
-  // Select the contents of a number field on focus so typing replaces the
-  // existing digit instead of appending to it (e.g. 1 → 3, not 13).
-  const selectOnFocus = (e: React.FocusEvent<HTMLInputElement>) =>
-    e.currentTarget.select();
+  // Select a field's contents on focus so typing replaces them (names, and the
+  // digit in a number box: 1 → 3, not 13). Deferred a
+  // tick so the tap that focused the field (mobile Safari) doesn't then drop the
+  // caret back into the middle and undo the selection.
+  const selectOnFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    const el = e.currentTarget;
+    setTimeout(() => el.select(), 0);
+  };
 
   // ── Course ──
   function setHole(num: number, patch: Partial<{ par: number; strokeIndex: number }>) {
@@ -298,10 +302,7 @@ export function SetupTab({
               <span className="mt-1 block space-y-0.5">
                 {teeChoices.map((t) => (
                   <span key={t.name} className="flex items-center gap-1.5">
-                    <span
-                      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-card-border"
-                      style={{ background: t.color ?? "#9098A4" }}
-                    />
+                    <TeeSwatch tee={t} size={18} />
                     <span className="font-semibold text-text-primary">{t.name}</span>
                     <span className="tabular-nums">
                       {t.rating} / {t.slope}
@@ -529,27 +530,16 @@ export function SetupTab({
               <input
                 value={p.name}
                 onChange={(e) => setPlayer(p.id, { name: e.target.value })}
+                onFocus={selectOnFocus}
                 placeholder="Name"
                 className="min-w-0 flex-1 rounded-lg border border-card-border px-3 py-2"
               />
               {showTeePicker && (
-                <select
-                  value={playerTee(p.tee)?.name ?? ""}
-                  onChange={(e) => setPlayer(p.id, { tee: e.target.value })}
-                  aria-label="Tee"
-                  title={(() => {
-                    const r = teeRatingFor(course, p.tee);
-                    return r ? `Rating ${r.rating} · Slope ${r.slope}` : undefined;
-                  })()}
-                  className="w-20 shrink-0 rounded-lg border border-card-border px-1 py-2 text-sm"
-                >
-                  {!playerTee(p.tee) && <option value="">Course</option>}
-                  {teeChoices.map((t) => (
-                    <option key={t.name} value={t.name}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                <TeePicker
+                  tees={teeChoices}
+                  value={playerTee(p.tee)}
+                  onChange={(tee) => setPlayer(p.id, { tee })}
+                />
               )}
               <div className="flex items-center gap-1">
                 {isDirect ? (

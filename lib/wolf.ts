@@ -20,6 +20,7 @@ export interface CourseHole {
 export interface CourseTee {
   name: string; // e.g. "Black", "Blue", "White"
   color?: string; // hex; undefined → neutral gray in the UI
+  gender?: "M" | "W"; // men's / women's tee, when known
   yards?: number | null; // total yardage
   distances: (number | null)[]; // per hole, aligned to holes order
   /** Course rating + slope (+ total par) for this tee, for index → course handicap. */
