@@ -486,19 +486,7 @@ export function SetupTab({
                 <option value="full">Full (Absolute)</option>
               </select>
             </Field>
-            <Field
-              label="Convert index to course handicap"
-              hint={
-                hasCourseRating(course) ? (
-                  <>
-                    Course handicap = index × slope ÷ 113 + (rating − par), using this
-                    course&apos;s {course.rating} / {course.slope}.
-                  </>
-                ) : (
-                  "Needs a course with slope and rating — import one or enter them under Manual. Until then, handicaps are used as entered."
-                )
-              }
-            >
+            <Field label="Convert index to course handicap">
               <input
                 type="checkbox"
                 checked={courseHcpOn}
@@ -520,9 +508,6 @@ export function SetupTab({
                 className="min-w-0 flex-1 rounded-lg border border-card-border px-3 py-2"
               />
               <div className="flex items-center gap-1">
-                <span className="text-xs text-text-muted">
-                  {isDirect ? "Pops" : courseHcpActive ? "Index" : "HCP"}
-                </span>
                 {isDirect ? (
                   <input
                     type="number"
