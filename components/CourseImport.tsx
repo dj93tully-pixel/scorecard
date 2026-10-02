@@ -40,6 +40,8 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
   const [detail, setDetail] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Indexes into detail.tees of the tees ticked for import.
+  const [picked, setPicked] = useState<Set<number>>(new Set());
 
   // Send the FULL typed query to the API. It ranks + caps its results, so a
   // distinguishing word (e.g. "West" in "Lincoln West") must reach the API —
@@ -98,6 +100,8 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
         throw new Error("This course has no hole data to import.");
       }
       setDetail(data as CourseDetail);
+      // A lone tee is pre-ticked; otherwise the user chooses which to bring in.
+      setPicked(new Set(data.tees.length === 1 ? [0] : []));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Lookup failed");
     } finally {
@@ -105,20 +109,31 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
     }
   }
 
+  function togglePick(i: number) {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+
   function importCourse() {
     if (!detail) return;
-    // Holes (par + stroke index) come from the first full-length tee — men's tees
-    // are listed first. Every tee is kept with its own rating/slope so each player
-    // can pick theirs in the Players section.
+    const tees = detail.tees.filter((_, i) => picked.has(i));
+    if (tees.length === 0) return;
+    // Holes (par + stroke index) come from the first full-length ticked tee — men's
+    // tees are listed first. Each ticked tee keeps its own rating/slope so each
+    // player can pick theirs in the Players section.
     const base =
-      detail.tees.find((t) => t.holes.length >= 18) ??
-      [...detail.tees].sort((x, y) => y.holes.length - x.holes.length)[0];
+      tees.find((t) => t.holes.length >= 18) ??
+      [...tees].sort((x, y) => y.holes.length - x.holes.length)[0];
     const course: Course = {
       name: detail.name,
       holes: base.holes.slice(0, 18),
       rating: null,
       slope: null,
-      tees: detail.tees.map((tee) => ({
+      tees: tees.map((tee) => ({
         name: tee.name,
         color: tee.color,
         yards: tee.yards,
@@ -151,11 +166,7 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
         </div>
       )}
 
-      {error && (
-        <p className="rounded-lg bg-[#FDECEF] px-3 py-2 text-sm text-negative">
-          {error}
-        </p>
-      )}
+      {error && <p className="rounded-lg bg-[#FDECEF] px-3 py-2 text-sm text-negative">{error}</p>}
 
       {!detail && !error && !loading && results.length === 0 && query.trim().length >= 2 && (
         <p className="px-1 py-2 text-sm text-text-muted">No courses found.</p>
@@ -167,8 +178,7 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
             const title = r.club_name || r.course_name || "Unnamed course";
             // The course/layout name (e.g. "Highlands" vs "Creek") is what tells
             // same-club courses apart — show it when it adds info.
-            const layout =
-              r.course_name && r.course_name !== title ? r.course_name : "";
+            const layout = r.course_name && r.course_name !== title ? r.course_name : "";
             return (
               <li key={r.id}>
                 <button
@@ -183,9 +193,7 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
                       </span>
                     )}
                     {r.location && (
-                      <span className="block truncate text-xs text-text-muted">
-                        {r.location}
-                      </span>
+                      <span className="block truncate text-xs text-text-muted">{r.location}</span>
                     )}
                   </span>
                   <span className="shrink-0 text-chevron">›</span>
@@ -207,41 +215,53 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
               ‹ Back to results
             </button>
           </div>
+          <p className="text-sm text-text-muted">Select the tees to import:</p>
           <ul className="divide-y divide-divider rounded-lg border border-card-border">
             {detail.tees.map((tee, i) => (
-              <li key={i} className="flex items-center justify-between gap-2 px-3 py-2">
-                <span className="min-w-0">
-                  <span className="flex items-center gap-1.5 font-semibold">
-                    <span
-                      className="inline-block h-3 w-3 shrink-0 rounded-full border border-card-border"
-                      style={{ background: tee.color ?? "#9098A4" }}
-                    />
-                    {tee.name}
+              <li key={i}>
+                <label className="flex cursor-pointer items-center gap-3 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={picked.has(i)}
+                    onChange={() => togglePick(i)}
+                    className="h-5 w-5 shrink-0 accent-[#354CA1]"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <span
+                        className="inline-block h-3 w-3 shrink-0 rounded-full border border-card-border"
+                        style={{ background: tee.color ?? "#9098A4" }}
+                      />
+                      {tee.name}
+                    </span>
+                    <span className="block text-xs text-text-muted">
+                      {tee.holes.length} holes
+                      {tee.par ? ` · Par ${tee.par}` : ""}
+                      {tee.yards ? ` · ${tee.yards} yds` : ""}
+                    </span>
                   </span>
-                  <span className="block text-xs text-text-muted">
-                    {tee.holes.length} holes
-                    {tee.par ? ` · Par ${tee.par}` : ""}
-                    {tee.yards ? ` · ${tee.yards} yds` : ""}
+                  <span className="shrink-0 text-right text-xs tabular-nums">
+                    {tee.rating && tee.slope ? (
+                      <>
+                        <span className="block font-semibold">{tee.rating}</span>
+                        <span className="block text-text-muted">Slope {tee.slope}</span>
+                      </>
+                    ) : (
+                      <span className="text-text-faint">No rating</span>
+                    )}
                   </span>
-                </span>
-                <span className="shrink-0 text-right text-xs tabular-nums">
-                  {tee.rating && tee.slope ? (
-                    <>
-                      <span className="block font-semibold">{tee.rating}</span>
-                      <span className="block text-text-muted">Slope {tee.slope}</span>
-                    </>
-                  ) : (
-                    <span className="text-text-faint">No rating</span>
-                  )}
-                </span>
+                </label>
               </li>
             ))}
           </ul>
           <button
             onClick={importCourse}
-            className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-on-dark"
+            disabled={picked.size === 0}
+            className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-on-dark disabled:opacity-40"
           >
-            Import course ({detail.tees.length} {detail.tees.length === 1 ? "tee" : "tees"})
+            {picked.size === 0
+              ? "Select at least one tee"
+              : `Import ${picked.size} ${picked.size === 1 ? "tee" : "tees"}`}
           </button>
         </div>
       )}
