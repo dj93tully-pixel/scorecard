@@ -22,13 +22,20 @@ export interface CourseTee {
   color?: string; // hex; undefined → neutral gray in the UI
   yards?: number | null; // total yardage
   distances: (number | null)[]; // per hole, aligned to holes order
+  /** Course rating + slope (+ total par) for this tee, for index → course handicap. */
+  rating?: number | null;
+  slope?: number | null;
+  par?: number | null;
 }
 
 export interface Course {
   name: string;
   holes: CourseHole[];
   tees?: CourseTee[]; // optional — older saved courses won't have it
-  /** Course rating + slope of the selected tee, for index → course handicap. */
+  /**
+   * Course-level rating + slope (manual courses / older saves). Imported courses
+   * carry a rating + slope per tee instead, and each player picks their tee.
+   */
   rating?: number | null;
   slope?: number | null;
 }
@@ -38,6 +45,7 @@ export interface Player {
   name: string;
   handicap: number; // handicap index (or course handicap if conversion is off); used when handicapMode is offLow/full
   pops?: number; // direct strokes received; used when handicapMode is "direct"
+  tee?: string; // name of the CourseTee they play; undefined → the course's default tee
 }
 
 // "offLow"/"full" derive pops from handicaps; "direct" uses each player's `pops`
@@ -202,26 +210,59 @@ export const DEFAULT_SETTINGS: RoundSettings = {
 // Pops engine (handicap strokes)
 // ───────────────────────────────────────────────────────────────────────────
 
-/** True when `course` has the slope + rating needed for index → course handicap. */
+export interface TeeRating {
+  rating: number;
+  slope: number;
+  par: number; // total par the rating is measured against
+}
+
+const isPos = (n: unknown): n is number => typeof n === "number" && n > 0;
+
+/** Tees that carry both a rating and a slope (the ones a player can pick). */
+export function ratedTees(course: Course | undefined): CourseTee[] {
+  return (course?.tees ?? []).filter((t) => isPos(t.rating) && isPos(t.slope));
+}
+
+/**
+ * The rating/slope/par to use for a player on `teeName`: that tee if it's rated,
+ * else the course-level rating (manual courses / older saves), else the first
+ * rated tee. Null when there's nothing usable or the course isn't 18 holes
+ * (ratings are 18-hole values).
+ */
+export function teeRatingFor(course: Course | undefined, teeName?: string): TeeRating | null {
+  if (!course || course.holes.length !== 18) return null;
+  const coursePar = course.holes.reduce((sum, h) => sum + h.par, 0);
+  const tees = ratedTees(course);
+  const tee =
+    (teeName && tees.find((t) => t.name === teeName)) ||
+    (isPos(course.rating) && isPos(course.slope) ? null : tees[0]);
+  if (tee) {
+    return { rating: tee.rating!, slope: tee.slope!, par: isPos(tee.par) ? tee.par : coursePar };
+  }
+  if (isPos(course.rating) && isPos(course.slope)) {
+    return { rating: course.rating, slope: course.slope, par: coursePar };
+  }
+  return null;
+}
+
+/** True when `course` has a slope + rating (course-level or on any tee). */
 export function hasCourseRating(course: Course | undefined): course is Course {
-  return (
-    !!course &&
-    course.holes.length === 18 && // ratings are 18-hole values
-    typeof course.slope === "number" &&
-    course.slope > 0 &&
-    typeof course.rating === "number" &&
-    course.rating > 0
-  );
+  return teeRatingFor(course) !== null;
 }
 
 /**
  * WHS course handicap: index × slope / 113 + (course rating − par), rounded to the
- * nearest whole number. Returns the index unchanged if the course has no slope/rating.
+ * nearest whole number, using the player's tee (see `teeRatingFor`). Returns the
+ * index unchanged if there's no slope/rating.
  */
-export function courseHandicapFor(index: number, course: Course | undefined): number {
-  if (!hasCourseRating(course)) return index;
-  const par = course.holes.reduce((sum, h) => sum + h.par, 0);
-  return Math.round((index * course.slope!) / 113 + (course.rating! - par));
+export function courseHandicapFor(
+  index: number,
+  course: Course | undefined,
+  teeName?: string
+): number {
+  const r = teeRatingFor(course, teeName);
+  if (!r) return index;
+  return Math.round((index * r.slope) / 113 + (r.rating - r.par));
 }
 
 /**
@@ -229,7 +270,8 @@ export function courseHandicapFor(index: number, course: Course | undefined): nu
  *   offLow: each player gets (handicap - lowestHandicap), floored at 0.
  *   full:   each player gets their full handicap.
  * When a `course` with slope + rating is given (and `useCourseHandicap` isn't
- * false), each handicap is first converted from an index to a course handicap.
+ * false), each handicap is first converted from an index to a course handicap
+ * using that player's tee.
  */
 export function strokesReceived(
   players: Player[],
@@ -247,7 +289,7 @@ export function strokesReceived(
   // Whole strokes only (an index like 8.4 left in place after conversion is turned
   // off, or on a course with no rating, still rounds to a whole handicap).
   const hcp = (p: Player) =>
-    Math.round(useCourseHandicap ? courseHandicapFor(p.handicap, course) : p.handicap);
+    Math.round(useCourseHandicap ? courseHandicapFor(p.handicap, course, p.tee) : p.handicap);
   const low = Math.min(...players.map(hcp));
   for (const p of players) {
     out[p.id] = mode === "full" ? Math.max(0, hcp(p)) : Math.max(0, hcp(p) - low);

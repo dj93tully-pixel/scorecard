@@ -13,6 +13,8 @@ import {
   sanitizeEntries,
   courseHandicapFor,
   hasCourseRating,
+  ratedTees,
+  teeRatingFor,
 } from "@/lib/wolf";
 import {
   makePlayer,
@@ -66,6 +68,13 @@ export function SetupTab({
   // both slope and rating.
   const courseHcpOn = settings.courseHandicap !== false;
   const courseHcpActive = !isDirect && courseHcpOn && hasCourseRating(course);
+  // Imported courses carry a rating/slope per tee; each player picks theirs.
+  const teeChoices = ratedTees(course);
+  const showTeePicker = courseHcpActive && teeChoices.length > 0;
+  // The tee a player is effectively on (unset or no-longer-present → the default).
+  const playerTee = (name?: string) =>
+    teeChoices.find((t) => t.name === name) ??
+    (course.rating && course.slope ? undefined : teeChoices[0]);
   // "New Course" is the blank default — treat anything else as a real course.
   const hasCourse = course.name.trim() !== "" && course.name !== "New Course";
 
@@ -146,7 +155,7 @@ export function SetupTab({
   // ── Players ──
   function setPlayer(
     id: string,
-    patch: Partial<{ name: string; handicap: number; pops: number }>
+    patch: Partial<{ name: string; handicap: number; pops: number; tee: string }>
   ) {
     updateRound((r) => ({
       ...r,
@@ -284,17 +293,33 @@ export function SetupTab({
           <span className="block">
             {hasCourse ? `${course.name} · Par ${coursePar(course)}` : "No course set"}
           </span>
-          {hasCourse && (
-            <span className="block">
-              {course.rating && course.slope ? (
-                <span className="font-semibold text-text-primary">
-                  Rating {course.rating} · Slope {course.slope}
-                </span>
-              ) : (
-                <span className="text-text-faint">No rating/slope</span>
-              )}
-            </span>
-          )}
+          {hasCourse &&
+            (teeChoices.length > 0 ? (
+              <span className="mt-1 block space-y-0.5">
+                {teeChoices.map((t) => (
+                  <span key={t.name} className="flex items-center gap-1.5">
+                    <span
+                      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-card-border"
+                      style={{ background: t.color ?? "#9098A4" }}
+                    />
+                    <span className="font-semibold text-text-primary">{t.name}</span>
+                    <span className="tabular-nums">
+                      {t.rating} / {t.slope}
+                    </span>
+                  </span>
+                ))}
+              </span>
+            ) : (
+              <span className="block">
+                {course.rating && course.slope ? (
+                  <span className="font-semibold text-text-primary">
+                    Rating {course.rating} · Slope {course.slope}
+                  </span>
+                ) : (
+                  <span className="text-text-faint">No rating/slope</span>
+                )}
+              </span>
+            ))}
           {/* Stroke-index problems only — nothing shown when 1–18 are all present */}
           {hasCourse && siIssues.length > 0 && (
             <span className="block text-negative">
@@ -507,6 +532,25 @@ export function SetupTab({
                 placeholder="Name"
                 className="min-w-0 flex-1 rounded-lg border border-card-border px-3 py-2"
               />
+              {showTeePicker && (
+                <select
+                  value={playerTee(p.tee)?.name ?? ""}
+                  onChange={(e) => setPlayer(p.id, { tee: e.target.value })}
+                  aria-label="Tee"
+                  title={(() => {
+                    const r = teeRatingFor(course, p.tee);
+                    return r ? `Rating ${r.rating} · Slope ${r.slope}` : undefined;
+                  })()}
+                  className="w-20 shrink-0 rounded-lg border border-card-border px-1 py-2 text-sm"
+                >
+                  {!playerTee(p.tee) && <option value="">Course</option>}
+                  {teeChoices.map((t) => (
+                    <option key={t.name} value={t.name}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              )}
               <div className="flex items-center gap-1">
                 {isDirect ? (
                   <input
@@ -536,7 +580,7 @@ export function SetupTab({
                     className="w-9 text-xs font-semibold tabular-nums text-accent-on-light"
                     title="Course handicap"
                   >
-                    → {courseHandicapFor(p.handicap, course)}
+                    → {courseHandicapFor(p.handicap, course, p.tee)}
                   </span>
                 )}
               </div>

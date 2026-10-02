@@ -1,6 +1,7 @@
 // components/CourseImport.tsx
-// Search golfcourseapi.com (via our server proxy), pick a course + tee, and
-// hand a populated Course back to the caller. The API key never touches here.
+// Search golfcourseapi.com (via our server proxy), pick a course, and hand a
+// populated Course (every tee, with its rating/slope) back to the caller. The
+// API key never touches here.
 
 "use client";
 
@@ -104,22 +105,28 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
     }
   }
 
-  function importTee(tee: TeeDetail) {
+  function importCourse() {
     if (!detail) return;
+    // Holes (par + stroke index) come from the first full-length tee — men's tees
+    // are listed first. Every tee is kept with its own rating/slope so each player
+    // can pick theirs in the Players section.
+    const base =
+      detail.tees.find((t) => t.holes.length >= 18) ??
+      [...detail.tees].sort((x, y) => y.holes.length - x.holes.length)[0];
     const course: Course = {
       name: detail.name,
-      holes: tee.holes.slice(0, 18),
-      rating: tee.rating ?? null,
-      slope: tee.slope ?? null,
-      // Keep ONLY the selected tee's colour + per-hole yardages for the scorecard.
-      tees: [
-        {
-          name: tee.name,
-          color: tee.color,
-          yards: tee.yards,
-          distances: tee.distances.slice(0, 18),
-        },
-      ],
+      holes: base.holes.slice(0, 18),
+      rating: null,
+      slope: null,
+      tees: detail.tees.map((tee) => ({
+        name: tee.name,
+        color: tee.color,
+        yards: tee.yards,
+        distances: tee.distances.slice(0, 18),
+        rating: tee.rating ?? null,
+        slope: tee.slope ?? null,
+        par: tee.par ?? null,
+      })),
     };
     onImport(course);
   }
@@ -200,19 +207,10 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
               ‹ Back to results
             </button>
           </div>
-          <p className="text-sm text-text-muted">
-            {detail.tees.length > 1
-              ? "Choose a tee to import:"
-              : "Confirm the tee to import:"}
-          </p>
-          <div className="space-y-2">
+          <ul className="divide-y divide-divider rounded-lg border border-card-border">
             {detail.tees.map((tee, i) => (
-              <button
-                key={i}
-                onClick={() => importTee(tee)}
-                className="flex w-full items-center justify-between rounded-lg border border-card-border px-3 py-3 text-left"
-              >
-                <span>
+              <li key={i} className="flex items-center justify-between gap-2 px-3 py-2">
+                <span className="min-w-0">
                   <span className="flex items-center gap-1.5 font-semibold">
                     <span
                       className="inline-block h-3 w-3 shrink-0 rounded-full border border-card-border"
@@ -224,15 +222,27 @@ export function CourseImport({ onImport }: { onImport: (course: Course) => void 
                     {tee.holes.length} holes
                     {tee.par ? ` · Par ${tee.par}` : ""}
                     {tee.yards ? ` · ${tee.yards} yds` : ""}
-                    {tee.rating && tee.slope ? ` · ${tee.rating} / ${tee.slope}` : ""}
                   </span>
                 </span>
-                <span className="rounded-md bg-primary px-3 py-1 text-xs font-semibold text-on-dark">
-                  Import
+                <span className="shrink-0 text-right text-xs tabular-nums">
+                  {tee.rating && tee.slope ? (
+                    <>
+                      <span className="block font-semibold">{tee.rating}</span>
+                      <span className="block text-text-muted">Slope {tee.slope}</span>
+                    </>
+                  ) : (
+                    <span className="text-text-faint">No rating</span>
+                  )}
                 </span>
-              </button>
+              </li>
             ))}
-          </div>
+          </ul>
+          <button
+            onClick={importCourse}
+            className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-on-dark"
+          >
+            Import course ({detail.tees.length} {detail.tees.length === 1 ? "tee" : "tees"})
+          </button>
         </div>
       )}
     </div>

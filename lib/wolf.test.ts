@@ -231,6 +231,47 @@ describe("pops — course handicap (index × slope/113 + rating − par)", () =>
   });
 });
 
+// ── Pops: per-player tees ──────────────────────────────────────────────────
+
+describe("pops — each player's tee rating/slope", () => {
+  const withTees = (): Course => ({
+    ...makeCourse(),
+    tees: [
+      { name: "Blue", distances: [], rating: 72.4, slope: 135, par: 72 },
+      { name: "White", distances: [], rating: 69.8, slope: 124, par: 72 },
+      { name: "Red", distances: [], rating: 71.0, slope: 120, par: 74 },
+      { name: "Gold", distances: [] }, // unrated → not pickable
+    ],
+  });
+
+  it("uses the player's tee", () => {
+    expect(courseHandicapFor(10, withTees(), "Blue")).toBe(12); // 11.95 + 0.4
+    expect(courseHandicapFor(10, withTees(), "White")).toBe(9); // 10.97 − 2.2
+    expect(courseHandicapFor(10, withTees(), "Red")).toBe(8); // 10.62 − 3 (tee par 74)
+  });
+
+  it("falls back to the first rated tee for an unset/unknown/unrated tee", () => {
+    expect(courseHandicapFor(10, withTees())).toBe(12);
+    expect(courseHandicapFor(10, withTees(), "Gone")).toBe(12);
+    expect(courseHandicapFor(10, withTees(), "Gold")).toBe(12);
+  });
+
+  it("prefers a course-level rating over the first tee when the player has no tee", () => {
+    const c = { ...withTees(), rating: 71.2, slope: 130 };
+    expect(courseHandicapFor(10, c)).toBe(11);
+    expect(courseHandicapFor(10, c, "White")).toBe(9);
+  });
+
+  it("strokesReceived converts each player on their own tee", () => {
+    const players: Player[] = [
+      { id: "a", name: "A", handicap: 10, tee: "Blue" },
+      { id: "b", name: "B", handicap: 10, tee: "Red" },
+    ];
+    const r = strokesReceived(players, "full", withTees());
+    expect([r.a, r.b]).toEqual([12, 8]);
+  });
+});
+
 // ── Money: 2v2 ─────────────────────────────────────────────────────────────
 
 describe("money — 2v2", () => {
