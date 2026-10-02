@@ -9,6 +9,20 @@ import { CourseTee } from "@/lib/wolf";
 
 const NEUTRAL = "#9098A4";
 
+/** Standard tee colours, in the order tapping a tee's square cycles through them. */
+export const TEE_PALETTE: { name: string; color: string }[] = [
+  { name: "Black", color: "#1A1A1A" },
+  { name: "Blue", color: "#2D6CDF" },
+  { name: "White", color: "#FFFFFF" },
+  { name: "Gold", color: "#C99A2E" },
+  { name: "Green", color: "#2E8B45" },
+  { name: "Red", color: "#D2342B" },
+  { name: "Silver", color: "#AEB4BD" },
+  { name: "Yellow", color: "#E6C12F" },
+  { name: "Orange", color: "#E8590C" },
+  { name: "Purple", color: "#7C3AED" },
+];
+
 /** "M" / "W" for a tee: its stored gender, else a "(M)"/"(W)" name suffix. */
 export function teeGenderLetter(tee: CourseTee): string {
   if (tee.gender) return tee.gender;

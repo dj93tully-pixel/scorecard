@@ -5,10 +5,11 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Search } from "lucide-react";
+import { Check, Pencil, Plus, Search, Settings, X } from "lucide-react";
 import {
   Round,
   Course,
+  CourseTee,
   HandicapMode,
   sanitizeEntries,
   courseHandicapFor,
@@ -18,11 +19,13 @@ import {
 import {
   makePlayer,
   blankCourse,
+  editableTees,
+  withTees,
   coursePar,
   strokeIndexIssues,
 } from "@/lib/storage";
 import { CourseImport } from "./CourseImport";
-import { TeePicker, TeeSwatch } from "./TeePicker";
+import { TeePicker, TeeSwatch, TEE_PALETTE } from "./TeePicker";
 import { gameTypeMeta, TEAM_COLORS } from "@/lib/gametypes";
 import { JUNK_TYPES, junkConfig } from "@/lib/junk";
 import { splitTeams } from "@/lib/engines/teams";
@@ -60,6 +63,8 @@ export function SetupTab({
 }) {
   const [coursePanel, setCoursePanel] = useState<"none" | "import" | "manual">("none");
   const [flash, setFlash] = useState<string | null>(null);
+  // Index of the tee whose rating/slope is open for editing in the course summary.
+  const [editingTee, setEditingTee] = useState<number | null>(null);
 
   const { players, settings, teeOrder, course } = round;
   const siIssues = strokeIndexIssues(course);
@@ -70,6 +75,8 @@ export function SetupTab({
   const courseHcpActive = !isDirect && courseHcpOn && hasCourseRating(course);
   // Imported courses carry a rating/slope per tee; each player picks theirs.
   const teeChoices = ratedTees(course);
+  // Every tee (rated or not) for the summary + manual editor.
+  const tees = editableTees(course);
   const showTeePicker = courseHcpActive && teeChoices.length > 0;
   // The tee a player is effectively on (unset or no-longer-present → the default).
   const playerTee = (name?: string) =>
@@ -147,13 +154,61 @@ export function SetupTab({
   function setCourseName(name: string) {
     updateRound((r) => ({ ...r, course: { ...r.course, name } }));
   }
-  // Rating / slope for manual courses; blank clears it.
-  function setCourseRating(key: "rating" | "slope", raw: string) {
+  // ── Tees (rating / slope per tee) ──
+  function updateTees(fn: (tees: CourseTee[]) => CourseTee[]) {
+    updateRound((r) => ({ ...r, course: withTees(r.course, fn(editableTees(r.course))) }));
+  }
+  function setTee(i: number, patch: Partial<CourseTee>) {
+    updateRound((r) => {
+      const list = editableTees(r.course);
+      const old = list[i];
+      if (!old) return r;
+      const next = list.map((t, j) => (j === i ? { ...t, ...patch } : t));
+      // Players reference their tee by name — carry them over a rename.
+      const renamed = patch.name !== undefined && patch.name !== old.name;
+      return {
+        ...r,
+        course: withTees(r.course, next),
+        players: renamed
+          ? r.players.map((p) => (p.tee === old.name ? { ...p, tee: patch.name } : p))
+          : r.players,
+      };
+    });
+  }
+  // Blank or non-positive clears the value.
+  function setTeeNumber(i: number, key: "rating" | "slope", raw: string) {
     const n = parseFloat(raw);
-    updateRound((r) => ({
-      ...r,
-      course: { ...r.course, [key]: Number.isFinite(n) && n > 0 ? n : null },
-    }));
+    setTee(i, { [key]: Number.isFinite(n) && n > 0 ? n : null });
+  }
+  function addTee() {
+    // Start on the first palette colour no tee is using yet.
+    const used = new Set(tees.map((t) => t.color?.toLowerCase()));
+    const pick = TEE_PALETTE.find((c) => !used.has(c.color.toLowerCase())) ?? TEE_PALETTE[0];
+    updateTees((list) => [
+      ...list,
+      { name: pick.name, color: pick.color, gender: "M", distances: [] },
+    ]);
+  }
+  function removeTee(i: number) {
+    updateTees((list) => list.filter((_, j) => j !== i));
+    setEditingTee(null);
+  }
+  // Tapping the square steps to the next standard colour; a name that was just a
+  // colour name (or blank) follows it, a custom name ("Combo") is kept.
+  function cycleTeeColor(i: number) {
+    const t = tees[i];
+    if (!t) return;
+    const at = TEE_PALETTE.findIndex((c) => c.color.toLowerCase() === t.color?.toLowerCase());
+    const next = TEE_PALETTE[(at + 1) % TEE_PALETTE.length];
+    const base = t.name.replace(/\s*\((M|W)\)\s*$/i, "").trim().toLowerCase();
+    const isColourName = base === "" || TEE_PALETTE.some((c) => c.name.toLowerCase() === base);
+    setTee(i, { color: next.color, ...(isColourName ? { name: next.name } : {}) });
+  }
+  function toggleTeeGender(i: number) {
+    const t = tees[i];
+    if (!t) return;
+    const isW = t.gender ? t.gender === "W" : /\(W\)\s*$/i.test(t.name);
+    setTee(i, { gender: isW ? "M" : "W" });
   }
 
   // ── Players ──
@@ -298,29 +353,71 @@ export function SetupTab({
             {hasCourse ? `${course.name} · Par ${coursePar(course)}` : "No course set"}
           </span>
           {hasCourse &&
-            (teeChoices.length > 0 ? (
-              <span className="mt-1 block space-y-0.5">
-                {teeChoices.map((t) => (
-                  <span key={t.name} className="flex items-center gap-1.5">
-                    <TeeSwatch tee={t} size={18} />
-                    <span className="font-semibold text-text-primary">{t.name}</span>
-                    <span className="tabular-nums">
-                      {t.rating} / {t.slope}
-                      {t.yards ? ` · ${t.yards.toLocaleString()} yds` : ""}
+            (tees.length > 0 ? (
+              <span className="mt-1 block space-y-1">
+                {tees.map((t, i) =>
+                  editingTee === i ? (
+                    <span key={i} className="flex items-center gap-1.5">
+                      <TeeSwatch tee={t} size={18} />
+                      <span className="min-w-0 truncate font-semibold text-text-primary">
+                        {t.name}
+                      </span>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min={0}
+                        autoFocus
+                        value={t.rating ?? ""}
+                        onFocus={selectOnFocus}
+                        onChange={(e) => setTeeNumber(i, "rating", e.target.value)}
+                        placeholder="Rating"
+                        aria-label={`${t.name} rating`}
+                        className="w-16 rounded border border-card-border px-1 py-1 text-center text-sm text-text-primary"
+                      />
+                      <span>/</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={t.slope ?? ""}
+                        onFocus={selectOnFocus}
+                        onChange={(e) => setTeeNumber(i, "slope", e.target.value)}
+                        placeholder="Slope"
+                        aria-label={`${t.name} slope`}
+                        className="w-14 rounded border border-card-border px-1 py-1 text-center text-sm text-text-primary"
+                      />
+                      <button
+                        onClick={() => setEditingTee(null)}
+                        aria-label="Done editing"
+                        className="rounded-md bg-primary p-1 text-on-dark"
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
                     </span>
-                  </span>
-                ))}
-              </span>
-            ) : (
-              <span className="block">
-                {course.rating && course.slope ? (
-                  <span className="font-semibold text-text-primary">
-                    Rating {course.rating} · Slope {course.slope}
-                  </span>
-                ) : (
-                  <span className="text-text-faint">No rating/slope</span>
+                  ) : (
+                    <span key={i} className="flex items-center gap-1.5">
+                      <TeeSwatch tee={t} size={18} />
+                      <span className="font-semibold text-text-primary">{t.name}</span>
+                      {t.rating && t.slope ? (
+                        <span className="tabular-nums">
+                          {t.rating} / {t.slope}
+                          {t.yards ? ` · ${t.yards.toLocaleString()} yds` : ""}
+                        </span>
+                      ) : (
+                        <span className="text-text-faint">No rating/slope</span>
+                      )}
+                      <button
+                        onClick={() => setEditingTee(i)}
+                        aria-label={`Edit ${t.name} rating and slope`}
+                        className="ml-auto p-1 text-text-faint"
+                      >
+                        <Settings className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  )
                 )}
               </span>
+            ) : (
+              <span className="block text-text-faint">No rating/slope</span>
             ))}
           {/* Stroke-index problems only — nothing shown when 1–18 are all present */}
           {hasCourse && siIssues.length > 0 && (
@@ -372,32 +469,79 @@ export function SetupTab({
               placeholder="Course name"
               className="mb-3 w-full rounded border border-card-border px-2 py-1.5 text-sm outline-none focus:border-primary"
             />
-            <div className="mb-3 flex items-center gap-3 text-sm">
-              <label className="flex items-center gap-1.5">
-                <span className="text-xs text-text-muted">Rating</span>
-                <input
-                  type="number"
-                  step="0.1"
-                  min={0}
-                  value={course.rating ?? ""}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => setCourseRating("rating", e.target.value)}
-                  placeholder="71.2"
-                  className="w-20 rounded border border-card-border px-1 py-1 text-center"
-                />
-              </label>
-              <label className="flex items-center gap-1.5">
-                <span className="text-xs text-text-muted">Slope</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={course.slope ?? ""}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => setCourseRating("slope", e.target.value)}
-                  placeholder="130"
-                  className="w-20 rounded border border-card-border px-1 py-1 text-center"
-                />
-              </label>
+            {/* Tees: colour square (tap to change), name, M/W, rating, slope */}
+            <div className="mb-3">
+              <div className="mb-1 flex items-center gap-1.5 text-xs text-text-muted">
+                <span className="flex-1">Tees</span>
+                <span className="w-16 text-center">Rating</span>
+                <span className="w-14 text-center">Slope</span>
+                <span className="w-6" />
+              </div>
+              <div className="space-y-1.5">
+                {tees.map((t, i) => {
+                  const isW = t.gender ? t.gender === "W" : /\(W\)\s*$/i.test(t.name);
+                  return (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => cycleTeeColor(i)}
+                        aria-label={`Change ${t.name} colour`}
+                        className="flex shrink-0"
+                      >
+                        <TeeSwatch tee={{ ...t, gender: undefined, name: "" }} size={32} />
+                      </button>
+                      <button
+                        onClick={() => toggleTeeGender(i)}
+                        aria-label={`${t.name}: ${isW ? "women's" : "men's"} tee`}
+                        className="w-7 shrink-0 rounded border border-card-border py-1 text-xs font-bold"
+                      >
+                        {isW ? "W" : "M"}
+                      </button>
+                      <input
+                        value={t.name}
+                        onChange={(e) => setTee(i, { name: e.target.value })}
+                        onFocus={selectOnFocus}
+                        placeholder="Tee name"
+                        className="min-w-0 flex-1 rounded border border-card-border px-2 py-1 text-sm"
+                      />
+                      <input
+                        type="number"
+                        step="0.1"
+                        min={0}
+                        value={t.rating ?? ""}
+                        onFocus={selectOnFocus}
+                        onChange={(e) => setTeeNumber(i, "rating", e.target.value)}
+                        placeholder="71.2"
+                        aria-label={`${t.name} rating`}
+                        className="w-16 rounded border border-card-border px-1 py-1 text-center text-sm"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        value={t.slope ?? ""}
+                        onFocus={selectOnFocus}
+                        onChange={(e) => setTeeNumber(i, "slope", e.target.value)}
+                        placeholder="130"
+                        aria-label={`${t.name} slope`}
+                        className="w-14 rounded border border-card-border px-1 py-1 text-center text-sm"
+                      />
+                      <button
+                        onClick={() => removeTee(i)}
+                        aria-label={`Remove ${t.name}`}
+                        className="w-6 shrink-0 text-text-faint"
+                      >
+                        <X className="mx-auto h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                onClick={addTee}
+                className="mt-2 flex items-center gap-1 text-xs font-semibold text-accent-on-light"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add tee
+              </button>
             </div>
             <table className="w-full text-center text-sm">
               <thead>

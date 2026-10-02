@@ -271,7 +271,8 @@ export function buildResults(round: Round): ResultsData {
       })
     : [];
 
-  const tees: ResultTee[] = (round.course.tees ?? []).map((t) => {
+  // Manually-added tees have no hole yardages ([]); they get no scorecard row.
+  const tees: ResultTee[] = (round.course.tees ?? []).filter((t) => t.distances?.length).map((t) => {
     const distanceByHole: Record<number, number | null> = {};
     holes.forEach((h, i) => {
       distanceByHole[h.number] = t.distances?.[i] ?? null;

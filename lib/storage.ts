@@ -6,6 +6,7 @@
 import {
   Course,
   CourseHole,
+  CourseTee,
   Player,
   Round,
   DEFAULT_SETTINGS,
@@ -100,6 +101,26 @@ export function saveCourses(courses: Course[]): void {
 
 export function coursePar(course: Course): number {
   return course.holes.reduce((sum, h) => sum + h.par, 0);
+}
+
+/**
+ * The course's tees for editing. Older/manual courses kept a single course-level
+ * rating + slope; that's folded onto the first tee (or a new "Tees" tee) so every
+ * course is edited the same way — per tee.
+ */
+export function editableTees(course: Course): CourseTee[] {
+  const tees = course.tees ?? [];
+  const hasLegacy = !!course.rating && !!course.slope;
+  if (!hasLegacy || tees.some((t) => t.rating && t.slope)) return tees;
+  const legacy = { rating: course.rating, slope: course.slope };
+  return tees.length > 0
+    ? [{ ...tees[0], ...legacy }, ...tees.slice(1)]
+    : [{ name: "Tees", distances: [], ...legacy }];
+}
+
+/** `course` with its tees replaced by `tees` and the course-level rating retired. */
+export function withTees(course: Course, tees: CourseTee[]): Course {
+  return { ...course, tees, rating: null, slope: null };
 }
 
 /** Validate that stroke indexes are a 1..18 permutation; return missing/dupes. */
