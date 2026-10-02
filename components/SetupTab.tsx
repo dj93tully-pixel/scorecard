@@ -99,7 +99,8 @@ export function SetupTab({
   const nassauFormat = settings.nassauFormat ?? "teams";
   // Nassau in team format uses the same A/B assignment UI as Best Ball / Vegas.
   const showTeams = meta.hasTeams || (gameType === "nassau" && nassauFormat === "teams");
-  const playerCountOk = players.length >= meta.players.min && players.length <= meta.players.max;
+  const playerCountOk =
+    players.length >= meta.players.min && players.length <= meta.players.max;
   // One player = a plain scorecard for tracking your own round: no money or junk.
   const solo = players.length === 1;
 
@@ -196,10 +197,7 @@ export function SetupTab({
     if (!t) return;
     const at = TEE_PALETTE.findIndex((c) => c.color.toLowerCase() === t.color?.toLowerCase());
     const next = TEE_PALETTE[(at + 1) % TEE_PALETTE.length];
-    const base = t.name
-      .replace(/\s*\((M|W)\)\s*$/i, "")
-      .trim()
-      .toLowerCase();
+    const base = t.name.replace(/\s*\((M|W)\)\s*$/i, "").trim().toLowerCase();
     const isColourName = base === "" || TEE_PALETTE.some((c) => c.name.toLowerCase() === base);
     setTee(i, { color: next.color, ...(isColourName ? { name: next.name } : {}) });
   }
@@ -213,7 +211,7 @@ export function SetupTab({
   // ── Players ──
   function setPlayer(
     id: string,
-    patch: Partial<{ name: string; handicap: number; pops: number; tee: string }>,
+    patch: Partial<{ name: string; handicap: number; pops: number; tee: string }>
   ) {
     updateRound((r) => ({
       ...r,
@@ -265,7 +263,10 @@ export function SetupTab({
   }
 
   // ── Settings ──
-  function setSetting<K extends keyof Round["settings"]>(key: K, value: Round["settings"][K]) {
+  function setSetting<K extends keyof Round["settings"]>(
+    key: K,
+    value: Round["settings"][K]
+  ) {
     updateRound((r) => ({ ...r, settings: { ...r.settings, [key]: value } }));
   }
   function setPopsMode(direct: boolean) {
@@ -510,7 +511,9 @@ export function SetupTab({
                         type="number"
                         value={h.par}
                         onFocus={selectOnFocus}
-                        onChange={(e) => setHole(h.number, { par: parseInt(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setHole(h.number, { par: parseInt(e.target.value) || 0 })
+                        }
                         className="w-14 rounded border border-card-border px-1 py-1 text-center"
                       />
                     </td>
@@ -532,7 +535,10 @@ export function SetupTab({
               </tbody>
             </table>
             <div className="mt-3 flex items-center justify-between gap-2">
-              <button onClick={resetCourse} className="text-xs font-semibold text-negative">
+              <button
+                onClick={resetCourse}
+                className="text-xs font-semibold text-negative"
+              >
                 Reset course
               </button>
               <button
@@ -728,11 +734,12 @@ export function SetupTab({
           <div className="space-y-2">
             {orderedPlayers.map((p) => {
               const team = settings.teams?.[p.id] ?? "A";
-              const teamOptions =
-                gameType === "bestball" ? (["A", "B", "C", "D"] as const) : (["A", "B"] as const);
+              const teamOptions = gameType === "bestball" ? (["A", "B", "C", "D"] as const) : (["A", "B"] as const);
               return (
                 <div key={p.id} className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 flex-1 truncate font-medium">{p.name || "Unnamed"}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {p.name || "Unnamed"}
+                  </span>
                   <div className="flex overflow-hidden rounded-lg border border-card-border">
                     {teamOptions.map((t) => (
                       <button
@@ -760,244 +767,249 @@ export function SetupTab({
         <section className="rounded-xl border border-card-border bg-card-bg p-4">
           <h3 className="mb-1 font-bold">Solo round</h3>
           <p className="text-xs text-text-muted">
-            Playing by yourself — this is a plain scorecard with no money or side bets. Add a player
-            to turn betting back on.
+            Playing by yourself — this is a plain scorecard with no money or side bets.
+            Add a player to turn betting back on.
           </p>
         </section>
       )}
 
       {/* Money & rules */}
       {!solo && (
-        <section className="rounded-xl border border-card-border bg-card-bg p-4">
-          <h3 className="mb-1 font-bold">Money &amp; rules</h3>
-          <div className="divide-y divide-divider">
-            {gameType === "nassau" && (
-              <Field label="Format">
-                <select
-                  value={nassauFormat}
-                  onChange={(e) => setSetting("nassauFormat", e.target.value as "teams" | "robin")}
-                  className="rounded-lg border border-card-border px-2 py-2"
-                >
-                  <option value="teams">Teams (A vs B)</option>
-                  <option value="robin">Everyone vs everyone</option>
-                </select>
-              </Field>
-            )}
-            {(isWolf ||
-              gameType === "bestball" ||
-              gameType === "sixes" ||
-              gameType === "stroke" ||
-              gameType === "stableford" ||
-              gameType === "modifiedstableford" ||
-              gameType === "elevens" ||
-              gameType === "nassau") && (
-              <Field
-                label={
-                  gameType === "stroke" || gameType === "elevens"
-                    ? "$ per stroke"
-                    : gameType === "stableford" || gameType === "modifiedstableford"
-                      ? "$ per point"
-                      : gameType === "nassau"
-                        ? "$ per bet (F/B/18)"
-                        : "Stake — $/hole"
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
+        <h3 className="mb-1 font-bold">Money &amp; rules</h3>
+        <div className="divide-y divide-divider">
+          {gameType === "nassau" && (
+            <Field label="Format">
+              <select
+                value={nassauFormat}
+                onChange={(e) =>
+                  setSetting("nassauFormat", e.target.value as "teams" | "robin")
                 }
+                className="rounded-lg border border-card-border px-2 py-2"
               >
+                <option value="teams">Teams (A vs B)</option>
+                <option value="robin">Everyone vs everyone</option>
+              </select>
+            </Field>
+          )}
+          {(isWolf ||
+            gameType === "bestball" ||
+            gameType === "sixes" ||
+            gameType === "stroke" ||
+            gameType === "stableford" ||
+            gameType === "modifiedstableford" ||
+            gameType === "elevens" ||
+            gameType === "nassau") && (
+            <Field
+              label={
+                gameType === "stroke" || gameType === "elevens"
+                  ? "$ per stroke"
+                  : gameType === "stableford" || gameType === "modifiedstableford"
+                    ? "$ per point"
+                    : gameType === "nassau"
+                      ? "$ per bet (F/B/18)"
+                      : "Stake — $/hole"
+              }
+            >
+              <input
+                type="number"
+                min={0}
+                value={settings.stake}
+                onFocus={selectOnFocus}
+                onChange={(e) => setSetting("stake", parseFloat(e.target.value) || 0)}
+                className={numberInput}
+              />
+            </Field>
+          )}
+          {gameType === "skins" && (
+            <Field label="Skin value — $">
+              <input
+                type="number"
+                min={0}
+                value={settings.skinValue ?? 1}
+                onFocus={selectOnFocus}
+                onChange={(e) => setSetting("skinValue", parseFloat(e.target.value) || 0)}
+                className={numberInput}
+              />
+            </Field>
+          )}
+          {gameType === "vegas" && (
+            <>
+              <Field label="Point value — $">
                 <input
                   type="number"
                   min={0}
-                  value={settings.stake}
+                  value={settings.pointValue ?? 1}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setSetting("stake", parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setSetting("pointValue", parseFloat(e.target.value) || 0)}
                   className={numberInput}
                 />
               </Field>
-            )}
-            {gameType === "skins" && (
-              <Field label="Skin value — $">
-                <input
-                  type="number"
-                  min={0}
-                  value={settings.skinValue ?? 1}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => setSetting("skinValue", parseFloat(e.target.value) || 0)}
-                  className={numberInput}
-                />
-              </Field>
-            )}
-            {gameType === "vegas" && (
-              <>
-                <Field label="Point value — $">
-                  <input
-                    type="number"
-                    min={0}
-                    value={settings.pointValue ?? 1}
-                    onFocus={selectOnFocus}
-                    onChange={(e) => setSetting("pointValue", parseFloat(e.target.value) || 0)}
-                    className={numberInput}
-                  />
-                </Field>
-                <Field label="Birdie flips opponent">
-                  <input
-                    type="checkbox"
-                    checked={settings.birdieFlip ?? true}
-                    onChange={(e) => setSetting("birdieFlip", e.target.checked)}
-                    className="h-6 w-6 accent-[#354CA1]"
-                  />
-                </Field>
-              </>
-            )}
-            {(isWolf || gameType === "bestball") && (
-              <Field
-                label={isWolf ? "Wolf team $/hole (0 = same)" : "Team A $/hole (0 = same)"}
-                hint={
-                  <>
-                    For uneven teams (e.g. 5 players).{" "}
-                    <span className="font-semibold text-accent-on-light">
-                      Suggested amount is {suggestedLabel}.
-                    </span>
-                  </>
-                }
-              >
-                <input
-                  type="number"
-                  min={0}
-                  value={settings.wolfStake ?? 0}
-                  onFocus={selectOnFocus}
-                  onChange={(e) => setSetting("wolfStake", parseFloat(e.target.value) || 0)}
-                  className={numberInput}
-                />
-              </Field>
-            )}
-            {isWolf && (
-              <>
-                <Field label="Lone wolf multiplier">
-                  <input
-                    type="number"
-                    min={1}
-                    value={settings.loneMult}
-                    onFocus={selectOnFocus}
-                    onChange={(e) => setSetting("loneMult", parseFloat(e.target.value) || 1)}
-                    className={numberInput}
-                  />
-                </Field>
-                <Field label="Blind wolf multiplier">
-                  <input
-                    type="number"
-                    min={1}
-                    value={settings.blindMult}
-                    onFocus={selectOnFocus}
-                    onChange={(e) => setSetting("blindMult", parseFloat(e.target.value) || 1)}
-                    className={numberInput}
-                  />
-                </Field>
-              </>
-            )}
-            {showCarry && (
-              <Field
-                label="Carryover ties"
-                hint="When a hole is tied (pushed), its money isn't voided — it rolls forward and is added onto the next hole someone wins."
-              >
+              <Field label="Birdie flips opponent">
                 <input
                   type="checkbox"
-                  checked={settings.carryover}
-                  onChange={(e) => setCarryover(e.target.checked)}
+                  checked={settings.birdieFlip ?? true}
+                  onChange={(e) => setSetting("birdieFlip", e.target.checked)}
                   className="h-6 w-6 accent-[#354CA1]"
                 />
               </Field>
-            )}
-            {showCarry && (
-              <Field
-                label="Carryover hammers"
-                hint="If the tied hole was hammered, roll forward the full doubled amount instead of just the base stake. (Needs Carryover ties on.)"
-                disabled={!settings.carryover}
-              >
+            </>
+          )}
+          {(isWolf || gameType === "bestball") && (
+            <Field
+              label={isWolf ? "Wolf team $/hole (0 = same)" : "Team A $/hole (0 = same)"}
+              hint={
+                <>
+                  For uneven teams (e.g. 5 players).{" "}
+                  <span className="font-semibold text-accent-on-light">
+                    Suggested amount is {suggestedLabel}.
+                  </span>
+                </>
+              }
+            >
+              <input
+                type="number"
+                min={0}
+                value={settings.wolfStake ?? 0}
+                onFocus={selectOnFocus}
+                onChange={(e) => setSetting("wolfStake", parseFloat(e.target.value) || 0)}
+                className={numberInput}
+              />
+            </Field>
+          )}
+          {isWolf && (
+            <>
+              <Field label="Lone wolf multiplier">
                 <input
-                  type="checkbox"
-                  disabled={!settings.carryover}
-                  checked={settings.hammerCarry ?? false}
-                  onChange={(e) => setSetting("hammerCarry", e.target.checked)}
-                  className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
+                  type="number"
+                  min={1}
+                  value={settings.loneMult}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => setSetting("loneMult", parseFloat(e.target.value) || 1)}
+                  className={numberInput}
                 />
               </Field>
-            )}
-            {showCarry && (
-              <Field
-                label="Carryover hammers inside press bets"
-                hint="Inside a press, a hammered tie carries at its doubled size instead of the base stake — like Carryover hammered value, but for the press. (Needs Carryover ties on.)"
-                disabled={!settings.carryover}
-              >
+              <Field label="Blind wolf multiplier">
                 <input
-                  type="checkbox"
-                  disabled={!settings.carryover}
-                  checked={settings.pressHammerCarry ?? false}
-                  onChange={(e) => setSetting("pressHammerCarry", e.target.checked)}
-                  className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
+                  type="number"
+                  min={1}
+                  value={settings.blindMult}
+                  onFocus={selectOnFocus}
+                  onChange={(e) => setSetting("blindMult", parseFloat(e.target.value) || 1)}
+                  className={numberInput}
                 />
               </Field>
-            )}
-            {showCarry && (
-              <Field
-                label="Carryover ties into new press bets"
-                hint="When you open a press right after a tie, the money carrying from that tie is copied into the new press so it starts bigger (it still stays in the main bet too). (Needs Carryover ties on.)"
+            </>
+          )}
+          {showCarry && (
+            <Field
+              label="Carryover ties"
+              hint="When a hole is tied (pushed), its money isn't voided — it rolls forward and is added onto the next hole someone wins."
+            >
+              <input
+                type="checkbox"
+                checked={settings.carryover}
+                onChange={(e) => setCarryover(e.target.checked)}
+                className="h-6 w-6 accent-[#354CA1]"
+              />
+            </Field>
+          )}
+          {showCarry && (
+            <Field
+              label="Carryover hammers"
+              hint="If the tied hole was hammered, roll forward the full doubled amount instead of just the base stake. (Needs Carryover ties on.)"
+              disabled={!settings.carryover}
+            >
+              <input
+                type="checkbox"
                 disabled={!settings.carryover}
-              >
-                <input
-                  type="checkbox"
-                  disabled={!settings.carryover}
-                  checked={settings.pressCarryover ?? false}
-                  onChange={(e) => setSetting("pressCarryover", e.target.checked)}
-                  className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
-                />
-              </Field>
-            )}
-          </div>
-        </section>
+                checked={settings.hammerCarry ?? false}
+                onChange={(e) => setSetting("hammerCarry", e.target.checked)}
+                className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
+              />
+            </Field>
+          )}
+          {showCarry && (
+            <Field
+              label="Carryover hammers inside press bets"
+              hint="Inside a press, a hammered tie carries at its doubled size instead of the base stake — like Carryover hammered value, but for the press. (Needs Carryover ties on.)"
+              disabled={!settings.carryover}
+            >
+              <input
+                type="checkbox"
+                disabled={!settings.carryover}
+                checked={settings.pressHammerCarry ?? false}
+                onChange={(e) => setSetting("pressHammerCarry", e.target.checked)}
+                className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
+              />
+            </Field>
+          )}
+          {showCarry && (
+            <Field
+              label="Carryover ties into new press bets"
+              hint="When you open a press right after a tie, the money carrying from that tie is copied into the new press so it starts bigger (it still stays in the main bet too). (Needs Carryover ties on.)"
+              disabled={!settings.carryover}
+            >
+              <input
+                type="checkbox"
+                disabled={!settings.carryover}
+                checked={settings.pressCarryover ?? false}
+                onChange={(e) => setSetting("pressCarryover", e.target.checked)}
+                className="h-6 w-6 accent-[#354CA1] disabled:cursor-not-allowed"
+              />
+            </Field>
+          )}
+        </div>
+      </section>
       )}
 
       {/* Side bets (junk) — ride on top of any game type, fold into settle-up */}
       {!solo && (
-        <section className="rounded-xl border border-card-border bg-card-bg p-4">
-          <h3 className="mb-1 font-bold">Side bets</h3>
-          <p className="mb-3 text-xs text-text-muted">
-            Optional junk that rides on top of the main game and folds into the final settle-up.
-            Birdies and eagles score automatically; the rest are tapped per hole on the Score tab.
-          </p>
-          <div className="divide-y divide-divider">
-            {JUNK_TYPES.map((t) => {
-              const cfg = junkConfig(settings, t.id);
-              const on = !!cfg;
-              return (
-                <div key={t.id} className="flex items-center justify-between gap-3 py-2">
-                  <label className="flex min-w-0 flex-1 items-start gap-2">
+      <section className="rounded-xl border border-card-border bg-card-bg p-4">
+        <h3 className="mb-1 font-bold">Side bets</h3>
+        <p className="mb-3 text-xs text-text-muted">
+          Optional junk that rides on top of the main game and folds into the final
+          settle-up. Birdies and eagles score automatically; the rest are tapped per
+          hole on the Score tab.
+        </p>
+        <div className="divide-y divide-divider">
+          {JUNK_TYPES.map((t) => {
+            const cfg = junkConfig(settings, t.id);
+            const on = !!cfg;
+            return (
+              <div key={t.id} className="flex items-center justify-between gap-3 py-2">
+                <label className="flex min-w-0 flex-1 items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={(e) => setJunkOn(t.id, e.target.checked)}
+                    className="mt-0.5 h-5 w-5 shrink-0 accent-[#354CA1]"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-text-primary">
+                      {t.label}
+                    </span>
+                    <span className="block text-xs text-text-faint">{t.blurb}</span>
+                  </span>
+                </label>
+                {on && (
+                  <span className="flex shrink-0 items-center gap-1 text-sm text-text-muted">
+                    $
                     <input
-                      type="checkbox"
-                      checked={on}
-                      onChange={(e) => setJunkOn(t.id, e.target.checked)}
-                      className="mt-0.5 h-5 w-5 shrink-0 accent-[#354CA1]"
+                      type="number"
+                      min={0}
+                      value={cfg!.value}
+                      onFocus={selectOnFocus}
+                      onChange={(e) => setJunkValue(t.id, parseFloat(e.target.value) || 0)}
+                      className={numberInput}
                     />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-text-primary">{t.label}</span>
-                      <span className="block text-xs text-text-faint">{t.blurb}</span>
-                    </span>
-                  </label>
-                  {on && (
-                    <span className="flex shrink-0 items-center gap-1 text-sm text-text-muted">
-                      $
-                      <input
-                        type="number"
-                        min={0}
-                        value={cfg!.value}
-                        onFocus={selectOnFocus}
-                        onChange={(e) => setJunkValue(t.id, parseFloat(e.target.value) || 0)}
-                        className={numberInput}
-                      />
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
       )}
     </div>
   );
