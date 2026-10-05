@@ -97,6 +97,29 @@ export function saveCourses(courses: Course[]): void {
   }
 }
 
+// ── My Courses (saved on this device, so no API lookup is needed) ──────────
+
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Save `course` to My Courses, replacing one with the same name. Returns true if it replaced. */
+export function saveMyCourse(course: Course): boolean {
+  const list = loadCourses();
+  const at = list.findIndex((c) => sameName(c.name, course.name));
+  const copy: Course = JSON.parse(JSON.stringify({ ...course, name: course.name.trim() }));
+  if (at >= 0) list[at] = copy;
+  else list.push(copy);
+  saveCourses(list.sort((a, b) => a.name.localeCompare(b.name)));
+  return at >= 0;
+}
+
+export function deleteMyCourse(name: string): void {
+  saveCourses(loadCourses().filter((c) => !sameName(c.name, name)));
+}
+
+export function isMyCourse(name: string): boolean {
+  return loadCourses().some((c) => sameName(c.name, name));
+}
+
 // ── Misc helpers ───────────────────────────────────────────────────────────
 
 export function coursePar(course: Course): number {

@@ -70,6 +70,17 @@ export function Header() {
               {config.rightButton.label}
             </button>
           )}
+          {config.iconButton && (
+            <button
+              onClick={config.iconButton.onClick}
+              aria-label={config.iconButton.label}
+              title={config.iconButton.label}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-on-dark"
+              style={{ backgroundColor: "#14B8B0" }}
+            >
+              {config.iconButton.icon}
+            </button>
+          )}
         </div>
       </div>
 

@@ -29,6 +29,8 @@ export interface HeaderConfig {
   backOnClick?: () => void;
   /** Generic right-side action (e.g. Admin / Edit / Done). */
   rightButton?: HeaderButton;
+  /** Small icon-only button shown to the right of `rightButton` (label = aria-label). */
+  iconButton?: HeaderButton;
   /** "admin" tints the header chrome (warm) + shows the title in amber, so it's
    *  obvious you're in the admin area rather than the play/games view. */
   variant?: "admin";

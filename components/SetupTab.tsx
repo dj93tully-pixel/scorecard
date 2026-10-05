@@ -5,7 +5,7 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Search, X } from "lucide-react";
+import { BookmarkPlus, Pencil, Plus, Search, X } from "lucide-react";
 import {
   Round,
   Course,
@@ -23,8 +23,10 @@ import {
   withTees,
   coursePar,
   strokeIndexIssues,
+  saveMyCourse,
 } from "@/lib/storage";
 import { CourseImport } from "./CourseImport";
+import { MyCourseList } from "./MyCourseList";
 import { TeePicker, TeeSwatch, TEE_PALETTE } from "./TeePicker";
 import { gameTypeMeta, TEAM_COLORS } from "@/lib/gametypes";
 import { JUNK_TYPES, junkConfig } from "@/lib/junk";
@@ -61,8 +63,9 @@ export function SetupTab({
   round: Round;
   updateRound: (patch: Partial<Round> | ((r: Round) => Round)) => void;
 }) {
-  const [coursePanel, setCoursePanel] = useState<"none" | "import" | "manual">("none");
+  const [coursePanel, setCoursePanel] = useState<"none" | "import" | "mine" | "manual">("none");
   const [flash, setFlash] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
 
   const { players, settings, teeOrder, course } = round;
   const siIssues = strokeIndexIssues(course);
@@ -140,11 +143,17 @@ export function SetupTab({
       },
     }));
   }
-  function importCourse(c: Course) {
+  function importCourse(c: Course, verb = "Imported") {
     updateRound((r) => ({ ...r, course: c }));
     setCoursePanel("none"); // collapse the dropdowns
     const par = c.holes.reduce((s, h) => s + h.par, 0);
-    setFlash(`Imported “${c.name}” — ${c.holes.length} holes, par ${par}`);
+    setFlash(`${verb} “${c.name}” — ${c.holes.length} holes, par ${par}`);
+  }
+  function saveToMyCourses() {
+    const replaced = saveMyCourse(withTees(course, tees));
+    setFlash(`${replaced ? "Updated" : "Saved"} “${course.name.trim()}” in My Courses`);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2000);
   }
   function resetCourse() {
     updateRound((r) => ({ ...r, course: blankCourse() }));
@@ -383,7 +392,7 @@ export function SetupTab({
         <div className="flex gap-2">
           <button
             onClick={() => setCoursePanel((p) => (p === "import" ? "none" : "import"))}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold ${
+            className={`flex flex-auto items-center justify-center gap-1 whitespace-nowrap rounded-lg px-2 py-2.5 text-[13px] font-semibold ${
               coursePanel === "import"
                 ? "bg-primary text-on-dark"
                 : "border border-card-border bg-card-bg text-text-muted"
@@ -393,8 +402,20 @@ export function SetupTab({
             Import course
           </button>
           <button
+            onClick={() => setCoursePanel((p) => (p === "mine" ? "none" : "mine"))}
+            className={`flex flex-auto items-center justify-center gap-1 whitespace-nowrap rounded-lg px-2 py-2.5 text-[13px] font-semibold ${
+              coursePanel === "mine"
+                ? "text-on-dark"
+                : "border border-card-border bg-card-bg text-text-muted"
+            }`}
+            style={coursePanel === "mine" ? { backgroundColor: "#14B8B0" } : undefined}
+          >
+            <Plus className="h-4 w-4" />
+            My course
+          </button>
+          <button
             onClick={() => setCoursePanel((p) => (p === "manual" ? "none" : "manual"))}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold ${
+            className={`flex flex-auto items-center justify-center gap-1 whitespace-nowrap rounded-lg px-2 py-2.5 text-[13px] font-semibold ${
               coursePanel === "manual"
                 ? "bg-primary text-on-dark"
                 : "border border-card-border bg-card-bg text-text-muted"
@@ -408,6 +429,12 @@ export function SetupTab({
         {coursePanel === "import" && (
           <div className="mt-3">
             <CourseImport onImport={importCourse} />
+          </div>
+        )}
+
+        {coursePanel === "mine" && (
+          <div className="mt-3">
+            <MyCourseList onPick={(c) => importCourse(c, "Loaded")} />
           </div>
         )}
 
@@ -541,12 +568,23 @@ export function SetupTab({
               >
                 Reset course
               </button>
-              <button
-                onClick={() => setCoursePanel("none")}
-                className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-on-dark"
-              >
-                Done
-              </button>
+              <span className="flex items-center gap-2">
+                <button
+                  onClick={saveToMyCourses}
+                  disabled={!hasCourse}
+                  className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-on-dark disabled:opacity-40"
+                  style={{ backgroundColor: "#14B8B0" }}
+                >
+                  <BookmarkPlus className="h-4 w-4" />
+                  {justSaved ? "Saved ✓" : "Save to My Courses"}
+                </button>
+                <button
+                  onClick={() => setCoursePanel("none")}
+                  className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-on-dark"
+                >
+                  Done
+                </button>
+              </span>
             </div>
           </div>
         )}
