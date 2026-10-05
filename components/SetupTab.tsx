@@ -434,7 +434,7 @@ export function SetupTab({
 
         {coursePanel === "mine" && (
           <div className="mt-3">
-            <MyCourseList onPick={(c) => importCourse(c, "Loaded")} allowDelete />
+            <MyCourseList onPick={(c) => importCourse(c, "Loaded")} />
           </div>
         )}
 
