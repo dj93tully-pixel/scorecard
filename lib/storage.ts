@@ -32,7 +32,7 @@ export function blankCourse(name = "New Course"): Course {
 }
 
 export function makePlayer(name = "", handicap = 0): Player {
-  return { id: uid(), name, handicap, pops: 0 };
+  return { id: uid(), name, handicap };
 }
 
 export function defaultPlayers(): Player[] {
@@ -62,10 +62,28 @@ export function loadRound(): Round | null {
   try {
     const raw = window.localStorage.getItem(ROUND_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as Round;
+    return migrateDirectPops(JSON.parse(raw) as Round);
   } catch {
     return null;
   }
+}
+
+// The old "Pops" mode (strokes typed in directly) was removed. A round saved in
+// it becomes Full mode with conversion off and each player's pops as their
+// handicap, which gives the same strokes.
+function migrateDirectPops(round: Round): Round {
+  const settings = round.settings as Omit<Round["settings"], "handicapMode"> & {
+    handicapMode: string;
+  };
+  if (settings?.handicapMode !== "direct") return round;
+  return {
+    ...round,
+    settings: { ...round.settings, handicapMode: "full", courseHandicap: false },
+    players: round.players.map((p) => {
+      const { pops, ...rest } = p as typeof p & { pops?: number };
+      return { ...rest, handicap: Math.max(0, Math.floor(pops ?? 0)) };
+    }),
+  };
 }
 
 export function saveRound(round: Round): void {

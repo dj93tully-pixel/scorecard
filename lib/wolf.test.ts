@@ -135,40 +135,6 @@ describe("pops — full mode", () => {
   });
 });
 
-// ── Pops: direct mode ──────────────────────────────────────────────────────
-
-describe("pops — direct mode", () => {
-  it("uses each player's pops value verbatim, ignoring handicaps", () => {
-    const players: Player[] = [
-      { id: "a", name: "A", handicap: 99, pops: 0 },
-      { id: "b", name: "B", handicap: 0, pops: 6 },
-    ];
-    const r = strokesReceived(players, "direct");
-    expect(r.a).toBe(0);
-    expect(r.b).toBe(6);
-  });
-
-  it("spreads direct pops across holes by stroke index, with double pops > 18", () => {
-    const players: Player[] = [
-      { id: "a", name: "A", handicap: 0, pops: 0 },
-      { id: "b", name: "B", handicap: 0, pops: 20 },
-    ];
-    const grid = computePops(players, makeCourse(), "direct");
-    expect(grid.a[1]).toBe(0);
-    // 20 pops → 1 everywhere, +1 on SI 1..2
-    expect(grid.b[1]).toBe(2);
-    expect(grid.b[2]).toBe(2);
-    expect(grid.b[3]).toBe(1);
-    expect(grid.b[18]).toBe(1);
-  });
-
-  it("treats a missing pops value as 0", () => {
-    const players: Player[] = [{ id: "a", name: "A", handicap: 12 }];
-    const r = strokesReceived(players, "direct");
-    expect(r.a).toBe(0);
-  });
-});
-
 // ── Pops: index → course handicap ──────────────────────────────────────────
 
 describe("pops — course handicap (index × slope/113 + rating − par)", () => {
@@ -213,11 +179,6 @@ describe("pops — course handicap (index × slope/113 + rating − par)", () =>
     // Bob: 11 strokes with conversion (pop on SI 11), 10 without.
     expect(on.b[11]).toBe(1);
     expect(off.b[11]).toBe(0);
-  });
-
-  it("direct pops mode ignores the conversion entirely", () => {
-    const players: Player[] = [{ id: "a", name: "A", handicap: 10, pops: 3 }];
-    expect(strokesReceived(players, "direct", rated()).a).toBe(3);
   });
 
   it("is a no-op on a course with no rating (existing behaviour)", () => {
@@ -790,7 +751,7 @@ describe("full 18-hole round", () => {
 
 describe("carryByHole — wolf", () => {
   it("splits a hammered pushed hole into normal / hammer", () => {
-    const round = makeRound(
+    const base = makeRound(
       [
         {
           hole: 1,
@@ -801,8 +762,10 @@ describe("carryByHole — wolf", () => {
           hammer: 1,
         },
       ],
-      { stake: 2, carryover: true, hammerCarry: true, handicapMode: "direct" }
+      { stake: 2, carryover: true, hammerCarry: true, handicapMode: "full" }
     );
+    // Scratch players, so no pops affect the tie.
+    const round = { ...base, players: base.players.map((p) => ({ ...p, handicap: 0 })) };
     const c = carryByHole(round).get(1)!;
     expect(c.orig).toBe(2); // un-hammered base carry
     expect(c.hammer).toBe(2); // extra from the ×2 hammer

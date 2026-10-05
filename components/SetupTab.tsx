@@ -1,5 +1,5 @@
 // components/SetupTab.tsx
-// Last tab. Order: Course (top) → Players (names + handicap/pops, reorder =
+// Last tab. Order: Course (top) → Players (names + handicaps, reorder =
 // tee order) → Money & rules. Everything persists immediately via updateRound.
 
 "use client";
@@ -69,11 +69,10 @@ export function SetupTab({
 
   const { players, settings, teeOrder, course } = round;
   const siIssues = strokeIndexIssues(course);
-  const isDirect = settings.handicapMode === "direct";
   // Index → course handicap: on by default; only does anything once the course has
   // both slope and rating.
   const courseHcpOn = settings.courseHandicap !== false;
-  const courseHcpActive = !isDirect && courseHcpOn && hasCourseRating(course);
+  const courseHcpActive = courseHcpOn && hasCourseRating(course);
   // Imported courses carry a rating/slope per tee; each player picks theirs.
   const teeChoices = ratedTees(course);
   // Every tee (rated or not) for the summary + manual editor.
@@ -220,7 +219,7 @@ export function SetupTab({
   // ── Players ──
   function setPlayer(
     id: string,
-    patch: Partial<{ name: string; handicap: number; pops: number; tee: string }>
+    patch: Partial<{ name: string; handicap: number; tee: string }>
   ) {
     updateRound((r) => ({
       ...r,
@@ -277,9 +276,6 @@ export function SetupTab({
     value: Round["settings"][K]
   ) {
     updateRound((r) => ({ ...r, settings: { ...r.settings, [key]: value } }));
-  }
-  function setPopsMode(direct: boolean) {
-    setSetting("handicapMode", direct ? "direct" : "offLow");
   }
   // Carryover ties gates the three carry sub-toggles. Turning it off forces them
   // off too, so they can never look "still on" while their prerequisite is off.
@@ -615,47 +611,35 @@ export function SetupTab({
           </p>
         )}
 
-        {/* Handicap / Pops toggle */}
-        <div className="mb-3 flex rounded-lg bg-page-bg p-1 text-sm font-semibold">
-          <button
-            onClick={() => setPopsMode(false)}
-            className={`flex-1 rounded-md py-2 ${
-              !isDirect ? "bg-primary text-on-dark" : "text-text-muted"
-            }`}
-          >
-            Handicap
-          </button>
-          <button
-            onClick={() => setPopsMode(true)}
-            className={`flex-1 rounded-md py-2 ${
-              isDirect ? "bg-primary text-on-dark" : "text-text-muted"
-            }`}
-          >
-            Pops
-          </button>
-        </div>
-        {!isDirect && (
-          <div className="mb-3">
-            <Field label="Handicap mode">
-              <select
-                value={settings.handicapMode}
-                onChange={(e) => setSetting("handicapMode", e.target.value as HandicapMode)}
-                className="rounded-lg border border-card-border px-2 py-2"
-              >
-                <option value="offLow">Off Low (Relative)</option>
-                <option value="full">Full (Absolute)</option>
-              </select>
-            </Field>
-            <Field label="Convert index to course handicap">
-              <input
-                type="checkbox"
-                checked={courseHcpOn}
-                onChange={(e) => setSetting("courseHandicap", e.target.checked)}
-                className="h-6 w-6 accent-[#354CA1]"
+        <div className="mb-3">
+          <Field label="Convert to course handicap">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={courseHcpOn}
+              onClick={() => setSetting("courseHandicap", !courseHcpOn)}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                courseHcpOn ? "bg-primary" : "bg-card-border"
+              }`}
+            >
+              <span
+                className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                  courseHcpOn ? "translate-x-5" : ""
+                }`}
               />
-            </Field>
-          </div>
-        )}
+            </button>
+          </Field>
+          <Field label="Handicap mode">
+            <select
+              value={settings.handicapMode}
+              onChange={(e) => setSetting("handicapMode", e.target.value as HandicapMode)}
+              className="rounded-lg border border-card-border px-2 py-2"
+            >
+              <option value="offLow">Off Low (Relative)</option>
+              <option value="full">Full (Absolute)</option>
+            </select>
+          </Field>
+        </div>
 
         <div className="space-y-2">
           {orderedPlayers.map((p, i) => (
@@ -676,29 +660,18 @@ export function SetupTab({
                 />
               )}
               <div className="flex items-center gap-1">
-                {isDirect ? (
-                  <input
-                    type="number"
-                    min={0}
-                    value={p.pops ?? 0}
-                    onFocus={selectOnFocus}
-                    onChange={(e) => setPlayer(p.id, { pops: parseInt(e.target.value) || 0 })}
-                    className={numberInput}
-                  />
-                ) : (
-                  <input
-                    type="number"
-                    step={courseHcpActive ? "0.1" : "1"}
-                    value={p.handicap}
-                    onFocus={selectOnFocus}
-                    onChange={(e) =>
-                      setPlayer(p.id, {
-                        handicap: (courseHcpActive ? parseFloat : parseInt)(e.target.value) || 0,
-                      })
-                    }
-                    className={numberInput}
-                  />
-                )}
+                <input
+                  type="number"
+                  step={courseHcpActive ? "0.1" : "1"}
+                  value={p.handicap}
+                  onFocus={selectOnFocus}
+                  onChange={(e) =>
+                    setPlayer(p.id, {
+                      handicap: (courseHcpActive ? parseFloat : parseInt)(e.target.value) || 0,
+                    })
+                  }
+                  className={numberInput}
+                />
                 {courseHcpActive && (
                   <span
                     className="w-9 text-xs font-semibold tabular-nums text-accent-on-light"
@@ -749,9 +722,7 @@ export function SetupTab({
           </button>
         </div>
         <p className="mt-2 text-xs text-text-faint">
-          {isDirect
-            ? "Enter how many strokes (pops) each player gets directly. "
-            : "Enter handicaps; pops are calculated automatically. "}
+          Enter handicaps; pops are calculated automatically.{" "}
           {isWolf
             ? "List order is the tee order — the wolf rotates down this list each hole (override on any hole in Scores)."
             : meta.rotatesTeams

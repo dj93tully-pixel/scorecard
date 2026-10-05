@@ -44,14 +44,12 @@ export interface Course {
 export interface Player {
   id: PlayerId;
   name: string;
-  handicap: number; // handicap index (or course handicap if conversion is off); used when handicapMode is offLow/full
-  pops?: number; // direct strokes received; used when handicapMode is "direct"
+  handicap: number; // handicap index (or course handicap if conversion is off)
   tee?: string; // name of the CourseTee they play; undefined → the course's default tee
 }
 
-// "offLow"/"full" derive pops from handicaps; "direct" uses each player's `pops`
-// value verbatim (still spread across holes by stroke index).
-export type HandicapMode = "offLow" | "full" | "direct";
+// How pops are derived from handicaps: relative to the low player, or in full.
+export type HandicapMode = "offLow" | "full";
 
 /**
  * One enabled side bet ("junk"). Presence in `settings.junk` = the bet is on;
@@ -282,11 +280,6 @@ export function strokesReceived(
 ): Record<PlayerId, number> {
   const out: Record<PlayerId, number> = {};
   if (players.length === 0) return out;
-  if (mode === "direct") {
-    // Pops entered directly per player; ignore handicaps entirely.
-    for (const p of players) out[p.id] = Math.max(0, Math.floor(p.pops ?? 0));
-    return out;
-  }
   // Whole strokes only (an index like 8.4 left in place after conversion is turned
   // off, or on a course with no rating, still rounds to a whole handicap).
   const hcp = (p: Player) =>
