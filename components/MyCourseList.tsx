@@ -1,6 +1,6 @@
 // components/MyCourseList.tsx
-// Courses saved on this device ("My Courses"). Used by the My Courses page (view /
-// delete) and by Setup's "+ My course" panel (tap one to use it — no API lookup).
+// Courses saved on this device ("My Courses"), shown in Setup's "+ My course"
+// panel: tap one to use it (no API lookup), or the trash to remove it.
 
 "use client";
 
@@ -35,7 +35,7 @@ export function MyCourseList({
     return (
       <p className="px-1 py-2 text-sm text-text-muted">
         No saved courses yet. Set up a course in a game’s Setup → Manual, then tap{" "}
-        <span className="font-semibold">Save to My Courses</span>.
+        <span className="font-semibold">+ My Courses</span>.
       </p>
     );
   }

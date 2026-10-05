@@ -5,7 +5,7 @@
 "use client";
 
 import { useState } from "react";
-import { BookmarkPlus, Pencil, Plus, Search, X } from "lucide-react";
+import { Pencil, Plus, Search, X } from "lucide-react";
 import {
   Round,
   Course,
@@ -434,7 +434,7 @@ export function SetupTab({
 
         {coursePanel === "mine" && (
           <div className="mt-3">
-            <MyCourseList onPick={(c) => importCourse(c, "Loaded")} />
+            <MyCourseList onPick={(c) => importCourse(c, "Loaded")} allowDelete />
           </div>
         )}
 
@@ -575,8 +575,8 @@ export function SetupTab({
                   className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold text-on-dark disabled:opacity-40"
                   style={{ backgroundColor: "#14B8B0" }}
                 >
-                  <BookmarkPlus className="h-4 w-4" />
-                  {justSaved ? "Saved ✓" : "Save to My Courses"}
+                  {!justSaved && <Plus className="h-4 w-4" />}
+                  {justSaved ? "Saved ✓" : "My Courses"}
                 </button>
                 <button
                   onClick={() => setCoursePanel("none")}

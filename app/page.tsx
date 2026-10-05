@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Settings, MapPin, Calendar, FlagTriangleRight } from "lucide-react";
+import { Plus, Settings, MapPin, Calendar } from "lucide-react";
 import {
   GameSummary,
   listGames,
@@ -84,16 +84,9 @@ export default function Home() {
             primary: true,
             onClick: () => setPicking(true),
           },
-      iconButton: inFlow
-        ? undefined
-        : {
-            label: "My courses",
-            icon: <FlagTriangleRight className="h-[18px] w-[18px]" />,
-            onClick: () => router.push("/courses"),
-          },
     });
     return () => setHeader({});
-  }, [editingId, picking, setHeader, router]);
+  }, [editingId, picking, setHeader]);
 
   if (editingId) {
     return (
